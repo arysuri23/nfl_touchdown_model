@@ -1,0 +1,17 @@
+game_id,commence_time,in_play,bookmaker,home_team,away_team,market,point_1,label_2,odd_2,point_2,over/under
+f1bc532dff946d15cb85654b5c4b246e,9/5/2025,FALSE,DraftKings,Philadelphia Eagles,Dallas Cowboys,spreads,-7,Dallas Cowboys,1.91,7,46.5
+9535d3e3ee9d9fc83ea2b500ad0b587c,9/6/2025,FALSE,DraftKings,Los Angeles Chargers,Kansas City Chiefs,spreads,2.5,Kansas City Chiefs,1.91,-2.5,45.5
+557d13ef8f4c1d21044f3a478cda6d0b,9/7/2025,FALSE,DraftKings,New Orleans Saints,Arizona Cardinals,spreads,5.5,Arizona Cardinals,1.91,-5.5,42.5
+1e09eb3fe1385796c1a32000de48ac64,9/7/2025,FALSE,DraftKings,Atlanta Falcons,Tampa Bay Buccaneers,spreads,2.5,Tampa Bay Buccaneers,1.91,-2.5,48.5
+394256a6c3d0f5ecd1208fffaae6a72f,9/7/2025,FALSE,DraftKings,Jacksonville Jaguars,Carolina Panthers,spreads,-3,Carolina Panthers,1.89,3,45.5
+e2d3b0596efcebc1c19dab92009f5e26,9/7/2025,FALSE,DraftKings,Cleveland Browns,Cincinnati Bengals,spreads,5.5,Cincinnati Bengals,1.91,-5.5,44.5
+b02a72c768a6c6dee87aa74f78e84176,9/7/2025,FALSE,DraftKings,Indianapolis Colts,Miami Dolphins,spreads,-1.5,Miami Dolphins,1.83,1.5,45.5
+0b2455795dfcd692dd607503e4f20d04,9/7/2025,FALSE,DraftKings,New England Patriots,Las Vegas Raiders,spreads,-3,Las Vegas Raiders,1.95,3,42.5
+4cce00ca468c67eca17a9a061f778fb2,9/7/2025,FALSE,DraftKings,Washington Commanders,New York Giants,spreads,-7,New York Giants,1.87,7,45.5
+5ed483bb614b18955f8b43f177746371,9/7/2025,FALSE,DraftKings,New York Jets,Pittsburgh Steelers,spreads,3,Pittsburgh Steelers,1.98,-3,39.5
+68397f3aa9eb847a421a49f990a11928,9/7/2025,FALSE,DraftKings,Denver Broncos,Tennessee Titans,spreads,-7.5,Tennessee Titans,1.95,7.5,41.5
+9f1ad249959aacae89e5e74e43429a4a,9/7/2025,FALSE,DraftKings,Seattle Seahawks,San Francisco 49ers,spreads,1.5,San Francisco 49ers,1.91,-1.5,45.5
+8e0e2d9237098222f9ca7554b11b12bb,9/7/2025,FALSE,DraftKings,Green Bay Packers,Detroit Lions,spreads,-1.5,Detroit Lions,1.91,1.5,48.5
+dc0e3db61983a138098f28226788d2d3,9/7/2025,FALSE,DraftKings,Los Angeles Rams,Houston Texans,spreads,-3,Houston Texans,1.91,3,45.5
+dee0a41ed5e8201a96d457899adbe918,9/8/2025,FALSE,DraftKings,Buffalo Bills,Baltimore Ravens,spreads,-1.5,Baltimore Ravens,1.91,1.5,51.5
+c6d7807cee33d5e81c671527b9c8b3f1,9/9/2025,FALSE,DraftKings,Chicago Bears,Minnesota Vikings,spreads,-1.5,Minnesota Vikings,1.87,1.5,44.5
