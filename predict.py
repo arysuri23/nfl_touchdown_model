@@ -382,7 +382,6 @@ def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, go
     df.fillna(0, inplace=True)
 
 
-    df.to_csv('feature_df.csv', index=False)
     # Encode categorical variables
     le = LabelEncoder()
     df['position_encoded'] = le.fit_transform(df['position'])
@@ -596,7 +595,6 @@ def predict_touchdown_scorers(feature_df, model, features, year, week, future_od
     filtered_predictions_df = prediction_df[usage_filter].copy()
 
     # --- Add model_name to the output filename ---
-    prediction_df.to_csv(f'predictions_{model_name}_week_{week}_{year}.csv', index=False)
     
     output_cols = ['player_name', 'team', 'opponent_team', 'position', 'predicted_touchdown_probability']
     final_predictions = prediction_df[output_cols].sort_values(by='predicted_touchdown_probability', ascending=False)
