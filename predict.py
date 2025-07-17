@@ -389,81 +389,85 @@ def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, go
 
     return df
 
+# --- 6. Model Training and NEW Evaluation ---
+
+def evaluate_model_at_k(predictions_df: pd.DataFrame, k: int = 15):
+    """
+    Calculates Precision@k and Recall@k for weekly NFL touchdown predictions.
+    This is the NEW evaluation function.
+    """
+    weekly_results = []
+    for week in sorted(predictions_df['week'].unique()):
+        week_df = predictions_df[predictions_df['week'] == week]
+        top_k_predictions = week_df.sort_values(by='predicted_prob', ascending=False).head(k)
+        
+        actual_scorers = set(week_df[week_df['scored_touchdown'] == 1]['player_display_name'])
+        predicted_scorers = set(top_k_predictions['player_display_name'])
+        
+        hits = len(predicted_scorers.intersection(actual_scorers))
+        
+        precision_at_k = hits / k if k > 0 else 0
+        recall_at_k = hits / len(actual_scorers) if actual_scorers else 0
+        
+        weekly_results.append({
+            'week': week,
+            'precision_at_k': precision_at_k,
+            'recall_at_k': recall_at_k,
+            'successful_picks': hits
+        })
+    return pd.DataFrame(weekly_results)
 
 # Add 'model' to the function signature
 def train_and_evaluate_model(model, param_dist, df, features, validation_year=2024):
     """
-    Trains a given model and evaluates its performance on the validation year.
+    Trains a model, tunes it, and evaluates performance using Precision@K.
+    This function has been MODIFIED to use the new evaluation metric.
     """
     model_name = model.__class__.__name__
     print(f"\n--- Tuning and Evaluating Model: {model_name} on {validation_year} Season ---")
 
     target = 'scored_touchdown'
     train_df = df[df['season'] < validation_year]
-    test_df = df[df['season'] == validation_year]
+    test_df = df[df['season'] == validation_year].copy() # Use .copy() to avoid SettingWithCopyWarning
 
-    if test_df.empty:
-        print(f"Error: No data found for the validation year {validation_year}.")
-        return None
+    X_train, y_train = train_df[features], train_df[target]
+    X_test, y_test = test_df[features], test_df[target]
 
-    X_train = train_df[features]
-    y_train = train_df[target]
-    X_test = test_df[features]
-    y_test = test_df[target]
-
-    # --- NEW: Hyperparameter Tuning with TimeSeriesSplit ---
-    print("Performing hyperparameter tuning...")
+    print("Performing hyperparameter tuning with TimeSeriesSplit...")
     tscv = TimeSeriesSplit(n_splits=5)
-    random_search = RandomizedSearchCV(
-        estimator=model,
-        param_distributions=param_dist,
-        n_iter=25,  # Number of parameter settings that are sampled
-        cv=tscv,
-        scoring='f1',
-        n_jobs=-1,  # Use all available cores
-        random_state=42,
-        verbose=1 # Set to 2 for more details
-    )
+    random_search = RandomizedSearchCV(estimator=model, param_distributions=param_dist, n_iter=25, cv=tscv, scoring='f1', n_jobs=-1, random_state=42, verbose=1)
     random_search.fit(X_train, y_train)
 
-    print(f"\nBest Hyperparameters found for {model_name}:")
-    print(random_search.best_params_)
-    
     best_model = random_search.best_estimator_
-    # --- End of New Tuning Section ---
+    print(f"\nBest Hyperparameters found for {model_name}:\n{random_search.best_params_}")
 
+    # --- NEW EVALUATION LOGIC ---
+    print("\nCalculating Precision@25 on the validation set...")
     y_pred_proba = best_model.predict_proba(X_test)[:, 1]
-
-    # Find the optimal threshold for F1-score on the validation set
-    best_threshold, best_f1 = 0, 0
-    for threshold in np.arange(0.2, 0.7, 0.01):
-        y_pred_loop = (y_pred_proba >= threshold).astype(int)
-        current_f1 = f1_score(y_test, y_pred_loop, pos_label=1)
-        if current_f1 > best_f1:
-            best_f1 = current_f1
-            best_threshold = threshold
     
-    print(f"\nOptimal Threshold for {model_name}: {best_threshold:.2f} (Achieved F1-Score: {best_f1:.4f})")
+    # Create a DataFrame with necessary info for the evaluation function
+    results_df = test_df[['player_display_name', 'week', 'scored_touchdown']].copy()
+    results_df['predicted_prob'] = y_pred_proba
     
-    # Apply the best threshold to get the final classification report
-    y_pred_final = (y_pred_proba >= best_threshold).astype(int)
-
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred_final, target_names=['No TD', 'Scored TD']))
-
-    print("\n" + "="*50)
-    print("PART 3: FEATURE IMPORTANCE ANALYSIS")
-    print("="*50)
+    # Calculate and display weekly performance
+    k_value = 10
+    weekly_performance = evaluate_model_at_k(results_df, k=k_value)
     
-    # Use the feature importances from the best model found during the search
-    importance = pd.DataFrame({
-        'feature': features,
-        'importance': best_model.feature_importances_
-    }).sort_values('importance', ascending=False)
+    print(f"\n--- Weekly Performance @ K={k_value} for {model_name} ---")
+    print(weekly_performance)
 
-    print(importance.head(20)) # Print top 20 features
+    # Display average performance
+    average_performance = weekly_performance.mean()
+    print("\n--- Average Season Performance ---")
+    print(f"Average Precision@{k_value}: {average_performance['precision_at_k']:.3f}")
+    print(f"Average Recall@{k_value}:    {average_performance['recall_at_k']:.3f}")
+    print(f"Average Successful Picks Per Week: {average_performance['successful_picks']:.1f}")
+    
+    # Feature Importance Analysis
+    print("\n--- Feature Importance Analysis ---")
+    importance = pd.DataFrame({'feature': features, 'importance': best_model.feature_importances_}).sort_values('importance', ascending=False)
+    print(importance.head(15))
 
-    # Return the best parameters to be used for the final model
     return random_search.best_params_
 
 def predict_touchdown_scorers(feature_df, model, features, year, week, future_odds_df=None):
@@ -805,20 +809,24 @@ if __name__ == '__main__':
         print("Training Stacking Ensemble on training data...")
         stacking_model.fit(X_train_stack, y_train_stack)
         print("Stacking Ensemble Training Complete.")
-        
+       # --- NEW: Evaluate Stacking Model with Precision@K ---
+        print("\nCalculating Precision@25 for Stacking Ensemble...")
         y_pred_proba_stack = stacking_model.predict_proba(X_test_stack)[:, 1]
-        best_threshold, best_f1 = 0, 0
-        for threshold in np.arange(0.2, 0.7, 0.01):
-            y_pred_loop = (y_pred_proba_stack >= threshold).astype(int)
-            current_f1 = f1_score(y_test_stack, y_pred_loop, pos_label=1)
-            if current_f1 > best_f1:
-                best_f1 = current_f1
-                best_threshold = threshold
         
-        print(f"\nOptimal Threshold for Stacking Ensemble: {best_threshold:.2f} (Achieved F1-Score: {best_f1:.4f})")
-        y_pred_final_stack = (y_pred_proba_stack >= best_threshold).astype(int)
-        print("\nStacking Ensemble Classification Report:")
-        print(classification_report(y_test_stack, y_pred_final_stack, target_names=['No TD', 'Scored TD']))
+        stack_results_df = test_df[['player_display_name', 'week', 'scored_touchdown']].copy()
+        stack_results_df['predicted_prob'] = y_pred_proba_stack
+        
+        k_value = 10
+        weekly_performance_stack = evaluate_model_at_k(stack_results_df, k=k_value)
+
+        print(f"\n--- Weekly Performance @ K={k_value} for Stacking Ensemble ---")
+        print(weekly_performance_stack)
+        
+        average_performance_stack = weekly_performance_stack.mean()
+        print("\n--- Average Season Performance (Stacking Ensemble) ---")
+        print(f"Average Precision@{k_value}: {average_performance_stack['precision_at_k']:.3f}")
+        print(f"Average Recall@{k_value}:    {average_performance_stack['recall_at_k']:.3f}")
+        print(f"Average Successful Picks Per Week: {average_performance_stack['successful_picks']:.1f}")
 
     # --- Part 3: Train Final Models with Best Parameters and Predict 2025 ---
     print("\n" + "="*50)
