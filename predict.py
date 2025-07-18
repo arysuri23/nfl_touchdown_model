@@ -3,13 +3,7 @@
 # --- 1. Introduction ---
 # This script builds a machine learning model to predict which players are likely to score a touchdown in an NFL game.
 # We will use the 'nfl_data_py' library to acquire historical player and game data.
-# The model will be a Random Forest Classifier, a powerful and popular choice for this type of prediction task.
-
-# --- 2. Installation of Necessary Libraries ---
-# Make sure you have the following libraries installed. You can install them using pip:
-# pip install nfl_data_py
-# pip install pandas
-# pip install scikit-learn
+# The model will be a Random Forest Classifier, a LightGBM Model, and an Ensemble Model combing the two
 
 # --- 3. Importing Libraries ---
 import nfl_data_py as nfl
@@ -23,8 +17,6 @@ from sklearn.ensemble import StackingClassifier
 from sklearn.linear_model import LogisticRegression
 import lightgbm as lgb
 # Suppress specific LightGBM warnings for cleaner output
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning, module='lightgbm')
 
 
 # --- 4. Data Acquisition and Preprocessing ---
@@ -41,7 +33,8 @@ def get_nfl_data(years):
     # Select relevant columns for our model
     df = df[['player_id', 'player_display_name', 'position', 'recent_team', 'season', 'week',
              'carries', 'rushing_yards', 'rushing_tds', 'receptions', 'targets',
-             'receiving_yards', 'receiving_tds', 'opponent_team', 'wopr', 'rushing_epa', 'receiving_epa', 'target_share' ]]
+             'receiving_yards', 'receiving_tds', 'opponent_team', 'wopr', 'rushing_epa',
+               'receiving_epa', 'target_share', 'receiving_air_yards', 'air_yards_share', 'racr']]
     # Drop players that are not QBs, RBs, WRs or TEs
     df = df[df['position'].isin(['QB','RB','TE', 'WR'])]
 
@@ -51,8 +44,8 @@ def get_nfl_data(years):
     # Fill missing values with 0
     df.fillna(0, inplace=True)
 
-
     return df
+
 def get_odds_data(years, team_map):
     """
     Loads and processes betting odds data from the local spreadspoke_scores.csv file,
@@ -199,6 +192,47 @@ def get_goal_line_data(pbp):
 
     return final_gl_df[['player_id', 'season', 'week', 'inside_5_carry_share', 'inside_5_target_share']]
 
+def get_endzone_target_data(pbp):
+    """
+    Calculates each player's share of their team's end zone targets.
+    An end zone target is inferred by comparing air_yards to yardline_100.
+    """
+    print("Calculating end zone target data...")
+    # Filter for pass plays where air_yards is not null
+    pass_plays = pbp[(pbp['pass_attempt'] == 1) & pbp['air_yards'].notna()].copy()
+
+    # Determine if the pass was intended for the end zone
+    pass_plays['is_endzone_target'] = pass_plays['air_yards'] >= pass_plays['yardline_100']
+
+    # --- Calculate Team-Level Targets ---
+    # We need all pass attempts to calculate a share
+    team_targets = pass_plays.groupby(['posteam', 'season', 'week']).agg(
+        team_total_targets=('pass_attempt', 'sum')
+    ).reset_index()
+
+    # --- Calculate Player-Level End Zone Targets ---
+    # Filter for only the plays that were end zone targets
+    ez_target_df = pass_plays[pass_plays['is_endzone_target'] == True]
+    
+    player_ez_targets = ez_target_df.groupby(['receiver_player_id', 'posteam', 'season', 'week']).agg(
+        endzone_targets=('is_endzone_target', 'sum')
+    ).reset_index().rename(columns={'receiver_player_id': 'player_id'})
+
+    # --- Merge and Calculate Share ---
+    # Merge player's EZ targets with their team's TOTAL targets
+    final_ez_df = pd.merge(
+        player_ez_targets,
+        team_targets,
+        on=['posteam', 'season', 'week'],
+        how='left'
+    )
+
+    # Calculate the share of team targets that are in the end zone, for that player
+    final_ez_df['endzone_target_share'] = (final_ez_df['endzone_targets'] / final_ez_df['team_total_targets']).fillna(0)
+
+    # Select and return the final columns
+    return final_ez_df[['player_id', 'season', 'week', 'endzone_targets', 'endzone_target_share']]
+
 def get_redzone_td_rate(years, pbp):
 
     redzone = pbp[pbp['yardline_100'] <= 20]
@@ -295,7 +329,7 @@ def get_opponent_positional_data(pbp, rosters):
     return positional_defense_df[final_cols]
 # --- 5. Feature Engineering ---
 
-def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, goal_line_df, positional_defense_df):
+def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, ez_target_df, odds_df, goal_line_df, positional_defense_df):
     """
     Engineers features from the raw data to improve model performance.
     """
@@ -306,6 +340,8 @@ def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, go
     df = pd.merge(df, defense_df, on=['opponent_team', 'season', 'week'], how='left')
     # Merge redzone TD rate
     df = pd.merge(df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
+    # Merge endzone Target data
+    df = pd.merge(df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
     # Merge odds data
     df = pd.merge(df, odds_df, left_on=['recent_team', 'season', 'week'],
                   right_on=['team', 'season', 'week'], how='left')
@@ -324,9 +360,14 @@ def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, go
     df['avg_rushing_epa'] = df.groupby('player_display_name')['rushing_epa'].transform(lambda x: x.shift(1).rolling(3, 1).mean())
     df['avg_receiving_epa'] = df.groupby('player_display_name')['receiving_epa'].transform(lambda x: x.shift(1).rolling(3, 1).mean())
     df['target_share'] = df.groupby('player_display_name')['target_share'].transform(lambda x: x.shift(1).rolling(3, 1).mean())
+    df['avg_receiving_air_yards'] = df.groupby('player_display_name')['receiving_air_yards'].transform(lambda x: x.shift(1).rolling(3, 1).mean())
+    df['avg_air_yards_share'] = df.groupby('player_display_name')['air_yards_share'].transform(lambda x: x.shift(1).rolling(3, 1).mean())
+    df['avg_racr'] = df.groupby('player_display_name')['racr'].transform(lambda x: x.shift(1).rolling(3, 1).mean())
     df['avg_touchdowns'] = df.groupby('player_display_name')['scored_touchdown'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
     df['avg_redzone_carry_share'] = df.groupby('player_display_name')['redzone_carry_share'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
     df['avg_redzone_target_share'] = df.groupby('player_display_name')['redzone_target_share'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
+    df['avg_endzone_targets'] = df.groupby('player_display_name')['endzone_targets'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
+    df['avg_endzone_target_share'] = df.groupby('player_display_name')['endzone_target_share'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
     df['avg_inside_5_carry_share'] = df.groupby('player_display_name')['inside_5_carry_share'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
     df['avg_inside_5_target_share'] = df.groupby('player_display_name')['inside_5_target_share'].transform(lambda x: x.shift(1).rolling(5, 1).mean())
     df['opponent_team'] = df['opponent_team'].astype('category')
@@ -350,32 +391,33 @@ def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, go
     # --- NEW: Advanced Positional Interaction Feature ---
     # This feature combines a player's usage with the opponent's specific weakness against that player's position.
     
-    # RBs get credit for both rushing and receiving matchup advantages
-    rb_interaction = (df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_RB']) + \
-                     (df['avg_redzone_target_share'] * df['passing_tds_allowed_to_RB'])
-    
-    # WRs and TEs are based on their receiving matchup
-    wr_interaction = df['avg_redzone_target_share'] * df['passing_tds_allowed_to_WR']
-    te_interaction = df['avg_redzone_target_share'] * df['passing_tds_allowed_to_TE']
-    
-    # QBs are mostly based on their rushing opportunity
-    qb_interaction = df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_QB']
-    
-    # Combine into a single feature based on the player's position
-    df['positional_matchup_interaction'] = np.select(
+    df['rush_matchup_value'] = np.select(
+        [
+            df['position'] == 'RB',
+            df['position'] == 'QB'
+            # WRs/TEs have no rushing value
+        ],
+        [
+            df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_RB'],
+            df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_QB']
+        ],
+        default=0
+    )
+
+    # Create a feature for PASSING matchup value
+    df['pass_matchup_value'] = np.select(
         [
             df['position'] == 'RB',
             df['position'] == 'WR',
-            df['position'] == 'TE',
-            df['position'] == 'QB'
+            df['position'] == 'TE'
+            # QBs have no receiving value in this context
         ],
         [
-            rb_interaction,
-            wr_interaction,
-            te_interaction,
-            qb_interaction
+            df['avg_redzone_target_share'] * df['passing_tds_allowed_to_RB'],
+            df['avg_redzone_target_share'] * df['passing_tds_allowed_to_WR'],
+            df['avg_redzone_target_share'] * df['passing_tds_allowed_to_TE']
         ],
-        default=0  # Default value if position is none of the above
+        default=0
     )
 
     # Fill NaN values resulting from rolling means
@@ -386,6 +428,7 @@ def feature_engineering(df, redzone_df, defense_df, redzone_td_rate, odds_df, go
     le = LabelEncoder()
     df['position_encoded'] = le.fit_transform(df['position'])
     df['opponent_encoded'] = le.fit_transform(df['opponent_team'])
+
 
     return df
 
@@ -417,6 +460,56 @@ def evaluate_model_at_k(predictions_df: pd.DataFrame, k: int = 15):
         })
     return pd.DataFrame(weekly_results)
 
+def transform_future_odds(df_future_raw, team_map):
+    """
+    Transforms a raw future odds CSV into the format needed for prediction.
+
+    Args:
+        df_future_raw (pd.DataFrame): The raw DataFrame read from your CSV.
+        team_map (dict): A dictionary mapping full team names to abbreviations.
+
+    Returns:
+        pd.DataFrame: A cleaned DataFrame ready for the prediction function.
+    """
+    # Assuming column names based on your example
+    
+    df_future_raw = df_future_raw[['home_team', 'away_team', 'market',
+                                   'point_1', 'label_2', 'odd_2', 'point_2', 'over/under']].copy()
+    
+    # Map full team names to the abbreviations used by your model
+    df_future_raw['home_team'] = df_future_raw['home_team'].map(team_map)
+    df_future_raw['away_team'] = df_future_raw['away_team'].map(team_map)
+
+    # Separate the spread and total (over/under) data
+    df_future_raw['point_1'] = pd.to_numeric(df_future_raw['point_1'], errors='coerce')
+    df_future_raw['over_under'] = pd.to_numeric(df_future_raw['over/under'], errors='coerce')
+
+    # --- Step 2: Consolidate Game Data using GroupBy ---
+    # This is the new core logic. We group by each unique game and aggregate.
+    # .first() will grab the valid value for spread and total from their respective rows.
+    games_df = df_future_raw.groupby(['home_team', 'away_team']).agg(
+        spread_line=('point_1', 'first'),
+        total_line=('over_under', 'first')
+    ).reset_index()
+
+
+    home_teams = games_df[['home_team', 'away_team', 'spread_line', 'total_line']].rename(
+        columns={'home_team': 'team', 'away_team': 'opponent'})
+
+    away_teams = games_df[['away_team', 'home_team', 'spread_line', 'total_line']].rename(
+        columns={'away_team': 'team', 'home_team': 'opponent'})
+    
+    # The away team's spread is the inverse of the home team's spread
+    away_teams['spread_line'] = -away_teams['spread_line']
+
+    # Combine into a single DataFrame
+    df_final = pd.concat([home_teams, away_teams]).reset_index(drop=True)
+    df_final.dropna(inplace=True)
+
+    df_final['implied_total'] = (df_final['total_line'] / 2) - (df_final['spread_line'] / 2)
+    
+    return df_final
+
 # Add 'model' to the function signature
 def train_and_evaluate_model(model, param_dist, df, features, validation_year=2024):
     """
@@ -435,7 +528,7 @@ def train_and_evaluate_model(model, param_dist, df, features, validation_year=20
 
     print("Performing hyperparameter tuning with TimeSeriesSplit...")
     tscv = TimeSeriesSplit(n_splits=5)
-    random_search = RandomizedSearchCV(estimator=model, param_distributions=param_dist, n_iter=25, cv=tscv, scoring='f1', n_jobs=-1, random_state=42, verbose=1)
+    random_search = RandomizedSearchCV(estimator=model, param_distributions=param_dist, n_iter=25, cv=tscv, scoring='average_precision', n_jobs=-1, random_state=42, verbose=1)
     random_search.fit(X_train, y_train)
 
     best_model = random_search.best_estimator_
@@ -450,7 +543,7 @@ def train_and_evaluate_model(model, param_dist, df, features, validation_year=20
     results_df['predicted_prob'] = y_pred_proba
     
     # Calculate and display weekly performance
-    k_value = 10
+    k_value = 25
     weekly_performance = evaluate_model_at_k(results_df, k=k_value)
     
     print(f"\n--- Weekly Performance @ K={k_value} for {model_name} ---")
@@ -466,11 +559,11 @@ def train_and_evaluate_model(model, param_dist, df, features, validation_year=20
     # Feature Importance Analysis
     print("\n--- Feature Importance Analysis ---")
     importance = pd.DataFrame({'feature': features, 'importance': best_model.feature_importances_}).sort_values('importance', ascending=False)
-    print(importance.head(15))
+    print(importance.head(30))
 
     return random_search.best_params_
 
-def predict_touchdown_scorers(feature_df, model, features, year, week, future_odds_df=None):
+def predict_touchdown_scorers(feature_df, model, features, opponent_le, year, week, future_odds_df=None):
     """
     Predicts touchdown scorers for a given future week by assembling features
     based on historical data and the specific matchups for that week.
@@ -519,15 +612,20 @@ def predict_touchdown_scorers(feature_df, model, features, year, week, future_od
     # Add their opponent for the upcoming game
     prediction_df['opponent_team'] = prediction_df['team'].map(opponent_map)
 
+
     # Merge the player's historical stats (e.g., avg_carries, avg_wopr)
     player_history_features = [
         'avg_carries', 'avg_rushing_yards', 'avg_receptions', 'avg_receiving_yards', 
         'avg_wopr', 'avg_rushing_epa', 'avg_receiving_epa', 'target_share', 
-        'avg_touchdowns', 'avg_redzone_carry_share', 'avg_redzone_target_share',
+        'avg_touchdowns', 'avg_redzone_carry_share', 'avg_redzone_target_share', 'avg_endzone_targets', 'avg_endzone_target_share',
         #'rush_interaction', 'pass_interaction',
         'position_encoded', 'avg_inside_5_carry_share', 'avg_inside_5_target_share', # A player's position is part of their history.
         # NEW: Advanced interaction feature
-        'positional_matchup_interaction',
+        #'positional_matchup_interaction',
+        'rush_matchup_value', 'pass_matchup_value',
+
+        # NEW Advanced Receiving Metrics
+       # 'avg_receiving_air_yards', 'avg_air_yards_share', 'avg_racr',
     ]
 
     # Merge ONLY the selected columns from the player's history.
@@ -549,11 +647,13 @@ def predict_touchdown_scorers(feature_df, model, features, year, week, future_od
         'passing_tds_allowed_to_RB', 'passing_tds_allowed_to_WR', 'passing_tds_allowed_to_TE',
 
         #'total_tds_allowed', 
-        'epa_allowed', 'opponent_encoded'
+        'epa_allowed'
     ]
+    prediction_df['opponent_encoded'] = opponent_le.transform(prediction_df['opponent_team'])
     prediction_df = pd.merge(prediction_df, latest_team_stats[opponent_feature_cols], 
                              left_on='opponent_team', right_index=True, how='left',
                              suffixes=('', '_opponent'))
+
 
 
 
@@ -646,55 +746,7 @@ def predict_touchdown_scorers(feature_df, model, features, year, week, future_od
     return final_predictions
 
 
-def transform_future_odds(df_future_raw, team_map):
-    """
-    Transforms a raw future odds CSV into the format needed for prediction.
 
-    Args:
-        df_future_raw (pd.DataFrame): The raw DataFrame read from your CSV.
-        team_map (dict): A dictionary mapping full team names to abbreviations.
-
-    Returns:
-        pd.DataFrame: A cleaned DataFrame ready for the prediction function.
-    """
-    # Assuming column names based on your example
-    
-    df_future_raw = df_future_raw[['home_team', 'away_team', 'market',
-                                   'point_1', 'label_2', 'odd_2', 'point_2', 'over/under']].copy()
-    
-    # Map full team names to the abbreviations used by your model
-    df_future_raw['home_team'] = df_future_raw['home_team'].map(team_map)
-    df_future_raw['away_team'] = df_future_raw['away_team'].map(team_map)
-
-    # Separate the spread and total (over/under) data
-    df_future_raw['point_1'] = pd.to_numeric(df_future_raw['point_1'], errors='coerce')
-    df_future_raw['over_under'] = pd.to_numeric(df_future_raw['over/under'], errors='coerce')
-
-    # --- Step 2: Consolidate Game Data using GroupBy ---
-    # This is the new core logic. We group by each unique game and aggregate.
-    # .first() will grab the valid value for spread and total from their respective rows.
-    games_df = df_future_raw.groupby(['home_team', 'away_team']).agg(
-        spread_line=('point_1', 'first'),
-        total_line=('over_under', 'first')
-    ).reset_index()
-
-
-    home_teams = games_df[['home_team', 'away_team', 'spread_line', 'total_line']].rename(
-        columns={'home_team': 'team', 'away_team': 'opponent'})
-
-    away_teams = games_df[['away_team', 'home_team', 'spread_line', 'total_line']].rename(
-        columns={'away_team': 'team', 'home_team': 'opponent'})
-    
-    # The away team's spread is the inverse of the home team's spread
-    away_teams['spread_line'] = -away_teams['spread_line']
-
-    # Combine into a single DataFrame
-    df_final = pd.concat([home_teams, away_teams]).reset_index(drop=True)
-    df_final.dropna(inplace=True)
-
-    df_final['implied_total'] = (df_final['total_line'] / 2) - (df_final['spread_line'] / 2)
-    
-    return df_final
 
 if __name__ == '__main__':
     # --- Data Preparation (For both Backtesting and Final Prediction) ---
@@ -716,19 +768,23 @@ if __name__ == '__main__':
     redzone_df = get_redzone_data(all_years_to_load, pbp)
     defense_df = get_opponent_data(all_years_to_load, pbp)
     redzone_td_df = get_redzone_td_rate(all_years_to_load, pbp)
+    ez_target_df = get_endzone_target_data(pbp)
     odds_df = get_odds_data(all_years_to_load, team_map)
     goal_line_df = get_goal_line_data(pbp)
     positional_defense_df = get_opponent_positional_data(pbp, rosters)
 
-    feature_df = feature_engineering(nfl_df, redzone_df, defense_df, redzone_td_df, odds_df, goal_line_df, positional_defense_df)
+    feature_df = feature_engineering(nfl_df, redzone_df, defense_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df)
 
     features = [
     # Player rolling averages (Correctly shifted)
     'avg_carries', 'avg_rushing_yards', 'avg_receptions', 'avg_receiving_yards',
     'avg_wopr', 'avg_rushing_epa', 'avg_receiving_epa', 'target_share', 
-    'avg_touchdowns', 'avg_redzone_carry_share', 'avg_redzone_target_share',
+    'avg_touchdowns', 'avg_redzone_carry_share', 'avg_redzone_target_share', 'avg_endzone_targets', 'avg_endzone_target_share',
     #'rush_interaction', 'pass_interaction', 
     'avg_inside_5_carry_share', 'avg_inside_5_target_share',
+
+    # NEW Advanced Receiving Metrics
+    #'avg_receiving_air_yards','avg_air_yards_share','avg_racr',
     
     # Opponent/Team rolling averages (Correctly shifted)
     #'passing_tds_allowed', 'rushing_tds_allowed', ''
@@ -739,7 +795,8 @@ if __name__ == '__main__':
     'passing_tds_allowed_to_RB', 'passing_tds_allowed_to_WR', 'passing_tds_allowed_to_TE',
 
     # NEW: Advanced interaction feature
-    'positional_matchup_interaction',
+    #'positional_matchup_interaction',
+    'rush_matchup_value', 'pass_matchup_value',
 
     # Betting odds & Encoded features
     'implied_total', 
@@ -816,7 +873,7 @@ if __name__ == '__main__':
         stack_results_df = test_df[['player_display_name', 'week', 'scored_touchdown']].copy()
         stack_results_df['predicted_prob'] = y_pred_proba_stack
         
-        k_value = 10
+        k_value = 25
         weekly_performance_stack = evaluate_model_at_k(stack_results_df, k=k_value)
 
         print(f"\n--- Weekly Performance @ K={k_value} for Stacking Ensemble ---")
@@ -844,9 +901,11 @@ if __name__ == '__main__':
     # --- Train and Predict with Final STACKING Model ---
     if estimators:
         print("\n--- Training Final Stacking Ensemble on All Data ---")
+        all_teams = feature_df['recent_team'].unique()
+        opponent_le = LabelEncoder().fit(all_teams)
         # The 'cv' parameter is also removed here
         final_stacking_model = StackingClassifier(estimators=estimators, final_estimator=LogisticRegression())
         final_stacking_model.fit(X_full, y_full)
         print("Stacking Model Training Complete.")
-        predict_touchdown_scorers(feature_df, final_stacking_model, features,
+        predict_touchdown_scorers(feature_df, final_stacking_model, features, opponent_le,
                                   year=prediction_year, week=prediction_week, future_odds_df=future_odds_df)
