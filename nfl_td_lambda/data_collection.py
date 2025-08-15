@@ -116,7 +116,7 @@ def get_depth_chart_data(years):
     depth_df = nfl.import_depth_charts(years)
     
     # Filter for relevant offensive positions using the correct column
-    positions_to_keep = ['QB', 'RB', 'WR', 'TE']
+    positions_to_keep = ['QB', 'RB', 'HB', 'WR', 'TE']
     depth_df = depth_df[depth_df['depth_position'].isin(positions_to_keep)]
     
     # Rename columns based on the user's correction
@@ -124,7 +124,6 @@ def get_depth_chart_data(years):
     depth_df.rename(columns={
         'gsis_id': 'player_id', 
         'depth_team': 'depth_chart_rank', 
-        'depth_position': 'position'
     }, inplace=True)
     
     return depth_df[['player_id', 'season', 'week', 'depth_chart_rank']]
@@ -197,3 +196,20 @@ def get_ngs_data_receiving(years):
 
 
     return ngs_receiving_df
+
+
+def get_2025_depth_chart_data():
+    """Fetches and cleans 2025 depth chart data."""
+    depth_df = nfl.import_depth_charts([2025])
+    
+    # Filter for relevant offensive positions using the correct column
+    positions_to_keep = ['QB', 'RB', 'WR', 'TE']
+    depth_df = depth_df[depth_df['pos_abb'].isin(positions_to_keep)]
+    # Rename columns based on the user's correction
+    # 'depth_team' is the rank, 'depth_position' is the position
+    depth_df.rename(columns={
+        'gsis_id': 'player_id', 
+        'pos_rank': 'depth_chart_rank', 
+    }, inplace=True)
+    depth_df = depth_df.drop_duplicates(subset=['player_id'])
+    return depth_df[['player_id', 'depth_chart_rank']]

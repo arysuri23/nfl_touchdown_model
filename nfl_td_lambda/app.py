@@ -203,7 +203,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     
     latest_opponent_data.rename(columns={'recent_team': 'opponent_team'}, inplace=True)
     prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
-    
+
     prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total']], on='team', how='left')
     
     known_opponents = opponent_le.classes_
@@ -220,6 +220,10 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
         [prediction_df['position'] == 'RB', prediction_df['position'] == 'WR', prediction_df['position'] == 'TE'],
         [prediction_df['avg_redzone_target_share'] * prediction_df['passing_tds_allowed_to_RB'], prediction_df['avg_redzone_target_share'] * prediction_df['passing_tds_allowed_to_WR'], prediction_df['avg_redzone_target_share'] * prediction_df['passing_tds_allowed_to_TE']],
         default=0)
+    
+    depth_chart_2025_data = data.get_2025_depth_chart_data()
+    #merge 2025 depth chart data on player_id and use depth_chart_rank from depth_chart_2025_data
+    prediction_df = pd.merge(prediction_df, depth_chart_2025_data[['player_id']], on='player_id', how='left')
     
     prediction_df.fillna(0, inplace=True)
     print("Feature assembly complete.")

@@ -174,7 +174,7 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
     df = pd.merge(df, goal_line_df, on=['player_id', 'week', 'season'], how='left')
     df = pd.merge(df, positional_defense_df, on=['opponent_team', 'season', 'week'], how='left')
     df = pd.merge(df, depth_chart_df, on=['player_id', 'season', 'week'], how='left')
-    df['depth_chart_rank'] = pd.to_numeric(df['depth_chart_rank'], errors='coerce').fillna(99).astype(int)
+    df['depth_chart_rank'] = pd.to_numeric(df['depth_chart_rank'], errors='coerce').fillna(4).astype(int)
     
 
     df = pd.merge(df, snap_counts_df, on=['player_id', 'season', 'week'])
