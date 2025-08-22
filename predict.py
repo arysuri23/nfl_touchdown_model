@@ -1,4 +1,5 @@
 import json
+import sys
 import boto3
 import pandas as pd
 import numpy as np
@@ -54,7 +55,7 @@ RB_FEATURES = [
     # --- Contextual & Matchup Features ---
     'rush_matchup_value',
     'pass_matchup_value',
-    'redzone_td_rate', # Team-level efficiency in the red zone.
+    #'redzone_td_rate', # Team-level efficiency in the red zone.
     'rushing_tds_allowed_to_RB', # Opponent tendency.
     'passing_tds_allowed_to_RB', # Opponent tendency.
     'implied_total', # Game script proxy.
@@ -107,7 +108,7 @@ WR_TE_FEATURES = [
 
     # --- Contextual & Matchup Features ---
     'pass_matchup_value',
-    'redzone_td_rate', # Team-level efficiency.
+    #'redzone_td_rate', # Team-level efficiency.
     'passing_tds_allowed_to_WR', # Opponent tendency.
     'passing_tds_allowed_to_TE', # Opponent tendency.
     'implied_total', # Game script proxy.
@@ -127,7 +128,9 @@ WR_TE_FEATURES = [
 QB_FEATURES = [
     'avg_offense_snap_share', 'team_continuity', 'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
     'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
-    'rush_matchup_value', 'redzone_td_rate', 'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
+    'rush_matchup_value', 
+    #'redzone_td_rate',
+    'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
     'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',]
 
 
@@ -180,14 +183,16 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     all_features = set(RB_FEATURES + WR_TE_FEATURES + QB_FEATURES)
     non_player_features = set()
     for f in all_features:
-        if 'allowed_to' in f or f in ['rush_matchup_value', 'pass_matchup_value', 'redzone_td_rate', 'implied_total', 'opponent_encoded', 'team_continuity']:
+        if 'allowed_to' in f or f in ['rush_matchup_value', 'pass_matchup_value', 
+                                      #'redzone_td_rate', 
+                                      'implied_total', 'opponent_encoded', 'team_continuity']:
             non_player_features.add(f)
     
     player_history_features = sorted(list(all_features - non_player_features))
-    team_history_features = ['redzone_td_rate']
+    #team_history_features = ['redzone_td_rate']
     opponent_history_features = [f for f in all_features if 'allowed_to' in f]
     
-    features_from_player_history = player_history_features + team_history_features
+    features_from_player_history = player_history_features #+ team_history_features
     latest_player_data = feature_df.groupby('player_id')[features_from_player_history + ['recent_team']].last().reset_index()
     prediction_df = pd.merge(prediction_df, latest_player_data, on='player_id', how='left')
 
@@ -196,10 +201,21 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     # A player has continuity if their team for the upcoming week is the same as their last known team from history.
     prediction_df['team_continuity'] = (prediction_df['team'] == prediction_df['recent_team']).astype(int) # Note: pandas may add a suffix like _y
     
+    # Get the latest opponent data for each team
+    opponent_stats_df = feature_df[['season', 'week', 'opponent_team'] + opponent_history_features]
+    #opponent_stats_df = opponent_stats_df[(opponent_stats_df['opponent_team'] == "NO") & (opponent_stats_df['season'] == 2024) & (opponent_stats_df['week'] == 18)]
+    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
+    print(opponent_stats_df)
+   
+
+     # Debugging output
+    latest_opponent_data = opponent_stats_df.groupby('opponent_team')[opponent_history_features].last().reset_index()
+
     
-    latest_opponent_data = feature_df.groupby('recent_team')[opponent_history_features].last().reset_index()
+    
+   
     #rename recent_team to opponent_team
-    latest_opponent_data.rename(columns={'recent_team': 'opponent_team'}, inplace=True)
+    #latest_opponent_data.rename(columns={'recent_team': 'opponent_team'}, inplace=True)
     prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
     
     prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total']], on='team', how='left')
@@ -220,13 +236,17 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
         default=0)
     
     depth_chart_2025_data = data.get_2025_depth_chart_data()
+    prediction_df.drop(columns=['depth_chart_rank'], inplace=True)  # Ensure no duplicate column
     #merge 2025 depth chart data on player_id and use depth_chart_rank from depth_chart_2025_data
-    prediction_df = pd.merge(prediction_df, depth_chart_2025_data[['player_id']], on='player_id', how='left')
+    prediction_df = pd.merge(prediction_df, depth_chart_2025_data, on='player_id', how='left')
+    #fill depth_chart_rank with 0 if NaN
+    prediction_df['depth_chart_rank'] = prediction_df['depth_chart_rank'].fillna(4).astype(int)
     
     
     prediction_df.fillna(0, inplace=True)
     print("Feature assembly complete.")
 
+    prediction_df.to_csv('unscaled.csv', index=False)  # Save unscaled features for debugging
 
     # Split data and apply correct model
     pred_df_rb = prediction_df[prediction_df['position'] == 'RB'].copy()

@@ -64,7 +64,7 @@ RB_FEATURES = [
     # --- Contextual & Matchup Features ---
     'rush_matchup_value',
     'pass_matchup_value',
-    'redzone_td_rate', # Team-level efficiency in the red zone.
+    #'redzone_td_rate', # Team-level efficiency in the red zone.
     'rushing_tds_allowed_to_RB', # Opponent tendency.
     'passing_tds_allowed_to_RB', # Opponent tendency.
     'implied_total', # Game script proxy.
@@ -117,7 +117,7 @@ WR_TE_FEATURES = [
 
     # --- Contextual & Matchup Features ---
     'pass_matchup_value',
-    'redzone_td_rate', # Team-level efficiency.
+    #'redzone_td_rate', # Team-level efficiency.
     'passing_tds_allowed_to_WR', # Opponent tendency.
     'passing_tds_allowed_to_TE', # Opponent tendency.
     'implied_total', # Game script proxy.
@@ -138,7 +138,9 @@ QB_FEATURES = [
     'avg_offense_snap_share',
     'team_continuity', 'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
     'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
-    'rush_matchup_value', 'redzone_td_rate', 'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
+    'rush_matchup_value', 
+    #'redzone_td_rate', 
+    'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
     'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',]
 
 
@@ -168,7 +170,7 @@ LGBM_PARAM_DIST = {
 def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df):
     """Engineers features from the raw data to improve model performance."""
     df = pd.merge(df, redzone_df, on=['player_id', 'week', 'season'], how='left')
-    df = pd.merge(df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
+    #df = pd.merge(df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
     df = pd.merge(df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
     df = pd.merge(df, odds_df, left_on=['recent_team', 'season', 'week'], right_on=['team', 'season', 'week'], how='left')
     df = pd.merge(df, goal_line_df, on=['player_id', 'week', 'season'], how='left')
@@ -184,6 +186,10 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
     df = pd.merge(df, ngs_receiving_df, on=['player_id', 'season', 'week'], how='left')
 
     df.fillna(0, inplace=True)
+    df.sort_values(by=['player_id','season', 'week'], inplace=True)
+    
+    
+ 
 
 
     player_stats = ['carries', 'rushing_yards', 'receptions', 'receiving_yards', 'wopr', 'rushing_epa', 'receiving_epa', 'target_share',
@@ -197,17 +203,29 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
         df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
 
     # NEW: Engineer Team Continuity Feature
-    df.sort_values(by=['player_id', 'season', 'week'], inplace=True)
     df['previous_team'] = df.groupby('player_id')['recent_team'].shift(1)
     df['team_continuity'] = (df['recent_team'] == df['previous_team']).astype(int)
     # Assume no continuity for a player's first game in the dataset
     df['team_continuity'].fillna(0, inplace=True)
     df.drop(columns=['previous_team'], inplace=True)
 
+   
+   
     pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
+
+    opponent_stats_df = df[['season', 'week', 'opponent_team'] + pos_defense_cols].drop_duplicates()
+    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
+    
     for col in pos_defense_cols:
-        df[col] = df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
-    df['redzone_td_rate'] = df.groupby('recent_team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+
+
+    df.drop(columns=pos_defense_cols, inplace=True)
+    df = pd.merge(df, opponent_stats_df, on=['season', 'week', 'opponent_team'], how='left')
+
+
+    
+   # df['redzone_td_rate'] = df.groupby('recent_team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
     df['rush_matchup_value'] = np.select(
         [df['position'] == 'RB', df['position'] == 'QB'],
         [df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_RB'], df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_QB']],
@@ -378,7 +396,7 @@ def evaluate_model_at_k(predictions_df: pd.DataFrame, k: int = 25):
     return pd.DataFrame(weekly_results)
 
 
-def evaluate_specialist_model(base_models, meta_model, scaler, model_name, validation_df, features, k=25):
+def evaluate_specialist_model(base_models, meta_model,scaler, model_name, validation_df, features, k=25):
     """Calculates performance metrics for a manually stacked model."""
     print("\n" + "="*60 + f"\nEVALUATION FOR: {model_name}\n" + "="*60)
     if validation_df.empty:
