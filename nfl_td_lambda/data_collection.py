@@ -17,12 +17,35 @@ def get_nfl_data(years):
 
     df['scored_touchdown'] = ((df['rushing_tds'] > 0) | (df['receiving_tds'] > 0)).astype(int)
     df.fillna(0, inplace=True)
+
+    ## rename recent_team values "LA" to "LAR" and "LV" to "LVR"
+    df['recent_team'] = df['recent_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
     return df
+def get_nfl_2025_weekly_data():
+    df = pd.read_csv('data/stats_player_week_2025.csv')
+    df = df[df['week'] <= 18]
+    df = df[['player_id', 'player_display_name', 'position', 'team', 'season', 'week',
+               'carries', 'rushing_yards', 'rushing_tds', 'receptions', 'targets',
+               'receiving_yards', 'receiving_tds', 'opponent_team', 'wopr', 'rushing_epa',
+               'receiving_epa', 'target_share', 'receiving_air_yards', 'air_yards_share', 'racr']]
+    
+    #rename team to recent team
+    df.rename(columns={'team': 'recent_team'}, inplace=True)
+    
+    df = df[df['position'].isin(['QB', 'RB', 'TE', 'WR'])]
+
+    df['scored_touchdown'] = ((df['rushing_tds'] > 0) | (df['receiving_tds'] > 0)).astype(int)
+    df.fillna(0, inplace=True)
+
+    ## rename recent_team values "LA" to "LAR" and "LV" to "LVR"
+    df['recent_team'] = df['recent_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
+    return df
+
 
 def get_odds_data(years, team_map):
     """Loads and processes historical betting odds data."""
 
-    df_odds = pd.read_csv('spreadspoke_scores.csv', low_memory=False)
+    df_odds = pd.read_csv('data/historic_lines.csv', low_memory=False)
 
     df_odds = df_odds[['schedule_season', 'schedule_week', 'team_home', 'team_away',
                          'team_favorite_id', 'spread_favorite', 'over_under_line', 'schedule_playoff']]
@@ -128,18 +151,62 @@ def get_depth_chart_data(years):
     
     return depth_df[['player_id', 'season', 'week', 'depth_chart_rank']]
 
-def transform_future_odds(df_future_raw, team_map):
-    """Transforms a raw future odds CSV into the format needed for prediction."""
-    df_future_raw = df_future_raw[['home_team', 'away_team', 'point_1', 'over/under']].copy()
-    df_future_raw['home_team'] = df_future_raw['home_team'].map(team_map)
-    df_future_raw['away_team'] = df_future_raw['away_team'].map(team_map)
-    games_df = df_future_raw.groupby(['home_team', 'away_team']).agg(spread_line=('point_1', 'first'), total_line=('over/under', 'first')).reset_index()
-    home_teams = games_df.rename(columns={'home_team': 'team', 'away_team': 'opponent'})
-    away_teams = games_df.rename(columns={'away_team': 'team', 'home_team': 'opponent'})
-    away_teams['spread_line'] = -away_teams['spread_line']
-    df_final = pd.concat([home_teams, away_teams]).reset_index(drop=True)
-    df_final['implied_total'] = (df_final['total_line'] / 2) - (df_final['spread_line'] / 2)
-    return df_final
+def transform_future_odds(df, team_map):
+    """Transform week_2_lines data to include: team, opponent, spread_line, total_line, implied_total"""
+    games = []
+    
+    for game_id in df['game_id'].unique():
+        game_data = df[df['game_id'] == game_id]
+        
+        # Get home and away teams
+        home_team = game_data['home_team'].iloc[0]
+        away_team = game_data['away_team'].iloc[0]
+        
+        # Get the total line (over/under) - should be the same for both teams
+        total_line = game_data['over/under'].iloc[0]
+        
+        # Get spread data for both teams
+        home_spread_data = game_data[game_data['label'] == home_team]
+        away_spread_data = game_data[game_data['label'] == away_team]
+        
+        if len(home_spread_data) > 0 and len(away_spread_data) > 0:
+            home_spread = home_spread_data['point'].iloc[0]
+            away_spread = away_spread_data['point'].iloc[0]
+            
+            # Map team names to team IDs
+            home_team_id = team_map.get(home_team, home_team)
+            away_team_id = team_map.get(away_team, away_team)
+            
+            # Calculate implied totals
+            # For home team: implied_total = (total_line / 2) - (spread_line / 2)
+            # For away team: implied_total = (total_line / 2) - (spread_line / 2)
+            home_implied_total = (total_line / 2) - (home_spread / 2)
+            away_implied_total = (total_line / 2) - (away_spread / 2)
+            
+            # Add home team row
+            games.append({
+                'team': home_team_id,
+                'opponent': away_team_id,
+                'spread_line': home_spread,
+                'total_line': total_line,
+                'implied_total': home_implied_total
+            })
+            
+            # Add away team row
+            games.append({
+                'team': away_team_id,
+                'opponent': home_team_id,
+                'spread_line': away_spread,
+                'total_line': total_line,
+                'implied_total': away_implied_total
+            })
+    
+    # Create final dataframe
+    result_df = pd.DataFrame(games)
+    
+    # Sort by team for consistency
+    
+    return result_df
 
 
 def get_snap_counts(years):
@@ -147,22 +214,25 @@ def get_snap_counts(years):
     snap_df = nfl.import_snap_counts(years) #
     
     # Select columns needed for joining and rename 'player' to match our main df
-    snap_df = snap_df[['pfr_player_id', 'team', 'season', 'week', 'offense_pct']] #
+    snap_df = snap_df[['pfr_player_id', 'player', 'team', 'season', 'week', 'offense_pct']] #
     snap_df.rename(columns={
         'pfr_player_id': 'pfr_id',
         'offense_pct': 'offense_snap_share',
+        'player': 'player_display_name'
     }, inplace=True)
 
-    ids = nfl.import_ids()
-    # Get player IDs and merge names
-    ids= ids[['pfr_id', 'gsis_id']]
-    #merge player IDs with snap counts
-    snap_df = pd.merge(snap_df, ids, on='pfr_id', how='left')
+    snap_df['merge_name'] = snap_df['player_display_name'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
 
-    #rename gsis_id to player_id
-    snap_df.rename(columns={'gsis_id': 'player_id'}, inplace=True)
-    #drop pfr_id
-    snap_df.drop(columns=['pfr_id'], inplace=True)
+    # ids = nfl.import_ids()
+    # # Get player IDs and merge names
+    # ids= ids[['pfr_id', 'gsis_id']]
+    # #merge player IDs with snap counts
+    # snap_df = pd.merge(snap_df, ids, on='pfr_id', how='left')
+
+    # #rename gsis_id to player_id
+    # snap_df.rename(columns={'gsis_id': 'player_id'}, inplace=True)
+    # #drop pfr_id
+    snap_df.drop(columns=['pfr_id', 'player_display_name'], inplace=True)
 
     # Ensure snap share is a float between 0 and 1
     snap_df['offense_snap_share'] = snap_df['offense_snap_share'].fillna(0)
@@ -211,5 +281,26 @@ def get_2025_depth_chart_data():
         'gsis_id': 'player_id', 
         'pos_rank': 'depth_chart_rank', 
     }, inplace=True)
+
+    #add season column that is 2025
+    depth_df['season'] = 2025
+    depth_df['week'] = 1
     depth_df = depth_df.drop_duplicates(subset=['player_id'])
-    return depth_df[['player_id', 'depth_chart_rank']]
+    return depth_df[['player_id', 'season', 'week', 'depth_chart_rank']]
+
+
+def get_injury_data(years):
+    """Fetches and processes injury data for the specified years."""
+    
+    # Select and rename columns for consistency
+    injury_df = nfl.import_injuries(years)
+    injury_df = injury_df[['gsis_id', 'season', 'week', 'report_status']]
+    injury_df.rename(columns={'gsis_id': 'player_id'}, inplace=True)
+
+    # A player not on the report is healthy. Fill missing statuses.
+    injury_df['report_status'].fillna('Healthy', inplace=True)
+
+    # Drop duplicates in case a player has multiple entries in a week
+    injury_df = injury_df.drop_duplicates(subset=['player_id', 'season', 'week'], keep='last')
+
+    return injury_df[['player_id', 'season', 'week', 'report_status']]

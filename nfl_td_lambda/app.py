@@ -5,7 +5,7 @@ import numpy as np
 import joblib
 import nfl_data_py as nfl
 from io import BytesIO, StringIO
-import data_collection as data # Assuming data_collection.py is in the same deployment package
+import data_collection as data # data_collection.py is in the same directory
 
 
 ### CONSTANTS ###
@@ -166,8 +166,15 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
 
     # Get schedule and roster for the prediction week
     schedule = nfl.import_schedules([year])
+    #schedule['home_team'] = schedule['home_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
+    #schedule['away_team'] = schedule['away_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
+    
     week_schedule = schedule[schedule['week'] == week]
-    rosters = nfl.import_seasonal_rosters([year])
+    
+    rosters = nfl.import_weekly_rosters([year])
+    rosters = rosters[rosters['status']=='ACT']
+    
+    #rosters['team'] = rosters['team'].replace({'LA': 'LAR', 'LV': 'LVR'})
     
     opponent_map = {row['home_team']: row['away_team'] for _, row in week_schedule.iterrows()}
     opponent_map.update({row['away_team']: row['home_team'] for _, row in week_schedule.iterrows()})
@@ -281,6 +288,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     td_odds_df['market_implied_prob'] = np.where(td_odds_df['price'] > 0, prob_if_pos, prob_if_neg)
     
     final_predictions = pd.merge(final_predictions, td_odds_df[['merge_name', 'price', 'market_implied_prob']], on='merge_name', how='left')
+    final_predictions[['price', 'market_implied_prob']] = final_predictions[['price', 'market_implied_prob']].fillna(0)
     final_predictions['model_edge'] = final_predictions['predicted_touchdown_probability'] - final_predictions['market_implied_prob']
     
     display_cols = ['player_display_name', 'team', 'position', 'predicted_touchdown_probability', 'price', 'market_implied_prob', 'model_edge']
@@ -318,8 +326,8 @@ def lambda_handler(event, context):
         # --- 2. Load Data Files from S3 ---
         print("Loading data files from S3...")
         nfl_teams_df = read_csv_from_s3('data/nfl_teams.csv')
-        future_odds_raw = read_csv_from_s3('data/week_1_lines.csv')
-        td_odds_df = read_csv_from_s3('data/week_1_td_odds.csv')
+        future_odds_raw = read_csv_from_s3('data/data/week_2_lines.csv')
+        td_odds_df = read_csv_from_s3('data/data/week_2_td_odds.csv')
         feature_df = read_csv_from_s3('data/feature_df.csv')
         
         team_map = dict(zip(nfl_teams_df['team_name'], nfl_teams_df['team_id']))
@@ -329,7 +337,7 @@ def lambda_handler(event, context):
         # --- 3. Run Prediction ---
         # In a real app, you would get the year/week from the API Gateway event
         prediction_year = 2025
-        prediction_week = 1
+        prediction_week = 2
         print(f"Generating predictions for {prediction_year}, Week {prediction_week}...")
         
         final_predictions_df = predict_touchdown_scorers(feature_df, models, scalers, opponent_le, prediction_year, prediction_week, future_odds_df, td_odds_df)

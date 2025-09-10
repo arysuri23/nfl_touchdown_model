@@ -1,0 +1,1425 @@
+,schedule_season,schedule_week,team_home,team_away,team_favorite_id,spread_favorite,over_under_line,schedule_playoff,team_home_id,team_away_id
+12678,2020,1,Kansas City Chiefs,Houston Texans,KC,-9.0,54,False,KC,HOU
+12679,2020,1,Atlanta Falcons,Seattle Seahawks,SEA,-1.0,49,False,ATL,SEA
+12680,2020,1,Baltimore Ravens,Cleveland Browns,BAL,-7.0,47.5,False,BAL,CLE
+12681,2020,1,Buffalo Bills,New York Jets,BUF,-6.5,39.5,False,BUF,NYJ
+12682,2020,1,Carolina Panthers,Las Vegas Raiders,LVR,-3.0,48,False,CAR,LVR
+12683,2020,1,Cincinnati Bengals,Los Angeles Chargers,LAC,-3.0,41.5,False,CIN,LAC
+12684,2020,1,Detroit Lions,Chicago Bears,DET,-2.5,42.5,False,DET,CHI
+12685,2020,1,Jacksonville Jaguars,Indianapolis Colts,IND,-8.0,45,False,JAX,IND
+12686,2020,1,Los Angeles Rams,Dallas Cowboys,DAL,-2.0,51.5,False,LAR,DAL
+12687,2020,1,Minnesota Vikings,Green Bay Packers,MIN,-2.5,44.5,False,MIN,GB
+12688,2020,1,New England Patriots,Miami Dolphins,NE,-7.0,41.5,False,NE,MIA
+12689,2020,1,New Orleans Saints,Tampa Bay Buccaneers,NO,-3.5,47.5,False,NO,TB
+12690,2020,1,San Francisco 49ers,Arizona Cardinals,SF,-6.5,48,False,SF,ARI
+12691,2020,1,Washington Football Team,Philadelphia Eagles,PHI,-5.0,42,False,WAS,PHI
+12692,2020,1,Denver Broncos,Tennessee Titans,TEN,-3.0,41,False,DEN,TEN
+12693,2020,1,New York Giants,Pittsburgh Steelers,PIT,-5.5,45,False,NYG,PIT
+12694,2020,2,Cleveland Browns,Cincinnati Bengals,CLE,-6.0,43,False,CLE,CIN
+12695,2020,2,Arizona Cardinals,Washington Football Team,ARI,-7.0,46.5,False,ARI,WAS
+12696,2020,2,Chicago Bears,New York Giants,CHI,-5.5,42,False,CHI,NYG
+12697,2020,2,Dallas Cowboys,Atlanta Falcons,DAL,-3.5,53.5,False,DAL,ATL
+12698,2020,2,Green Bay Packers,Detroit Lions,GB,-6.0,50,False,GB,DET
+12699,2020,2,Houston Texans,Baltimore Ravens,BAL,-7.0,49,False,HOU,BAL
+12700,2020,2,Indianapolis Colts,Minnesota Vikings,IND,-3.0,49,False,IND,MIN
+12701,2020,2,Los Angeles Chargers,Kansas City Chiefs,KC,-8.5,47.5,False,LAC,KC
+12702,2020,2,Miami Dolphins,Buffalo Bills,BUF,-5.5,42,False,MIA,BUF
+12703,2020,2,New York Jets,San Francisco 49ers,SF,-7.0,41.5,False,NYJ,SF
+12704,2020,2,Philadelphia Eagles,Los Angeles Rams,PHI,-1.5,45.5,False,PHI,LAR
+12705,2020,2,Pittsburgh Steelers,Denver Broncos,PIT,-6.5,40.5,False,PIT,DEN
+12706,2020,2,Seattle Seahawks,New England Patriots,SEA,-4.0,44.5,False,SEA,NE
+12707,2020,2,Tampa Bay Buccaneers,Carolina Panthers,TB,-8.0,47,False,TB,CAR
+12708,2020,2,Tennessee Titans,Jacksonville Jaguars,TEN,-7.5,44,False,TEN,JAX
+12709,2020,2,Las Vegas Raiders,New Orleans Saints,NO,-5.5,48.5,False,LVR,NO
+12710,2020,3,Jacksonville Jaguars,Miami Dolphins,JAX,-3.0,48,False,JAX,MIA
+12711,2020,3,Arizona Cardinals,Detroit Lions,ARI,-5.5,55.5,False,ARI,DET
+12712,2020,3,Atlanta Falcons,Chicago Bears,ATL,-3.0,47,False,ATL,CHI
+12713,2020,3,Buffalo Bills,Los Angeles Rams,BUF,-2.0,47,False,BUF,LAR
+12714,2020,3,Cleveland Browns,Washington Football Team,CLE,-7.0,44.5,False,CLE,WAS
+12715,2020,3,Denver Broncos,Tampa Bay Buccaneers,TB,-6.0,42.5,False,DEN,TB
+12716,2020,3,Indianapolis Colts,New York Jets,IND,-11.5,44,False,IND,NYJ
+12717,2020,3,Los Angeles Chargers,Carolina Panthers,LAC,-6.5,43.5,False,LAC,CAR
+12718,2020,3,Minnesota Vikings,Tennessee Titans,TEN,-2.5,50,False,MIN,TEN
+12719,2020,3,New England Patriots,Las Vegas Raiders,NE,-6.5,47,False,NE,LVR
+12720,2020,3,New Orleans Saints,Green Bay Packers,NO,-3.0,53,False,NO,GB
+12721,2020,3,New York Giants,San Francisco 49ers,SF,-3.0,43,False,NYG,SF
+12722,2020,3,Philadelphia Eagles,Cincinnati Bengals,PHI,-4.5,47.5,False,PHI,CIN
+12723,2020,3,Pittsburgh Steelers,Houston Texans,PIT,-4.0,46,False,PIT,HOU
+12724,2020,3,Seattle Seahawks,Dallas Cowboys,SEA,-5.0,56.5,False,SEA,DAL
+12725,2020,3,Baltimore Ravens,Kansas City Chiefs,BAL,-3.0,54,False,BAL,KC
+12726,2020,4,New York Jets,Denver Broncos,NYJ,-1.5,41,False,NYJ,DEN
+12727,2020,4,Carolina Panthers,Arizona Cardinals,ARI,-3.0,51.5,False,CAR,ARI
+12728,2020,4,Chicago Bears,Indianapolis Colts,IND,-3.0,43,False,CHI,IND
+12729,2020,4,Cincinnati Bengals,Jacksonville Jaguars,CIN,-2.5,49,False,CIN,JAX
+12730,2020,4,Dallas Cowboys,Cleveland Browns,DAL,-3.5,56,False,DAL,CLE
+12731,2020,4,Detroit Lions,New Orleans Saints,NO,-3.0,54.5,False,DET,NO
+12732,2020,4,Houston Texans,Minnesota Vikings,HOU,-3.5,53.5,False,HOU,MIN
+12733,2020,4,Las Vegas Raiders,Buffalo Bills,BUF,-3.0,53,False,LVR,BUF
+12734,2020,4,Los Angeles Rams,New York Giants,LAR,-13.0,48.5,False,LAR,NYG
+12735,2020,4,Miami Dolphins,Seattle Seahawks,SEA,-5.5,54.5,False,MIA,SEA
+12736,2020,4,San Francisco 49ers,Philadelphia Eagles,SF,-7.5,45,False,SF,PHI
+12737,2020,4,Tampa Bay Buccaneers,Los Angeles Chargers,TB,-7.0,42.5,False,TB,LAC
+12738,2020,4,Washington Football Team,Baltimore Ravens,BAL,-14.0,45,False,WAS,BAL
+12739,2020,4,Green Bay Packers,Atlanta Falcons,GB,-7.0,56.5,False,GB,ATL
+12740,2020,4,Kansas City Chiefs,New England Patriots,KC,-7.0,53,False,KC,NE
+12741,2020,5,Chicago Bears,Tampa Bay Buccaneers,TB,-3.5,44.5,False,CHI,TB
+12742,2020,5,Atlanta Falcons,Carolina Panthers,ATL,-2.5,54,False,ATL,CAR
+12743,2020,5,Baltimore Ravens,Cincinnati Bengals,BAL,-11.0,50.5,False,BAL,CIN
+12744,2020,5,Cleveland Browns,Indianapolis Colts,CLE,-1.0,48,False,CLE,IND
+12745,2020,5,Dallas Cowboys,New York Giants,DAL,-8.0,53,False,DAL,NYG
+12746,2020,5,Houston Texans,Jacksonville Jaguars,HOU,-5.5,54.5,False,HOU,JAX
+12747,2020,5,Kansas City Chiefs,Las Vegas Raiders,KC,-10.5,54.5,False,KC,LVR
+12748,2020,5,New York Jets,Arizona Cardinals,ARI,-7.0,47.5,False,NYJ,ARI
+12749,2020,5,Pittsburgh Steelers,Philadelphia Eagles,PIT,-7.0,43.5,False,PIT,PHI
+12750,2020,5,San Francisco 49ers,Miami Dolphins,SF,-7.5,51,False,SF,MIA
+12751,2020,5,Seattle Seahawks,Minnesota Vikings,SEA,-6.5,56.5,False,SEA,MIN
+12752,2020,5,Washington Football Team,Los Angeles Rams,LAR,-7.0,46,False,WAS,LAR
+12753,2020,5,New Orleans Saints,Los Angeles Chargers,NO,-7.0,49.5,False,NO,LAC
+12754,2020,5,Tennessee Titans,Buffalo Bills,BUF,-3.5,53,False,TEN,BUF
+12755,2020,6,Carolina Panthers,Chicago Bears,CAR,-1.5,44.5,False,CAR,CHI
+12756,2020,6,Indianapolis Colts,Cincinnati Bengals,IND,-7.5,45.5,False,IND,CIN
+12757,2020,6,Jacksonville Jaguars,Detroit Lions,DET,-3.0,54.5,False,JAX,DET
+12758,2020,6,Miami Dolphins,New York Jets,MIA,-9.0,47,False,MIA,NYJ
+12759,2020,6,Minnesota Vikings,Atlanta Falcons,MIN,-4.0,54,False,MIN,ATL
+12760,2020,6,New England Patriots,Denver Broncos,NE,-8.0,45,False,NE,DEN
+12761,2020,6,New York Giants,Washington Football Team,NYG,-2.5,43,False,NYG,WAS
+12762,2020,6,Philadelphia Eagles,Baltimore Ravens,BAL,-10.0,46.5,False,PHI,BAL
+12763,2020,6,Pittsburgh Steelers,Cleveland Browns,PIT,-3.0,51,False,PIT,CLE
+12764,2020,6,San Francisco 49ers,Los Angeles Rams,LAR,-2.5,51.5,False,SF,LAR
+12765,2020,6,Tampa Bay Buccaneers,Green Bay Packers,GB,-1.0,55,False,TB,GB
+12766,2020,6,Tennessee Titans,Houston Texans,TEN,-3.5,53.5,False,TEN,HOU
+12767,2020,6,Buffalo Bills,Kansas City Chiefs,KC,-5.0,57.5,False,BUF,KC
+12768,2020,6,Dallas Cowboys,Arizona Cardinals,ARI,-1.0,55,False,DAL,ARI
+12769,2020,7,Philadelphia Eagles,New York Giants,PHI,-4.5,45,False,PHI,NYG
+12770,2020,7,Arizona Cardinals,Seattle Seahawks,SEA,-3.5,56,False,ARI,SEA
+12771,2020,7,Atlanta Falcons,Detroit Lions,ATL,-2.0,55,False,ATL,DET
+12772,2020,7,Cincinnati Bengals,Cleveland Browns,CLE,-3.0,51,False,CIN,CLE
+12773,2020,7,Denver Broncos,Kansas City Chiefs,KC,-7.0,46,False,DEN,KC
+12774,2020,7,Houston Texans,Green Bay Packers,GB,-3.0,57,False,HOU,GB
+12775,2020,7,Las Vegas Raiders,Tampa Bay Buccaneers,TB,-3.5,52,False,LVR,TB
+12776,2020,7,Los Angeles Chargers,Jacksonville Jaguars,LAC,-7.5,48.5,False,LAC,JAX
+12777,2020,7,New England Patriots,San Francisco 49ers,NE,-3.0,44.5,False,NE,SF
+12778,2020,7,New Orleans Saints,Carolina Panthers,NO,-6.5,50,False,NO,CAR
+12779,2020,7,New York Jets,Buffalo Bills,BUF,-10.0,46,False,NYJ,BUF
+12780,2020,7,Tennessee Titans,Pittsburgh Steelers,TEN,-1.0,51,False,TEN,PIT
+12781,2020,7,Washington Football Team,Dallas Cowboys,WAS,-1.0,45,False,WAS,DAL
+12782,2020,7,Los Angeles Rams,Chicago Bears,LAR,-6.0,45,False,LAR,CHI
+12783,2020,8,Carolina Panthers,Atlanta Falcons,CAR,-2.0,51,False,CAR,ATL
+12784,2020,8,Baltimore Ravens,Pittsburgh Steelers,BAL,-4.0,46,False,BAL,PIT
+12785,2020,8,Buffalo Bills,New England Patriots,BUF,-4.5,40.5,False,BUF,NE
+12786,2020,8,Chicago Bears,New Orleans Saints,NO,-4.0,43,False,CHI,NO
+12787,2020,8,Cincinnati Bengals,Tennessee Titans,TEN,-7.0,50.5,False,CIN,TEN
+12788,2020,8,Cleveland Browns,Las Vegas Raiders,CLE,-1.5,48,False,CLE,LVR
+12789,2020,8,Denver Broncos,Los Angeles Chargers,LAC,-3.5,44.5,False,DEN,LAC
+12790,2020,8,Detroit Lions,Indianapolis Colts,IND,-3.0,49.5,False,DET,IND
+12791,2020,8,Green Bay Packers,Minnesota Vikings,GB,-6.5,50,False,GB,MIN
+12792,2020,8,Kansas City Chiefs,New York Jets,KC,-19.5,49,False,KC,NYJ
+12793,2020,8,Miami Dolphins,Los Angeles Rams,LAR,-3.5,45.5,False,MIA,LAR
+12794,2020,8,Philadelphia Eagles,Dallas Cowboys,PHI,-11.5,42.5,False,PHI,DAL
+12795,2020,8,Seattle Seahawks,San Francisco 49ers,SEA,-3.0,53.5,False,SEA,SF
+12796,2020,8,New York Giants,Tampa Bay Buccaneers,TB,-12.5,45,False,NYG,TB
+12797,2020,9,San Francisco 49ers,Green Bay Packers,GB,-7.5,48.5,False,SF,GB
+12798,2020,9,Arizona Cardinals,Miami Dolphins,ARI,-5.5,49,False,ARI,MIA
+12799,2020,9,Atlanta Falcons,Denver Broncos,ATL,-4.0,49,False,ATL,DEN
+12800,2020,9,Buffalo Bills,Seattle Seahawks,SEA,-3.0,55,False,BUF,SEA
+12801,2020,9,Dallas Cowboys,Pittsburgh Steelers,PIT,-14.0,44,False,DAL,PIT
+12802,2020,9,Indianapolis Colts,Baltimore Ravens,BAL,-1.0,48,False,IND,BAL
+12803,2020,9,Jacksonville Jaguars,Houston Texans,HOU,-6.5,49.5,False,JAX,HOU
+12804,2020,9,Kansas City Chiefs,Carolina Panthers,KC,-10.0,51.5,False,KC,CAR
+12805,2020,9,Los Angeles Chargers,Las Vegas Raiders,LVR,-1.0,52.5,False,LAC,LVR
+12806,2020,9,Minnesota Vikings,Detroit Lions,MIN,-4.0,52,False,MIN,DET
+12807,2020,9,Tampa Bay Buccaneers,New Orleans Saints,TB,-4.0,50.5,False,TB,NO
+12808,2020,9,Tennessee Titans,Chicago Bears,TEN,-6.5,47,False,TEN,CHI
+12809,2020,9,Washington Football Team,New York Giants,WAS,-2.5,43,False,WAS,NYG
+12810,2020,9,New York Jets,New England Patriots,NE,-9.5,41.5,False,NYJ,NE
+12811,2020,10,Tennessee Titans,Indianapolis Colts,TEN,-1.0,48.5,False,TEN,IND
+12812,2020,10,Arizona Cardinals,Buffalo Bills,ARI,-2.5,56,False,ARI,BUF
+12813,2020,10,Carolina Panthers,Tampa Bay Buccaneers,TB,-6.0,51,False,CAR,TB
+12814,2020,10,Cleveland Browns,Houston Texans,CLE,-4.0,45.5,False,CLE,HOU
+12815,2020,10,Detroit Lions,Washington Football Team,DET,-3.0,46,False,DET,WAS
+12816,2020,10,Green Bay Packers,Jacksonville Jaguars,GB,-14.0,47.5,False,GB,JAX
+12817,2020,10,Las Vegas Raiders,Denver Broncos,LVR,-3.5,50.5,False,LVR,DEN
+12818,2020,10,Los Angeles Rams,Seattle Seahawks,LAR,-3.0,54.5,False,LAR,SEA
+12819,2020,10,Miami Dolphins,Los Angeles Chargers,MIA,-2.0,48.5,False,MIA,LAC
+12820,2020,10,New England Patriots,Baltimore Ravens,BAL,-7.0,43.5,False,NE,BAL
+12821,2020,10,New Orleans Saints,San Francisco 49ers,NO,-9.5,49.5,False,NO,SF
+12822,2020,10,New York Giants,Philadelphia Eagles,PHI,-4.0,44.5,False,NYG,PHI
+12823,2020,10,Pittsburgh Steelers,Cincinnati Bengals,PIT,-7.0,46.5,False,PIT,CIN
+12824,2020,10,Chicago Bears,Minnesota Vikings,MIN,-3.0,43.5,False,CHI,MIN
+12825,2020,11,Seattle Seahawks,Arizona Cardinals,SEA,-3.0,57.5,False,SEA,ARI
+12826,2020,11,Baltimore Ravens,Tennessee Titans,BAL,-6.0,50,False,BAL,TEN
+12827,2020,11,Carolina Panthers,Detroit Lions,DET,-1.5,46.5,False,CAR,DET
+12828,2020,11,Cleveland Browns,Philadelphia Eagles,CLE,-3.0,47,False,CLE,PHI
+12829,2020,11,Denver Broncos,Miami Dolphins,MIA,-3.5,46,False,DEN,MIA
+12830,2020,11,Houston Texans,New England Patriots,NE,-2.5,49,False,HOU,NE
+12831,2020,11,Indianapolis Colts,Green Bay Packers,IND,-1.5,51.5,False,IND,GB
+12832,2020,11,Jacksonville Jaguars,Pittsburgh Steelers,PIT,-10.5,46,False,JAX,PIT
+12833,2020,11,Las Vegas Raiders,Kansas City Chiefs,KC,-7.5,57,False,LVR,KC
+12834,2020,11,Los Angeles Chargers,New York Jets,LAC,-9.5,46.5,False,LAC,NYJ
+12835,2020,11,Minnesota Vikings,Dallas Cowboys,MIN,-7.0,48.5,False,MIN,DAL
+12836,2020,11,New Orleans Saints,Atlanta Falcons,NO,-3.5,49,False,NO,ATL
+12837,2020,11,Washington Football Team,Cincinnati Bengals,WAS,-1.5,47,False,WAS,CIN
+12838,2020,11,Tampa Bay Buccaneers,Los Angeles Rams,TB,-4.5,48,False,TB,LAR
+12839,2020,12,Dallas Cowboys,Washington Football Team,DAL,-3.0,46,False,DAL,WAS
+12840,2020,12,Detroit Lions,Houston Texans,HOU,-3.0,51,False,DET,HOU
+12841,2020,12,Atlanta Falcons,Las Vegas Raiders,LVR,-3.0,53.5,False,ATL,LVR
+12842,2020,12,Buffalo Bills,Los Angeles Chargers,BUF,-4.5,52,False,BUF,LAC
+12843,2020,12,Cincinnati Bengals,New York Giants,NYG,-6.0,44.5,False,CIN,NYG
+12844,2020,12,Denver Broncos,New Orleans Saints,NO,-14.5,36.5,False,DEN,NO
+12845,2020,12,Green Bay Packers,Chicago Bears,GB,-9.5,44,False,GB,CHI
+12846,2020,12,Indianapolis Colts,Tennessee Titans,IND,-3.0,51.5,False,IND,TEN
+12847,2020,12,Jacksonville Jaguars,Cleveland Browns,CLE,-7.0,48.5,False,JAX,CLE
+12848,2020,12,Los Angeles Rams,San Francisco 49ers,LAR,-6.5,44.5,False,LAR,SF
+12849,2020,12,Minnesota Vikings,Carolina Panthers,MIN,-3.0,50,False,MIN,CAR
+12850,2020,12,New England Patriots,Arizona Cardinals,ARI,-2.0,49,False,NE,ARI
+12851,2020,12,New York Jets,Miami Dolphins,MIA,-7.0,44.5,False,NYJ,MIA
+12852,2020,12,Tampa Bay Buccaneers,Kansas City Chiefs,KC,-3.5,56,False,TB,KC
+12853,2020,12,Philadelphia Eagles,Seattle Seahawks,SEA,-6.5,49,False,PHI,SEA
+12854,2020,12,Pittsburgh Steelers,Baltimore Ravens,PIT,-5.0,44.5,False,PIT,BAL
+12855,2020,13,Arizona Cardinals,Los Angeles Rams,LAR,-2.5,48.5,False,ARI,LAR
+12856,2020,13,Atlanta Falcons,New Orleans Saints,NO,-2.5,46,False,ATL,NO
+12857,2020,13,Chicago Bears,Detroit Lions,CHI,-3.0,44,False,CHI,DET
+12858,2020,13,Green Bay Packers,Philadelphia Eagles,GB,-8.5,49.5,False,GB,PHI
+12859,2020,13,Houston Texans,Indianapolis Colts,IND,-3.5,50,False,HOU,IND
+12860,2020,13,Kansas City Chiefs,Denver Broncos,KC,-13.0,51.5,False,KC,DEN
+12861,2020,13,Los Angeles Chargers,New England Patriots,LAC,-2.0,47,False,LAC,NE
+12862,2020,13,Miami Dolphins,Cincinnati Bengals,MIA,-10.0,43,False,MIA,CIN
+12863,2020,13,Minnesota Vikings,Jacksonville Jaguars,MIN,-10.0,51.5,False,MIN,JAX
+12864,2020,13,New York Jets,Las Vegas Raiders,LVR,-7.5,48.5,False,NYJ,LVR
+12865,2020,13,Seattle Seahawks,New York Giants,SEA,-11.0,48,False,SEA,NYG
+12866,2020,13,Tennessee Titans,Cleveland Browns,TEN,-3.5,53.5,False,TEN,CLE
+12867,2020,13,Pittsburgh Steelers,Washington Football Team,PIT,-6.0,43.5,False,PIT,WAS
+12868,2020,13,San Francisco 49ers,Buffalo Bills,SF,-1.5,48,False,SF,BUF
+12869,2020,13,Baltimore Ravens,Dallas Cowboys,BAL,-8.5,45.5,False,BAL,DAL
+12870,2020,14,Los Angeles Rams,New England Patriots,LAR,-5.0,43.5,False,LAR,NE
+12871,2020,14,Buffalo Bills,Pittsburgh Steelers,BUF,-2.0,48.5,False,BUF,PIT
+12872,2020,14,Carolina Panthers,Denver Broncos,CAR,-4.0,45.5,False,CAR,DEN
+12873,2020,14,Chicago Bears,Houston Texans,HOU,-1.0,46.5,False,CHI,HOU
+12874,2020,14,Cincinnati Bengals,Dallas Cowboys,DAL,-3.0,44,False,CIN,DAL
+12875,2020,14,Detroit Lions,Green Bay Packers,GB,-9.0,55.5,False,DET,GB
+12876,2020,14,Jacksonville Jaguars,Tennessee Titans,TEN,-7.5,53,False,JAX,TEN
+12877,2020,14,Las Vegas Raiders,Indianapolis Colts,IND,-2.5,52,False,LVR,IND
+12878,2020,14,Los Angeles Chargers,Atlanta Falcons,LAC,-1.0,49,False,LAC,ATL
+12879,2020,14,Miami Dolphins,Kansas City Chiefs,KC,-7.0,51.5,False,MIA,KC
+12880,2020,14,New York Giants,Arizona Cardinals,ARI,-3.0,47.5,False,NYG,ARI
+12881,2020,14,Philadelphia Eagles,New Orleans Saints,NO,-7.5,42.5,False,PHI,NO
+12882,2020,14,San Francisco 49ers,Washington Football Team,SF,-3.0,43.5,False,SF,WAS
+12883,2020,14,Seattle Seahawks,New York Jets,SEA,-16.5,49,False,SEA,NYJ
+12884,2020,14,Tampa Bay Buccaneers,Minnesota Vikings,TB,-7.0,52.5,False,TB,MIN
+12885,2020,14,Cleveland Browns,Baltimore Ravens,BAL,-3.0,45.5,False,CLE,BAL
+12886,2020,15,Las Vegas Raiders,Los Angeles Chargers,LVR,-3.5,52.5,False,LVR,LAC
+12887,2020,15,Denver Broncos,Buffalo Bills,BUF,-6.0,48,False,DEN,BUF
+12888,2020,15,Green Bay Packers,Carolina Panthers,GB,-9.0,53,False,GB,CAR
+12889,2020,15,Arizona Cardinals,Philadelphia Eagles,ARI,-6.0,49.5,False,ARI,PHI
+12890,2020,15,Atlanta Falcons,Tampa Bay Buccaneers,TB,-6.0,49.5,False,ATL,TB
+12891,2020,15,Baltimore Ravens,Jacksonville Jaguars,BAL,-12.5,49,False,BAL,JAX
+12892,2020,15,Dallas Cowboys,San Francisco 49ers,SF,-4.0,45.5,False,DAL,SF
+12893,2020,15,Indianapolis Colts,Houston Texans,IND,-7.5,52.5,False,IND,HOU
+12894,2020,15,Los Angeles Rams,New York Jets,LAR,-17.0,44.5,False,LAR,NYJ
+12895,2020,15,Miami Dolphins,New England Patriots,NE,-1.0,40,False,MIA,NE
+12896,2020,15,Minnesota Vikings,Chicago Bears,MIN,-3.0,47,False,MIN,CHI
+12897,2020,15,New Orleans Saints,Kansas City Chiefs,KC,-2.5,54,False,NO,KC
+12898,2020,15,New York Giants,Cleveland Browns,CLE,-6.5,44.5,False,NYG,CLE
+12899,2020,15,Tennessee Titans,Detroit Lions,TEN,-8.5,54,False,TEN,DET
+12900,2020,15,Washington Football Team,Seattle Seahawks,SEA,-6.0,44,False,WAS,SEA
+12901,2020,15,Cincinnati Bengals,Pittsburgh Steelers,PIT,-14.5,40.5,False,CIN,PIT
+12902,2020,16,New Orleans Saints,Minnesota Vikings,NO,-6.5,49.5,False,NO,MIN
+12903,2020,16,Arizona Cardinals,San Francisco 49ers,ARI,-6.0,49,False,ARI,SF
+12904,2020,16,Detroit Lions,Tampa Bay Buccaneers,TB,-12.0,55,False,DET,TB
+12905,2020,16,Las Vegas Raiders,Miami Dolphins,MIA,-2.5,50,False,LVR,MIA
+12906,2020,16,Baltimore Ravens,New York Giants,BAL,-9.5,43.5,False,BAL,NYG
+12907,2020,16,Dallas Cowboys,Philadelphia Eagles,PHI,-3.0,50.5,False,DAL,PHI
+12908,2020,16,Green Bay Packers,Tennessee Titans,GB,-3.0,52.5,False,GB,TEN
+12909,2020,16,Houston Texans,Cincinnati Bengals,HOU,-7.5,46,False,HOU,CIN
+12910,2020,16,Jacksonville Jaguars,Chicago Bears,CHI,-9.5,47,False,JAX,CHI
+12911,2020,16,Kansas City Chiefs,Atlanta Falcons,KC,-11.0,54,False,KC,ATL
+12912,2020,16,Los Angeles Chargers,Denver Broncos,LAC,-2.0,47.5,False,LAC,DEN
+12913,2020,16,New York Jets,Cleveland Browns,CLE,-6.5,45,False,NYJ,CLE
+12914,2020,16,Pittsburgh Steelers,Indianapolis Colts,IND,-1.0,42.5,False,PIT,IND
+12915,2020,16,Seattle Seahawks,Los Angeles Rams,SEA,-1.5,48,False,SEA,LAR
+12916,2020,16,Washington Football Team,Carolina Panthers,CAR,-1.0,42,False,WAS,CAR
+12917,2020,16,New England Patriots,Buffalo Bills,BUF,-7.0,47,False,NE,BUF
+12918,2020,17,Buffalo Bills,Miami Dolphins,MIA,-3.0,42.5,False,BUF,MIA
+12919,2020,17,Carolina Panthers,New Orleans Saints,NO,-6.0,46.5,False,CAR,NO
+12920,2020,17,Chicago Bears,Green Bay Packers,GB,-4.5,48.5,False,CHI,GB
+12921,2020,17,Cincinnati Bengals,Baltimore Ravens,BAL,-13.5,45,False,CIN,BAL
+12922,2020,17,Cleveland Browns,Pittsburgh Steelers,CLE,-10.5,44.5,False,CLE,PIT
+12923,2020,17,Denver Broncos,Las Vegas Raiders,LVR,-2.5,50.5,False,DEN,LVR
+12924,2020,17,Detroit Lions,Minnesota Vikings,MIN,-3.0,53.5,False,DET,MIN
+12925,2020,17,Houston Texans,Tennessee Titans,TEN,-7.0,55.5,False,HOU,TEN
+12926,2020,17,Indianapolis Colts,Jacksonville Jaguars,IND,-15.5,48,False,IND,JAX
+12927,2020,17,Kansas City Chiefs,Los Angeles Chargers,LAC,-6.5,43,False,KC,LAC
+12928,2020,17,Los Angeles Rams,Arizona Cardinals,LAR,-1.0,42,False,LAR,ARI
+12929,2020,17,New England Patriots,New York Jets,NE,-3.0,41,False,NE,NYJ
+12930,2020,17,New York Giants,Dallas Cowboys,DAL,-1.5,43.5,False,NYG,DAL
+12931,2020,17,Philadelphia Eagles,Washington Football Team,WAS,-6.5,43.5,False,PHI,WAS
+12932,2020,17,San Francisco 49ers,Seattle Seahawks,SEA,-7.0,45,False,SF,SEA
+12933,2020,17,Tampa Bay Buccaneers,Atlanta Falcons,TB,-7.0,51,False,TB,ATL
+12934,2020,Wildcard,Buffalo Bills,Indianapolis Colts,BUF,-7.0,50.5,True,BUF,IND
+12935,2020,Wildcard,Seattle Seahawks,Los Angeles Rams,SEA,-3.0,42.5,True,SEA,LAR
+12936,2020,Wildcard,Washington Football Team,Tampa Bay Buccaneers,TB,-10.0,45,True,WAS,TB
+12937,2020,Wildcard,New Orleans Saints,Chicago Bears,NO,-11.0,48,True,NO,CHI
+12938,2020,Wildcard,Pittsburgh Steelers,Cleveland Browns,PIT,-5.5,47.5,True,PIT,CLE
+12939,2020,Wildcard,Tennessee Titans,Baltimore Ravens,BAL,-3.5,53.5,True,TEN,BAL
+12940,2020,Division,Buffalo Bills,Baltimore Ravens,BUF,-2.5,49.5,True,BUF,BAL
+12941,2020,Division,Green Bay Packers,Los Angeles Rams,GB,-7.0,45,True,GB,LAR
+12942,2020,Division,Kansas City Chiefs,Cleveland Browns,KC,-8.0,56,True,KC,CLE
+12943,2020,Division,New Orleans Saints,Tampa Bay Buccaneers,NO,-2.5,53,True,NO,TB
+12944,2020,Conference,Green Bay Packers,Tampa Bay Buccaneers,GB,-3.0,53,True,GB,TB
+12945,2020,Conference,Kansas City Chiefs,Buffalo Bills,KC,-3.0,55,True,KC,BUF
+12946,2020,Superbowl,Tampa Bay Buccaneers,Kansas City Chiefs,KC,-3.0,54.5,True,TB,KC
+12947,2021,1,Tampa Bay Buccaneers,Dallas Cowboys,TB,-7.5,51.5,False,TB,DAL
+12948,2021,1,Atlanta Falcons,Philadelphia Eagles,ATL,-3.5,48,False,ATL,PHI
+12949,2021,1,Buffalo Bills,Pittsburgh Steelers,BUF,-6.5,48.5,False,BUF,PIT
+12950,2021,1,Carolina Panthers,New York Jets,CAR,-5.0,44.5,False,CAR,NYJ
+12951,2021,1,Cincinnati Bengals,Minnesota Vikings,MIN,-3.0,48,False,CIN,MIN
+12952,2021,1,Detroit Lions,San Francisco 49ers,SF,-7.5,46,False,DET,SF
+12953,2021,1,Houston Texans,Jacksonville Jaguars,JAX,-3.0,44.5,False,HOU,JAX
+12954,2021,1,Indianapolis Colts,Seattle Seahawks,SEA,-2.5,48.5,False,IND,SEA
+12955,2021,1,Kansas City Chiefs,Cleveland Browns,KC,-6.0,53,False,KC,CLE
+12956,2021,1,Los Angeles Rams,Chicago Bears,LAR,-7.5,44.5,False,LAR,CHI
+12957,2021,1,New England Patriots,Miami Dolphins,NE,-2.5,44.5,False,NE,MIA
+12958,2021,1,New Orleans Saints,Green Bay Packers,GB,-4.0,49.5,False,NO,GB
+12959,2021,1,New York Giants,Denver Broncos,DEN,-2.5,42.5,False,NYG,DEN
+12960,2021,1,Tennessee Titans,Arizona Cardinals,TEN,-3.0,51.5,False,TEN,ARI
+12961,2021,1,Washington Football Team,Los Angeles Chargers,LAC,-1.0,44.5,False,WAS,LAC
+12962,2021,1,Las Vegas Raiders,Baltimore Ravens,BAL,-4.5,51,False,LVR,BAL
+12963,2021,2,Washington Football Team,New York Giants,WAS,-3.0,41,False,WAS,NYG
+12964,2021,2,Arizona Cardinals,Minnesota Vikings,ARI,-4.0,51,False,ARI,MIN
+12965,2021,2,Baltimore Ravens,Kansas City Chiefs,KC,-4.0,55.5,False,BAL,KC
+12966,2021,2,Carolina Panthers,New Orleans Saints,NO,-3.5,44,False,CAR,NO
+12967,2021,2,Chicago Bears,Cincinnati Bengals,CHI,-3.0,45,False,CHI,CIN
+12968,2021,2,Cleveland Browns,Houston Texans,CLE,-12.5,48,False,CLE,HOU
+12969,2021,2,Indianapolis Colts,Los Angeles Rams,LAR,-4.0,47.5,False,IND,LAR
+12970,2021,2,Jacksonville Jaguars,Denver Broncos,DEN,-6.0,45.5,False,JAX,DEN
+12971,2021,2,Los Angeles Chargers,Dallas Cowboys,LAC,-3.0,55,False,LAC,DAL
+12972,2021,2,Miami Dolphins,Buffalo Bills,BUF,-3.0,48,False,MIA,BUF
+12973,2021,2,New York Jets,New England Patriots,NE,-5.5,42.5,False,NYJ,NE
+12974,2021,2,Philadelphia Eagles,San Francisco 49ers,SF,-3.5,50,False,PHI,SF
+12975,2021,2,Pittsburgh Steelers,Las Vegas Raiders,PIT,-6.0,47.5,False,PIT,LVR
+12976,2021,2,Seattle Seahawks,Tennessee Titans,SEA,-5.5,54,False,SEA,TEN
+12977,2021,2,Tampa Bay Buccaneers,Atlanta Falcons,TB,-12.5,52,False,TB,ATL
+12978,2021,2,Green Bay Packers,Detroit Lions,GB,-10.5,48,False,GB,DET
+12979,2021,3,Houston Texans,Carolina Panthers,CAR,-8.0,43,False,HOU,CAR
+12980,2021,3,Buffalo Bills,Washington Football Team,BUF,-7.0,45.5,False,BUF,WAS
+12981,2021,3,Cleveland Browns,Chicago Bears,CLE,-7.5,45,False,CLE,CHI
+12982,2021,3,Denver Broncos,New York Jets,DEN,-10.0,41.5,False,DEN,NYJ
+12983,2021,3,Detroit Lions,Baltimore Ravens,BAL,-7.5,51,False,DET,BAL
+12984,2021,3,Jacksonville Jaguars,Arizona Cardinals,ARI,-8.0,51.5,False,JAX,ARI
+12985,2021,3,Kansas City Chiefs,Los Angeles Chargers,KC,-7.0,55,False,KC,LAC
+12986,2021,3,Las Vegas Raiders,Miami Dolphins,LVR,-3.5,45,False,LVR,MIA
+12987,2021,3,Los Angeles Rams,Tampa Bay Buccaneers,TB,-1.0,55,False,LAR,TB
+12988,2021,3,Minnesota Vikings,Seattle Seahawks,SEA,-2.0,54,False,MIN,SEA
+12989,2021,3,New England Patriots,New Orleans Saints,NE,-3.0,43.5,False,NE,NO
+12990,2021,3,New York Giants,Atlanta Falcons,NYG,-2.5,48,False,NYG,ATL
+12991,2021,3,Pittsburgh Steelers,Cincinnati Bengals,PIT,-2.5,42.5,False,PIT,CIN
+12992,2021,3,San Francisco 49ers,Green Bay Packers,SF,-3.0,50.5,False,SF,GB
+12993,2021,3,Tennessee Titans,Indianapolis Colts,TEN,-5.0,47,False,TEN,IND
+12994,2021,3,Dallas Cowboys,Philadelphia Eagles,DAL,-3.5,51.5,False,DAL,PHI
+12995,2021,4,Cincinnati Bengals,Jacksonville Jaguars,CIN,-7.5,46,False,CIN,JAX
+12996,2021,4,Atlanta Falcons,Washington Football Team,WAS,-2.0,47.5,False,ATL,WAS
+12997,2021,4,Buffalo Bills,Houston Texans,BUF,-19.0,47.5,False,BUF,HOU
+12998,2021,4,Chicago Bears,Detroit Lions,CHI,-3.0,41.5,False,CHI,DET
+12999,2021,4,Dallas Cowboys,Carolina Panthers,DAL,-4.5,51.5,False,DAL,CAR
+13000,2021,4,Denver Broncos,Baltimore Ravens,DEN,-1.0,44,False,DEN,BAL
+13001,2021,4,Green Bay Packers,Pittsburgh Steelers,GB,-6.0,45,False,GB,PIT
+13002,2021,4,Los Angeles Rams,Arizona Cardinals,LAR,-4.0,54,False,LAR,ARI
+13003,2021,4,Miami Dolphins,Indianapolis Colts,MIA,-2.5,41.5,False,MIA,IND
+13004,2021,4,Minnesota Vikings,Cleveland Browns,CLE,-1.0,52,False,MIN,CLE
+13005,2021,4,New England Patriots,Tampa Bay Buccaneers,TB,-6.5,49,False,NE,TB
+13006,2021,4,New Orleans Saints,New York Giants,NO,-7.0,42.5,False,NO,NYG
+13007,2021,4,New York Jets,Tennessee Titans,TEN,-6.0,44.5,False,NYJ,TEN
+13008,2021,4,Philadelphia Eagles,Kansas City Chiefs,KC,-7.0,54,False,PHI,KC
+13009,2021,4,San Francisco 49ers,Seattle Seahawks,SF,-2.5,52,False,SF,SEA
+13010,2021,4,Los Angeles Chargers,Las Vegas Raiders,LAC,-3.0,51.5,False,LAC,LVR
+13011,2021,5,Seattle Seahawks,Los Angeles Rams,LAR,-2.5,53.5,False,SEA,LAR
+13012,2021,5,Arizona Cardinals,San Francisco 49ers,ARI,-6.0,48.5,False,ARI,SF
+13013,2021,5,Atlanta Falcons,New York Jets,ATL,-3.0,45.5,False,ATL,NYJ
+13014,2021,5,Carolina Panthers,Philadelphia Eagles,CAR,-2.5,46,False,CAR,PHI
+13015,2021,5,Cincinnati Bengals,Green Bay Packers,GB,-2.0,50,False,CIN,GB
+13016,2021,5,Dallas Cowboys,New York Giants,DAL,-7.0,52.5,False,DAL,NYG
+13017,2021,5,Houston Texans,New England Patriots,NE,-8.0,39,False,HOU,NE
+13018,2021,5,Jacksonville Jaguars,Tennessee Titans,TEN,-4.5,49,False,JAX,TEN
+13019,2021,5,Kansas City Chiefs,Buffalo Bills,KC,-3.0,57,False,KC,BUF
+13020,2021,5,Las Vegas Raiders,Chicago Bears,LVR,-5.5,46,False,LVR,CHI
+13021,2021,5,Los Angeles Chargers,Cleveland Browns,LAC,-2.5,47,False,LAC,CLE
+13022,2021,5,Minnesota Vikings,Detroit Lions,MIN,-10.0,49.5,False,MIN,DET
+13023,2021,5,Pittsburgh Steelers,Denver Broncos,DEN,-1.5,40,False,PIT,DEN
+13024,2021,5,Tampa Bay Buccaneers,Miami Dolphins,TB,-11.0,48,False,TB,MIA
+13025,2021,5,Washington Football Team,New Orleans Saints,NO,-2.5,43.5,False,WAS,NO
+13026,2021,5,Baltimore Ravens,Indianapolis Colts,BAL,-7.5,46.5,False,BAL,IND
+13027,2021,6,Philadelphia Eagles,Tampa Bay Buccaneers,TB,-7.0,53,False,PHI,TB
+13028,2021,6,Baltimore Ravens,Los Angeles Chargers,BAL,-3.0,51,False,BAL,LAC
+13029,2021,6,Carolina Panthers,Minnesota Vikings,MIN,-2.5,45.5,False,CAR,MIN
+13030,2021,6,Chicago Bears,Green Bay Packers,GB,-5.5,44,False,CHI,GB
+13031,2021,6,Cleveland Browns,Arizona Cardinals,CLE,-3.0,48,False,CLE,ARI
+13032,2021,6,Denver Broncos,Las Vegas Raiders,DEN,-5.0,45,False,DEN,LVR
+13033,2021,6,Detroit Lions,Cincinnati Bengals,CIN,-3.5,46.5,False,DET,CIN
+13034,2021,6,Indianapolis Colts,Houston Texans,IND,-11.5,45,False,IND,HOU
+13035,2021,6,Jacksonville Jaguars,Miami Dolphins,MIA,-1.5,47.5,False,JAX,MIA
+13036,2021,6,New England Patriots,Dallas Cowboys,DAL,-3.5,50.5,False,NE,DAL
+13037,2021,6,New York Giants,Los Angeles Rams,LAR,-7.5,49,False,NYG,LAR
+13038,2021,6,Pittsburgh Steelers,Seattle Seahawks,PIT,-5.5,43,False,PIT,SEA
+13039,2021,6,Washington Football Team,Kansas City Chiefs,KC,-6.5,54,False,WAS,KC
+13040,2021,6,Tennessee Titans,Buffalo Bills,BUF,-6.0,53.5,False,TEN,BUF
+13041,2021,7,Cleveland Browns,Denver Broncos,CLE,-2.0,40,False,CLE,DEN
+13042,2021,7,Arizona Cardinals,Houston Texans,ARI,-20.0,47.5,False,ARI,HOU
+13043,2021,7,Baltimore Ravens,Cincinnati Bengals,BAL,-6.5,46,False,BAL,CIN
+13044,2021,7,Green Bay Packers,Washington Football Team,GB,-8.5,48,False,GB,WAS
+13045,2021,7,Las Vegas Raiders,Philadelphia Eagles,LVR,-1.0,48,False,LVR,PHI
+13046,2021,7,Los Angeles Rams,Detroit Lions,LAR,-16.0,51,False,LAR,DET
+13047,2021,7,Miami Dolphins,Atlanta Falcons,ATL,-1.5,47.5,False,MIA,ATL
+13048,2021,7,New England Patriots,New York Jets,NE,-7.0,42.5,False,NE,NYJ
+13049,2021,7,New York Giants,Carolina Panthers,CAR,-3.0,43,False,NYG,CAR
+13050,2021,7,San Francisco 49ers,Indianapolis Colts,SF,-3.5,41.5,False,SF,IND
+13051,2021,7,Tampa Bay Buccaneers,Chicago Bears,TB,-12.0,47,False,TB,CHI
+13052,2021,7,Tennessee Titans,Kansas City Chiefs,KC,-4.0,58.5,False,TEN,KC
+13053,2021,7,Seattle Seahawks,New Orleans Saints,NO,-6.0,42,False,SEA,NO
+13054,2021,8,Arizona Cardinals,Green Bay Packers,ARI,-6.5,51,False,ARI,GB
+13055,2021,8,Atlanta Falcons,Carolina Panthers,ATL,-2.5,47,False,ATL,CAR
+13056,2021,8,Buffalo Bills,Miami Dolphins,BUF,-15.0,48.5,False,BUF,MIA
+13057,2021,8,Chicago Bears,San Francisco 49ers,SF,-4.5,40,False,CHI,SF
+13058,2021,8,Cleveland Browns,Pittsburgh Steelers,CLE,-5.5,43,False,CLE,PIT
+13059,2021,8,Denver Broncos,Washington Football Team,DEN,-4.0,45,False,DEN,WAS
+13060,2021,8,Detroit Lions,Philadelphia Eagles,PHI,-3.0,48,False,DET,PHI
+13061,2021,8,Houston Texans,Los Angeles Rams,LAR,-16.5,47,False,HOU,LAR
+13062,2021,8,Indianapolis Colts,Tennessee Titans,IND,-3.0,51,False,IND,TEN
+13063,2021,8,Los Angeles Chargers,New England Patriots,LAC,-3.5,50.5,False,LAC,NE
+13064,2021,8,Minnesota Vikings,Dallas Cowboys,MIN,-4.0,49,False,MIN,DAL
+13065,2021,8,New Orleans Saints,Tampa Bay Buccaneers,TB,-4.0,48,False,NO,TB
+13066,2021,8,New York Jets,Cincinnati Bengals,CIN,-11.5,43,False,NYJ,CIN
+13067,2021,8,Seattle Seahawks,Jacksonville Jaguars,SEA,-4.0,44.5,False,SEA,JAX
+13068,2021,8,Kansas City Chiefs,New York Giants,KC,-10.5,53,False,KC,NYG
+13069,2021,9,Indianapolis Colts,New York Jets,IND,-10.0,45.5,False,IND,NYJ
+13070,2021,9,Baltimore Ravens,Minnesota Vikings,BAL,-7.0,51,False,BAL,MIN
+13071,2021,9,Carolina Panthers,New England Patriots,NE,-3.5,41.5,False,CAR,NE
+13072,2021,9,Cincinnati Bengals,Cleveland Browns,CIN,-2.0,47.5,False,CIN,CLE
+13073,2021,9,Dallas Cowboys,Denver Broncos,DAL,-10.0,50,False,DAL,DEN
+13074,2021,9,Jacksonville Jaguars,Buffalo Bills,BUF,-14.5,48.5,False,JAX,BUF
+13075,2021,9,Kansas City Chiefs,Green Bay Packers,KC,-7.0,48,False,KC,GB
+13076,2021,9,Los Angeles Rams,Tennessee Titans,LAR,-7.0,53,False,LAR,TEN
+13077,2021,9,Miami Dolphins,Houston Texans,MIA,-4.0,45,False,MIA,HOU
+13078,2021,9,New Orleans Saints,Atlanta Falcons,NO,-6.5,43,False,NO,ATL
+13079,2021,9,New York Giants,Las Vegas Raiders,LVR,-3.0,47,False,NYG,LVR
+13080,2021,9,Philadelphia Eagles,Los Angeles Chargers,LAC,-1.0,49.5,False,PHI,LAC
+13081,2021,9,San Francisco 49ers,Arizona Cardinals,SF,-5.5,44.5,False,SF,ARI
+13082,2021,9,Pittsburgh Steelers,Chicago Bears,PIT,-7.0,40,False,PIT,CHI
+13083,2021,10,Miami Dolphins,Baltimore Ravens,BAL,-8.5,47,False,MIA,BAL
+13084,2021,10,Arizona Cardinals,Carolina Panthers,ARI,-7.0,41.5,False,ARI,CAR
+13085,2021,10,Dallas Cowboys,Atlanta Falcons,DAL,-7.5,55,False,DAL,ATL
+13086,2021,10,Denver Broncos,Philadelphia Eagles,DEN,-1.0,44.5,False,DEN,PHI
+13087,2021,10,Green Bay Packers,Seattle Seahawks,GB,-3.0,49,False,GB,SEA
+13088,2021,10,Indianapolis Colts,Jacksonville Jaguars,IND,-10.5,48,False,IND,JAX
+13089,2021,10,Las Vegas Raiders,Kansas City Chiefs,KC,-2.5,54,False,LVR,KC
+13090,2021,10,Los Angeles Chargers,Minnesota Vikings,LAC,-3.0,53.5,False,LAC,MIN
+13091,2021,10,New England Patriots,Cleveland Browns,NE,-2.5,45,False,NE,CLE
+13092,2021,10,New York Jets,Buffalo Bills,BUF,-13.5,48.5,False,NYJ,BUF
+13093,2021,10,Pittsburgh Steelers,Detroit Lions,PIT,-6.0,40.5,False,PIT,DET
+13094,2021,10,Tennessee Titans,New Orleans Saints,TEN,-3.0,42.5,False,TEN,NO
+13095,2021,10,Washington Football Team,Tampa Bay Buccaneers,TB,-10.0,50.5,False,WAS,TB
+13096,2021,10,San Francisco 49ers,Los Angeles Rams,LAR,-3.5,50,False,SF,LAR
+13097,2021,11,Atlanta Falcons,New England Patriots,NE,-7.0,47,False,ATL,NE
+13098,2021,11,Buffalo Bills,Indianapolis Colts,BUF,-7.0,49.5,False,BUF,IND
+13099,2021,11,Carolina Panthers,Washington Football Team,CAR,-3.0,43,False,CAR,WAS
+13100,2021,11,Chicago Bears,Baltimore Ravens,BAL,-1.0,40.5,False,CHI,BAL
+13101,2021,11,Cleveland Browns,Detroit Lions,CLE,-13.5,42.5,False,CLE,DET
+13102,2021,11,Jacksonville Jaguars,San Francisco 49ers,SF,-6.5,45.5,False,JAX,SF
+13103,2021,11,Kansas City Chiefs,Dallas Cowboys,KC,-2.5,56,False,KC,DAL
+13104,2021,11,Las Vegas Raiders,Cincinnati Bengals,CIN,-2.0,50.5,False,LVR,CIN
+13105,2021,11,Los Angeles Chargers,Pittsburgh Steelers,LAC,-6.0,47.5,False,LAC,PIT
+13106,2021,11,Minnesota Vikings,Green Bay Packers,GB,-1.0,47,False,MIN,GB
+13107,2021,11,New York Jets,Miami Dolphins,MIA,-3.5,44.5,False,NYJ,MIA
+13108,2021,11,Philadelphia Eagles,New Orleans Saints,PHI,-3.0,42,False,PHI,NO
+13109,2021,11,Seattle Seahawks,Arizona Cardinals,SEA,-4.5,45,False,SEA,ARI
+13110,2021,11,Tennessee Titans,Houston Texans,TEN,-10.0,44.5,False,TEN,HOU
+13111,2021,11,Tampa Bay Buccaneers,New York Giants,TB,-11.5,50,False,TB,NYG
+13112,2021,12,Dallas Cowboys,Las Vegas Raiders,DAL,-7.0,51,False,DAL,LVR
+13113,2021,12,Detroit Lions,Chicago Bears,CHI,-2.0,41.5,False,DET,CHI
+13114,2021,12,New Orleans Saints,Buffalo Bills,BUF,-7.0,45,False,NO,BUF
+13115,2021,12,Baltimore Ravens,Cleveland Browns,BAL,-3.0,47.5,False,BAL,CLE
+13116,2021,12,Cincinnati Bengals,Pittsburgh Steelers,CIN,-3.5,43.5,False,CIN,PIT
+13117,2021,12,Denver Broncos,Los Angeles Chargers,LAC,-3.0,47,False,DEN,LAC
+13118,2021,12,Green Bay Packers,Los Angeles Rams,LAR,-2.0,46.5,False,GB,LAR
+13119,2021,12,Houston Texans,New York Jets,HOU,-3.0,44.5,False,HOU,NYJ
+13120,2021,12,Indianapolis Colts,Tampa Bay Buccaneers,TB,-3.0,53,False,IND,TB
+13121,2021,12,Jacksonville Jaguars,Atlanta Falcons,ATL,-1.5,46,False,JAX,ATL
+13122,2021,12,Miami Dolphins,Carolina Panthers,CAR,-1.0,41,False,MIA,CAR
+13123,2021,12,New England Patriots,Tennessee Titans,NE,-7.0,43,False,NE,TEN
+13124,2021,12,New York Giants,Philadelphia Eagles,PHI,-4.0,45,False,NYG,PHI
+13125,2021,12,San Francisco 49ers,Minnesota Vikings,SF,-4.0,49,False,SF,MIN
+13126,2021,12,Washington Football Team,Seattle Seahawks,SEA,-1.5,46.5,False,WAS,SEA
+13127,2021,13,New Orleans Saints,Dallas Cowboys,DAL,-6.5,45.5,False,NO,DAL
+13128,2021,13,Atlanta Falcons,Tampa Bay Buccaneers,TB,-10.5,51,False,ATL,TB
+13129,2021,13,Chicago Bears,Arizona Cardinals,ARI,-7.5,43,False,CHI,ARI
+13130,2021,13,Cincinnati Bengals,Los Angeles Chargers,CIN,-2.5,49.5,False,CIN,LAC
+13131,2021,13,Detroit Lions,Minnesota Vikings,MIN,-7.0,47,False,DET,MIN
+13132,2021,13,Houston Texans,Indianapolis Colts,IND,-10.0,45.5,False,HOU,IND
+13133,2021,13,Kansas City Chiefs,Denver Broncos,KC,-8.5,46.5,False,KC,DEN
+13134,2021,13,Las Vegas Raiders,Washington Football Team,LVR,-1.5,47.5,False,LVR,WAS
+13135,2021,13,Los Angeles Rams,Jacksonville Jaguars,LAR,-14.0,48,False,LAR,JAX
+13136,2021,13,Miami Dolphins,New York Giants,MIA,-7.0,40,False,MIA,NYG
+13137,2021,13,New York Jets,Philadelphia Eagles,PHI,-5.0,44,False,NYJ,PHI
+13138,2021,13,Pittsburgh Steelers,Baltimore Ravens,BAL,-4.0,44,False,PIT,BAL
+13139,2021,13,Seattle Seahawks,San Francisco 49ers,SF,-3.0,45,False,SEA,SF
+13140,2021,13,Buffalo Bills,New England Patriots,BUF,-3.0,39.5,False,BUF,NE
+13141,2021,14,Minnesota Vikings,Pittsburgh Steelers,MIN,-3.5,45,False,MIN,PIT
+13142,2021,14,Carolina Panthers,Atlanta Falcons,CAR,-2.5,41.5,False,CAR,ATL
+13143,2021,14,Cincinnati Bengals,San Francisco 49ers,SF,-1.5,49,False,CIN,SF
+13144,2021,14,Cleveland Browns,Baltimore Ravens,CLE,-3.0,44,False,CLE,BAL
+13145,2021,14,Denver Broncos,Detroit Lions,DEN,-12.5,42,False,DEN,DET
+13146,2021,14,Green Bay Packers,Chicago Bears,GB,-12.0,43,False,GB,CHI
+13147,2021,14,Houston Texans,Seattle Seahawks,SEA,-9.5,41,False,HOU,SEA
+13148,2021,14,Kansas City Chiefs,Las Vegas Raiders,KC,-9.5,48,False,KC,LVR
+13149,2021,14,Los Angeles Chargers,New York Giants,LAC,-9.0,43.5,False,LAC,NYG
+13150,2021,14,New York Jets,New Orleans Saints,NO,-4.5,42,False,NYJ,NO
+13151,2021,14,Tampa Bay Buccaneers,Buffalo Bills,TB,-3.5,52.5,False,TB,BUF
+13152,2021,14,Tennessee Titans,Jacksonville Jaguars,TEN,-8.5,44.5,False,TEN,JAX
+13153,2021,14,Washington Football Team,Dallas Cowboys,DAL,-6.5,48,False,WAS,DAL
+13154,2021,14,Arizona Cardinals,Los Angeles Rams,ARI,-3.0,51,False,ARI,LAR
+13155,2021,15,Los Angeles Chargers,Kansas City Chiefs,KC,-3.0,54,False,LAC,KC
+13156,2021,15,Indianapolis Colts,New England Patriots,IND,-1.5,46,False,IND,NE
+13157,2021,15,Baltimore Ravens,Green Bay Packers,GB,-9.0,45.5,False,BAL,GB
+13158,2021,15,Buffalo Bills,Carolina Panthers,BUF,-14.5,43,False,BUF,CAR
+13159,2021,15,Denver Broncos,Cincinnati Bengals,DEN,-3.0,44,False,DEN,CIN
+13160,2021,15,Detroit Lions,Arizona Cardinals,ARI,-13.0,48.5,False,DET,ARI
+13161,2021,15,Jacksonville Jaguars,Houston Texans,JAX,-6.0,40,False,JAX,HOU
+13162,2021,15,Miami Dolphins,New York Jets,MIA,-10.0,42,False,MIA,NYJ
+13163,2021,15,New York Giants,Dallas Cowboys,DAL,-12.0,43.5,False,NYG,DAL
+13164,2021,15,Pittsburgh Steelers,Tennessee Titans,PIT,-1.0,44,False,PIT,TEN
+13165,2021,15,San Francisco 49ers,Atlanta Falcons,SF,-9.0,47.5,False,SF,ATL
+13166,2021,15,Tampa Bay Buccaneers,New Orleans Saints,TB,-11.5,45.5,False,TB,NO
+13167,2021,15,Chicago Bears,Minnesota Vikings,MIN,-7.0,47,False,CHI,MIN
+13168,2021,15,Cleveland Browns,Las Vegas Raiders,LVR,-1.0,40.5,False,CLE,LVR
+13169,2021,15,Los Angeles Rams,Seattle Seahawks,LAR,-7.0,47,False,LAR,SEA
+13170,2021,15,Philadelphia Eagles,Washington Football Team,PHI,-10.0,39.5,False,PHI,WAS
+13171,2021,16,Tennessee Titans,San Francisco 49ers,SF,-3.5,45.5,False,TEN,SF
+13172,2021,16,Arizona Cardinals,Indianapolis Colts,ARI,-3.0,48,False,ARI,IND
+13173,2021,16,Green Bay Packers,Cleveland Browns,GB,-7.5,46.5,False,GB,CLE
+13174,2021,16,Atlanta Falcons,Detroit Lions,ATL,-7.5,42.5,False,ATL,DET
+13175,2021,16,Carolina Panthers,Tampa Bay Buccaneers,TB,-11.0,44.5,False,CAR,TB
+13176,2021,16,Cincinnati Bengals,Baltimore Ravens,CIN,-7.5,43.5,False,CIN,BAL
+13177,2021,16,Dallas Cowboys,Washington Football Team,DAL,-10.0,46,False,DAL,WAS
+13178,2021,16,Houston Texans,Los Angeles Chargers,LAC,-13.0,45.5,False,HOU,LAC
+13179,2021,16,Kansas City Chiefs,Pittsburgh Steelers,KC,-10.0,44.5,False,KC,PIT
+13180,2021,16,Las Vegas Raiders,Denver Broncos,DEN,-1.0,41.5,False,LVR,DEN
+13181,2021,16,Minnesota Vikings,Los Angeles Rams,LAR,-3.0,48.5,False,MIN,LAR
+13182,2021,16,New England Patriots,Buffalo Bills,NE,-1.0,43.5,False,NE,BUF
+13183,2021,16,New York Jets,Jacksonville Jaguars,NYJ,-2.5,43,False,NYJ,JAX
+13184,2021,16,Philadelphia Eagles,New York Giants,PHI,-11.0,41,False,PHI,NYG
+13185,2021,16,Seattle Seahawks,Chicago Bears,SEA,-7.0,41,False,SEA,CHI
+13186,2021,16,New Orleans Saints,Miami Dolphins,MIA,-3.0,37.5,False,NO,MIA
+13187,2021,17,Baltimore Ravens,Los Angeles Rams,LAR,-7.0,46.5,False,BAL,LAR
+13188,2021,17,Buffalo Bills,Atlanta Falcons,BUF,-14.0,46,False,BUF,ATL
+13189,2021,17,Chicago Bears,New York Giants,CHI,-6.5,36.5,False,CHI,NYG
+13190,2021,17,Cincinnati Bengals,Kansas City Chiefs,KC,-3.5,51,False,CIN,KC
+13191,2021,17,Dallas Cowboys,Arizona Cardinals,DAL,-6.5,52.5,False,DAL,ARI
+13192,2021,17,Green Bay Packers,Minnesota Vikings,GB,-13.0,42.5,False,GB,MIN
+13193,2021,17,Indianapolis Colts,Las Vegas Raiders,IND,-8.5,46.5,False,IND,LVR
+13194,2021,17,Los Angeles Chargers,Denver Broncos,LAC,-7.5,46,False,LAC,DEN
+13195,2021,17,New England Patriots,Jacksonville Jaguars,NE,-17.5,41.5,False,NE,JAX
+13196,2021,17,New Orleans Saints,Carolina Panthers,NO,-7.0,37,False,NO,CAR
+13197,2021,17,New York Jets,Tampa Bay Buccaneers,TB,-14.0,47.5,False,NYJ,TB
+13198,2021,17,San Francisco 49ers,Houston Texans,SF,-13.5,44.5,False,SF,HOU
+13199,2021,17,Seattle Seahawks,Detroit Lions,SEA,-8.5,41.5,False,SEA,DET
+13200,2021,17,Tennessee Titans,Miami Dolphins,TEN,-3.0,41,False,TEN,MIA
+13201,2021,17,Washington Football Team,Philadelphia Eagles,PHI,-4.5,44.5,False,WAS,PHI
+13202,2021,17,Pittsburgh Steelers,Cleveland Browns,PIT,-2.0,42,False,PIT,CLE
+13203,2021,18,Denver Broncos,Kansas City Chiefs,KC,-11.5,44.5,False,DEN,KC
+13204,2021,18,Philadelphia Eagles,Dallas Cowboys,DAL,-6.0,46.5,False,PHI,DAL
+13205,2021,18,Arizona Cardinals,Seattle Seahawks,ARI,-5.0,48.5,False,ARI,SEA
+13206,2021,18,Atlanta Falcons,New Orleans Saints,NO,-4.5,40,False,ATL,NO
+13207,2021,18,Baltimore Ravens,Pittsburgh Steelers,BAL,-3.0,41,False,BAL,PIT
+13208,2021,18,Buffalo Bills,New York Jets,BUF,-16.0,42,False,BUF,NYJ
+13209,2021,18,Cleveland Browns,Cincinnati Bengals,CLE,-6.5,38,False,CLE,CIN
+13210,2021,18,Detroit Lions,Green Bay Packers,GB,-4.0,45,False,DET,GB
+13211,2021,18,Houston Texans,Tennessee Titans,TEN,-10.5,43,False,HOU,TEN
+13212,2021,18,Jacksonville Jaguars,Indianapolis Colts,IND,-14.0,43,False,JAX,IND
+13213,2021,18,Las Vegas Raiders,Los Angeles Chargers,LAC,-3.0,49.5,False,LVR,LAC
+13214,2021,18,Los Angeles Rams,San Francisco 49ers,SF,-3.5,46.5,False,LAR,SF
+13215,2021,18,Miami Dolphins,New England Patriots,NE,-6.0,41,False,MIA,NE
+13216,2021,18,Minnesota Vikings,Chicago Bears,MIN,-3.5,44.5,False,MIN,CHI
+13217,2021,18,New York Giants,Washington Football Team,WAS,-6.0,36,False,NYG,WAS
+13218,2021,18,Tampa Bay Buccaneers,Carolina Panthers,TB,-10.5,43.5,False,TB,CAR
+13219,2021,Wildcard,Buffalo Bills,New England Patriots,BUF,-4.5,43,True,BUF,NE
+13220,2021,Wildcard,Cincinnati Bengals,Las Vegas Raiders,CIN,-6.0,48.5,True,CIN,LVR
+13221,2021,Wildcard,Dallas Cowboys,San Francisco 49ers,DAL,-3.5,51,True,DAL,SF
+13222,2021,Wildcard,Kansas City Chiefs,Pittsburgh Steelers,KC,-12.5,47,True,KC,PIT
+13223,2021,Wildcard,Tampa Bay Buccaneers,Philadelphia Eagles,TB,-7.0,47,True,TB,PHI
+13224,2021,Wildcard,Los Angeles Rams,Arizona Cardinals,LAR,-3.5,49,True,LAR,ARI
+13225,2021,Division,Green Bay Packers,San Francisco 49ers,GB,-5.5,47,True,GB,SF
+13226,2021,Division,Tennessee Titans,Cincinnati Bengals,TEN,-4.0,48.5,True,TEN,CIN
+13227,2021,Division,Kansas City Chiefs,Buffalo Bills,KC,-2.5,54,True,KC,BUF
+13228,2021,Division,Tampa Bay Buccaneers,Los Angeles Rams,TB,-3.0,48,True,TB,LAR
+13229,2021,Conference,Kansas City Chiefs,Cincinnati Bengals,KC,-7.0,54.5,True,KC,CIN
+13230,2021,Conference,Los Angeles Rams,San Francisco 49ers,LAR,-3.5,46,True,LAR,SF
+13231,2021,Superbowl,Cincinnati Bengals,Los Angeles Rams,LAR,-4.5,48.5,True,CIN,LAR
+13232,2022,1,Los Angeles Rams,Buffalo Bills,BUF,-2.0,52,False,LAR,BUF
+13233,2022,1,Arizona Cardinals,Kansas City Chiefs,KC,-6.0,54,False,ARI,KC
+13234,2022,1,Atlanta Falcons,New Orleans Saints,NO,-5.5,44,False,ATL,NO
+13235,2022,1,Carolina Panthers,Cleveland Browns,CAR,-1.0,42,False,CAR,CLE
+13236,2022,1,Chicago Bears,San Francisco 49ers,SF,-6.5,38,False,CHI,SF
+13237,2022,1,Cincinnati Bengals,Pittsburgh Steelers,CIN,-7.0,44.5,False,CIN,PIT
+13238,2022,1,Dallas Cowboys,Tampa Bay Buccaneers,TB,-2.5,49.5,False,DAL,TB
+13239,2022,1,Detroit Lions,Philadelphia Eagles,PHI,-5.5,48.5,False,DET,PHI
+13240,2022,1,Houston Texans,Indianapolis Colts,IND,-7.0,45.5,False,HOU,IND
+13241,2022,1,Los Angeles Chargers,Las Vegas Raiders,LAC,-3.5,52.5,False,LAC,LVR
+13242,2022,1,Miami Dolphins,New England Patriots,MIA,-3.0,46.5,False,MIA,NE
+13243,2022,1,Minnesota Vikings,Green Bay Packers,MIN,-2.0,46.5,False,MIN,GB
+13244,2022,1,New York Jets,Baltimore Ravens,BAL,-6.5,44,False,NYJ,BAL
+13245,2022,1,Tennessee Titans,New York Giants,TEN,-5.5,44,False,TEN,NYG
+13246,2022,1,Washington Commanders,Jacksonville Jaguars,WAS,-3.0,43,False,WAS,JAX
+13247,2022,1,Seattle Seahawks,Denver Broncos,DEN,-6.0,44,False,SEA,DEN
+13248,2022,2,Kansas City Chiefs,Los Angeles Chargers,KC,-4.0,52.5,False,KC,LAC
+13249,2022,2,Baltimore Ravens,Miami Dolphins,BAL,-3.5,44,False,BAL,MIA
+13250,2022,2,Cleveland Browns,New York Jets,CLE,-6.5,38.5,False,CLE,NYJ
+13251,2022,2,Dallas Cowboys,Cincinnati Bengals,CIN,-7.0,42,False,DAL,CIN
+13252,2022,2,Denver Broncos,Houston Texans,DEN,-10.0,45.5,False,DEN,HOU
+13253,2022,2,Detroit Lions,Washington Commanders,DET,-1.0,48,False,DET,WAS
+13254,2022,2,Green Bay Packers,Chicago Bears,GB,-10.0,42,False,GB,CHI
+13255,2022,2,Jacksonville Jaguars,Indianapolis Colts,IND,-3.0,43.5,False,JAX,IND
+13256,2022,2,Las Vegas Raiders,Arizona Cardinals,LVR,-5.5,52,False,LVR,ARI
+13257,2022,2,Los Angeles Rams,Atlanta Falcons,LAR,-10.0,46,False,LAR,ATL
+13258,2022,2,New Orleans Saints,Tampa Bay Buccaneers,TB,-2.5,43.5,False,NO,TB
+13259,2022,2,New York Giants,Carolina Panthers,CAR,-1.0,43.5,False,NYG,CAR
+13260,2022,2,Pittsburgh Steelers,New England Patriots,NE,-3.0,40,False,PIT,NE
+13261,2022,2,San Francisco 49ers,Seattle Seahawks,SF,-8.5,39.5,False,SF,SEA
+13262,2022,2,Buffalo Bills,Tennessee Titans,BUF,-10.0,47.5,False,BUF,TEN
+13263,2022,2,Philadelphia Eagles,Minnesota Vikings,PHI,-2.5,49.5,False,PHI,MIN
+13264,2022,3,Cleveland Browns,Pittsburgh Steelers,CLE,-4.5,38,False,CLE,PIT
+13265,2022,3,Arizona Cardinals,Los Angeles Rams,LAR,-3.5,48.5,False,ARI,LAR
+13266,2022,3,Carolina Panthers,New Orleans Saints,NO,-2.0,41,False,CAR,NO
+13267,2022,3,Chicago Bears,Houston Texans,CHI,-3.0,39,False,CHI,HOU
+13268,2022,3,Denver Broncos,San Francisco 49ers,SF,-1.5,45,False,DEN,SF
+13269,2022,3,Indianapolis Colts,Kansas City Chiefs,KC,-5.0,51,False,IND,KC
+13270,2022,3,Los Angeles Chargers,Jacksonville Jaguars,LAC,-6.5,46.5,False,LAC,JAX
+13271,2022,3,Miami Dolphins,Buffalo Bills,BUF,-4.0,54.5,False,MIA,BUF
+13272,2022,3,Minnesota Vikings,Detroit Lions,MIN,-6.5,51.5,False,MIN,DET
+13273,2022,3,New England Patriots,Baltimore Ravens,BAL,-2.5,44.5,False,NE,BAL
+13274,2022,3,New York Jets,Cincinnati Bengals,CIN,-6.5,46,False,NYJ,CIN
+13275,2022,3,Seattle Seahawks,Atlanta Falcons,SEA,-1.0,43.5,False,SEA,ATL
+13276,2022,3,Tampa Bay Buccaneers,Green Bay Packers,TB,-1.5,42,False,TB,GB
+13277,2022,3,Tennessee Titans,Las Vegas Raiders,LVR,-2.0,45.5,False,TEN,LVR
+13278,2022,3,Washington Commanders,Philadelphia Eagles,PHI,-6.0,47.5,False,WAS,PHI
+13279,2022,3,New York Giants,Dallas Cowboys,NYG,-1.0,38.5,False,NYG,DAL
+13280,2022,4,Cincinnati Bengals,Miami Dolphins,CIN,-4.0,49,False,CIN,MIA
+13281,2022,4,Atlanta Falcons,Cleveland Browns,CLE,-1.0,48.5,False,ATL,CLE
+13282,2022,4,Baltimore Ravens,Buffalo Bills,BUF,-3.0,50,False,BAL,BUF
+13283,2022,4,Carolina Panthers,Arizona Cardinals,CAR,-1.0,43.5,False,CAR,ARI
+13284,2022,4,Dallas Cowboys,Washington Commanders,DAL,-3.0,41,False,DAL,WAS
+13285,2022,4,Detroit Lions,Seattle Seahawks,DET,-3.5,48.5,False,DET,SEA
+13286,2022,4,Green Bay Packers,New England Patriots,GB,-9.5,40,False,GB,NE
+13287,2022,4,Houston Texans,Los Angeles Chargers,LAC,-5.5,45,False,HOU,LAC
+13288,2022,4,Indianapolis Colts,Tennessee Titans,IND,-3.5,43,False,IND,TEN
+13289,2022,4,Las Vegas Raiders,Denver Broncos,LVR,-2.5,45.5,False,LVR,DEN
+13290,2022,4,New Orleans Saints,Minnesota Vikings,MIN,-4.0,42,False,NO,MIN
+13291,2022,4,New York Giants,Chicago Bears,NYG,-3.0,39.5,False,NYG,CHI
+13292,2022,4,Philadelphia Eagles,Jacksonville Jaguars,PHI,-6.5,44,False,PHI,JAX
+13293,2022,4,Pittsburgh Steelers,New York Jets,PIT,-3.0,41,False,PIT,NYJ
+13294,2022,4,Tampa Bay Buccaneers,Kansas City Chiefs,TB,-1.5,47.5,False,TB,KC
+13295,2022,4,San Francisco 49ers,Los Angeles Rams,SF,-1.5,42.5,False,SF,LAR
+13296,2022,5,Denver Broncos,Indianapolis Colts,DEN,-3.0,42,False,DEN,IND
+13297,2022,5,Arizona Cardinals,Philadelphia Eagles,PHI,-5.5,49,False,ARI,PHI
+13298,2022,5,Baltimore Ravens,Cincinnati Bengals,BAL,-3.0,48,False,BAL,CIN
+13299,2022,5,Buffalo Bills,Pittsburgh Steelers,BUF,-14.0,44.5,False,BUF,PIT
+13300,2022,5,Carolina Panthers,San Francisco 49ers,SF,-6.0,40,False,CAR,SF
+13301,2022,5,Cleveland Browns,Los Angeles Chargers,LAC,-1.5,46.5,False,CLE,LAC
+13302,2022,5,Green Bay Packers,New York Giants,GB,-9.0,42,False,GB,NYG
+13303,2022,5,Jacksonville Jaguars,Houston Texans,JAX,-7.0,43.5,False,JAX,HOU
+13304,2022,5,Los Angeles Rams,Dallas Cowboys,LAR,-5.0,41.5,False,LAR,DAL
+13305,2022,5,Minnesota Vikings,Chicago Bears,MIN,-8.5,44,False,MIN,CHI
+13306,2022,5,New England Patriots,Detroit Lions,NE,-3.0,47,False,NE,DET
+13307,2022,5,New Orleans Saints,Seattle Seahawks,NO,-5.5,45,False,NO,SEA
+13308,2022,5,New York Jets,Miami Dolphins,MIA,-3.0,46,False,NYJ,MIA
+13309,2022,5,Tampa Bay Buccaneers,Atlanta Falcons,TB,-10.5,46,False,TB,ATL
+13310,2022,5,Washington Commanders,Tennessee Titans,TEN,-1.0,43,False,WAS,TEN
+13311,2022,5,Kansas City Chiefs,Las Vegas Raiders,KC,-7.0,51.5,False,KC,LVR
+13312,2022,6,Chicago Bears,Washington Commanders,WAS,-1.0,38,False,CHI,WAS
+13313,2022,6,Atlanta Falcons,San Francisco 49ers,SF,-4.0,45.5,False,ATL,SF
+13314,2022,6,Cleveland Browns,New England Patriots,CLE,-2.5,43,False,CLE,NE
+13315,2022,6,Green Bay Packers,New York Jets,GB,-7.5,45,False,GB,NYJ
+13316,2022,6,Indianapolis Colts,Jacksonville Jaguars,IND,-1.0,41,False,IND,JAX
+13317,2022,6,Kansas City Chiefs,Buffalo Bills,BUF,-2.5,54,False,KC,BUF
+13318,2022,6,Los Angeles Rams,Carolina Panthers,LAR,-10.0,41,False,LAR,CAR
+13319,2022,6,Miami Dolphins,Minnesota Vikings,MIN,-3.0,45,False,MIA,MIN
+13320,2022,6,New Orleans Saints,Cincinnati Bengals,CIN,-3.0,42.5,False,NO,CIN
+13321,2022,6,New York Giants,Baltimore Ravens,BAL,-5.5,45.5,False,NYG,BAL
+13322,2022,6,Philadelphia Eagles,Dallas Cowboys,PHI,-6.5,42.5,False,PHI,DAL
+13323,2022,6,Pittsburgh Steelers,Tampa Bay Buccaneers,TB,-10.0,46.5,False,PIT,TB
+13324,2022,6,Seattle Seahawks,Arizona Cardinals,ARI,-2.5,50.5,False,SEA,ARI
+13325,2022,6,Los Angeles Chargers,Denver Broncos,LAC,-4.0,45.5,False,LAC,DEN
+13326,2022,7,Arizona Cardinals,New Orleans Saints,ARI,-2.5,43.5,False,ARI,NO
+13327,2022,7,Baltimore Ravens,Cleveland Browns,BAL,-6.5,46.5,False,BAL,CLE
+13328,2022,7,Carolina Panthers,Tampa Bay Buccaneers,TB,-13.0,39.5,False,CAR,TB
+13329,2022,7,Cincinnati Bengals,Atlanta Falcons,CIN,-6.5,47.5,False,CIN,ATL
+13330,2022,7,Dallas Cowboys,Detroit Lions,DAL,-7.0,49.5,False,DAL,DET
+13331,2022,7,Denver Broncos,New York Jets,NYJ,-2.0,37,False,DEN,NYJ
+13332,2022,7,Jacksonville Jaguars,New York Giants,JAX,-3.0,43.5,False,JAX,NYG
+13333,2022,7,Las Vegas Raiders,Houston Texans,LVR,-7.0,46,False,LVR,HOU
+13334,2022,7,Los Angeles Chargers,Seattle Seahawks,LAC,-4.5,51,False,LAC,SEA
+13335,2022,7,Miami Dolphins,Pittsburgh Steelers,MIA,-7.0,44,False,MIA,PIT
+13336,2022,7,San Francisco 49ers,Kansas City Chiefs,KC,-1.0,49,False,SF,KC
+13337,2022,7,Tennessee Titans,Indianapolis Colts,TEN,-2.5,42.5,False,TEN,IND
+13338,2022,7,Washington Commanders,Green Bay Packers,GB,-4.0,41.5,False,WAS,GB
+13339,2022,7,New England Patriots,Chicago Bears,NE,-8.5,40,False,NE,CHI
+13340,2022,8,Tampa Bay Buccaneers,Baltimore Ravens,TB,-2.0,46,False,TB,BAL
+13341,2022,8,Atlanta Falcons,Carolina Panthers,ATL,-4.0,41,False,ATL,CAR
+13342,2022,8,Buffalo Bills,Green Bay Packers,BUF,-10.5,47,False,BUF,GB
+13343,2022,8,Dallas Cowboys,Chicago Bears,DAL,-10.0,42.5,False,DAL,CHI
+13344,2022,8,Detroit Lions,Miami Dolphins,MIA,-3.5,52,False,DET,MIA
+13345,2022,8,Houston Texans,Tennessee Titans,TEN,-1.0,39.5,False,HOU,TEN
+13346,2022,8,Indianapolis Colts,Washington Commanders,IND,-3.0,40,False,IND,WAS
+13347,2022,8,Jacksonville Jaguars,Denver Broncos,JAX,-1.0,40.5,False,JAX,DEN
+13348,2022,8,Los Angeles Rams,San Francisco 49ers,LAR,-1.0,42,False,LAR,SF
+13349,2022,8,Minnesota Vikings,Arizona Cardinals,MIN,-4.0,48.5,False,MIN,ARI
+13350,2022,8,New Orleans Saints,Las Vegas Raiders,LVR,-1.0,48.5,False,NO,LVR
+13351,2022,8,New York Jets,New England Patriots,NE,-3.0,40,False,NYJ,NE
+13352,2022,8,Philadelphia Eagles,Pittsburgh Steelers,PHI,-11.5,43,False,PHI,PIT
+13353,2022,8,Seattle Seahawks,New York Giants,SEA,-3.0,44.5,False,SEA,NYG
+13354,2022,8,Cleveland Browns,Cincinnati Bengals,CIN,-3.0,45,False,CLE,CIN
+13355,2022,9,Houston Texans,Philadelphia Eagles,PHI,-14.0,45.5,False,HOU,PHI
+13356,2022,9,Arizona Cardinals,Seattle Seahawks,ARI,-2.0,49,False,ARI,SEA
+13357,2022,9,Atlanta Falcons,Los Angeles Chargers,LAC,-2.5,49.5,False,ATL,LAC
+13358,2022,9,Chicago Bears,Miami Dolphins,MIA,-4.0,46,False,CHI,MIA
+13359,2022,9,Cincinnati Bengals,Carolina Panthers,CIN,-7.0,42.5,False,CIN,CAR
+13360,2022,9,Detroit Lions,Green Bay Packers,GB,-4.0,49.5,False,DET,GB
+13361,2022,9,Jacksonville Jaguars,Las Vegas Raiders,LVR,-2.5,48,False,JAX,LVR
+13362,2022,9,Kansas City Chiefs,Tennessee Titans,KC,-14.0,45,False,KC,TEN
+13363,2022,9,New England Patriots,Indianapolis Colts,NE,-5.0,40,False,NE,IND
+13364,2022,9,New York Jets,Buffalo Bills,BUF,-10.5,46,False,NYJ,BUF
+13365,2022,9,Tampa Bay Buccaneers,Los Angeles Rams,TB,-3.0,42.5,False,TB,LAR
+13366,2022,9,Washington Commanders,Minnesota Vikings,MIN,-3.0,43.5,False,WAS,MIN
+13367,2022,9,New Orleans Saints,Baltimore Ravens,BAL,-1.5,46,False,NO,BAL
+13368,2022,10,Carolina Panthers,Atlanta Falcons,ATL,-2.5,41.5,False,CAR,ATL
+13369,2022,10,Buffalo Bills,Minnesota Vikings,BUF,-6.0,46,False,BUF,MIN
+13370,2022,10,Chicago Bears,Detroit Lions,CHI,-3.0,48.5,False,CHI,DET
+13371,2022,10,Green Bay Packers,Dallas Cowboys,DAL,-3.5,44.5,False,GB,DAL
+13372,2022,10,Kansas City Chiefs,Jacksonville Jaguars,KC,-9.5,51.5,False,KC,JAX
+13373,2022,10,Las Vegas Raiders,Indianapolis Colts,LVR,-4.0,41,False,LVR,IND
+13374,2022,10,Los Angeles Rams,Arizona Cardinals,LAR,-3.5,38,False,LAR,ARI
+13375,2022,10,Miami Dolphins,Cleveland Browns,MIA,-3.0,49.5,False,MIA,CLE
+13376,2022,10,New York Giants,Houston Texans,NYG,-4.5,41,False,NYG,HOU
+13377,2022,10,Pittsburgh Steelers,New Orleans Saints,PIT,-1.0,39.5,False,PIT,NO
+13378,2022,10,San Francisco 49ers,Los Angeles Chargers,SF,-8.0,45.5,False,SF,LAC
+13379,2022,10,Tampa Bay Buccaneers,Seattle Seahawks,TB,-2.5,45,False,TB,SEA
+13380,2022,10,Tennessee Titans,Denver Broncos,TEN,-2.5,39.5,False,TEN,DEN
+13381,2022,10,Philadelphia Eagles,Washington Commanders,PHI,-11.0,43,False,PHI,WAS
+13382,2022,11,Green Bay Packers,Tennessee Titans,GB,-3.0,40.5,False,GB,TEN
+13383,2022,11,Atlanta Falcons,Chicago Bears,ATL,-2.5,48.5,False,ATL,CHI
+13384,2022,11,Baltimore Ravens,Carolina Panthers,BAL,-12.5,41.5,False,BAL,CAR
+13385,2022,11,Buffalo Bills,Cleveland Browns,BUF,-7.5,50.5,False,BUF,CLE
+13386,2022,11,Denver Broncos,Las Vegas Raiders,DEN,-2.5,41.5,False,DEN,LVR
+13387,2022,11,Houston Texans,Washington Commanders,WAS,-3.0,41,False,HOU,WAS
+13388,2022,11,Indianapolis Colts,Philadelphia Eagles,PHI,-6.0,45,False,IND,PHI
+13389,2022,11,Los Angeles Chargers,Kansas City Chiefs,KC,-5.5,53,False,LAC,KC
+13390,2022,11,Minnesota Vikings,Dallas Cowboys,DAL,-2.0,48.5,False,MIN,DAL
+13391,2022,11,New England Patriots,New York Jets,NE,-3.5,38,False,NE,NYJ
+13392,2022,11,New Orleans Saints,Los Angeles Rams,NO,-2.5,39.5,False,NO,LAR
+13393,2022,11,New York Giants,Detroit Lions,NYG,-3.0,44.5,False,NYG,DET
+13394,2022,11,Pittsburgh Steelers,Cincinnati Bengals,CIN,-3.5,39.5,False,PIT,CIN
+13395,2022,11,Arizona Cardinals,San Francisco 49ers,SF,-10.0,43,False,ARI,SF
+13396,2022,12,Dallas Cowboys,New York Giants,DAL,-10.0,45.5,False,DAL,NYG
+13397,2022,12,Detroit Lions,Buffalo Bills,BUF,-9.5,55,False,DET,BUF
+13398,2022,12,Minnesota Vikings,New England Patriots,MIN,-2.5,41.5,False,MIN,NE
+13399,2022,12,Arizona Cardinals,Los Angeles Chargers,LAC,-2.5,48.5,False,ARI,LAC
+13400,2022,12,Carolina Panthers,Denver Broncos,DEN,-1.0,36,False,CAR,DEN
+13401,2022,12,Cleveland Browns,Tampa Bay Buccaneers,TB,-3.0,42,False,CLE,TB
+13402,2022,12,Jacksonville Jaguars,Baltimore Ravens,BAL,-3.5,43,False,JAX,BAL
+13403,2022,12,Kansas City Chiefs,Los Angeles Rams,KC,-15.5,42,False,KC,LAR
+13404,2022,12,Miami Dolphins,Houston Texans,MIA,-14.0,47.5,False,MIA,HOU
+13405,2022,12,New York Jets,Chicago Bears,NYJ,-7.5,37.5,False,NYJ,CHI
+13406,2022,12,Philadelphia Eagles,Green Bay Packers,PHI,-6.5,46.5,False,PHI,GB
+13407,2022,12,San Francisco 49ers,New Orleans Saints,SF,-8.5,43.5,False,SF,NO
+13408,2022,12,Seattle Seahawks,Las Vegas Raiders,SEA,-4.0,47.5,False,SEA,LVR
+13409,2022,12,Tennessee Titans,Cincinnati Bengals,CIN,-1.0,42,False,TEN,CIN
+13410,2022,12,Washington Commanders,Atlanta Falcons,WAS,-3.5,40,False,WAS,ATL
+13411,2022,12,Indianapolis Colts,Pittsburgh Steelers,IND,-2.5,39.5,False,IND,PIT
+13412,2022,13,New England Patriots,Buffalo Bills,BUF,-4.0,44,False,NE,BUF
+13413,2022,13,Atlanta Falcons,Pittsburgh Steelers,PIT,-1.5,43,False,ATL,PIT
+13414,2022,13,Baltimore Ravens,Denver Broncos,BAL,-9.0,40,False,BAL,DEN
+13415,2022,13,Chicago Bears,Green Bay Packers,GB,-3.5,45,False,CHI,GB
+13416,2022,13,Cincinnati Bengals,Kansas City Chiefs,KC,-2.5,53.5,False,CIN,KC
+13417,2022,13,Dallas Cowboys,Indianapolis Colts,DAL,-11.0,44.5,False,DAL,IND
+13418,2022,13,Detroit Lions,Jacksonville Jaguars,DET,-1.0,51,False,DET,JAX
+13419,2022,13,Houston Texans,Cleveland Browns,CLE,-7.5,46.5,False,HOU,CLE
+13420,2022,13,Las Vegas Raiders,Los Angeles Chargers,LVR,-2.5,49.5,False,LVR,LAC
+13421,2022,13,Los Angeles Rams,Seattle Seahawks,SEA,-6.5,41,False,LAR,SEA
+13422,2022,13,Minnesota Vikings,New York Jets,MIN,-3.0,44,False,MIN,NYJ
+13423,2022,13,New York Giants,Washington Commanders,WAS,-2.5,40.5,False,NYG,WAS
+13424,2022,13,Philadelphia Eagles,Tennessee Titans,PHI,-4.5,44.5,False,PHI,TEN
+13425,2022,13,San Francisco 49ers,Miami Dolphins,SF,-5.0,45.5,False,SF,MIA
+13426,2022,13,Tampa Bay Buccaneers,New Orleans Saints,TB,-3.0,40.5,False,TB,NO
+13427,2022,14,Los Angeles Rams,Las Vegas Raiders,LVR,-6.5,41.5,False,LAR,LVR
+13428,2022,14,Buffalo Bills,New York Jets,BUF,-10.0,43.5,False,BUF,NYJ
+13429,2022,14,Cincinnati Bengals,Cleveland Browns,CIN,-4.0,47,False,CIN,CLE
+13430,2022,14,Dallas Cowboys,Houston Texans,DAL,-17.0,44.5,False,DAL,HOU
+13431,2022,14,Denver Broncos,Kansas City Chiefs,KC,-9.0,44,False,DEN,KC
+13432,2022,14,Detroit Lions,Minnesota Vikings,DET,-2.0,51.5,False,DET,MIN
+13433,2022,14,Los Angeles Chargers,Miami Dolphins,MIA,-3.0,55,False,LAC,MIA
+13434,2022,14,New York Giants,Philadelphia Eagles,PHI,-7.0,44.5,False,NYG,PHI
+13435,2022,14,Pittsburgh Steelers,Baltimore Ravens,PIT,-2.0,37,False,PIT,BAL
+13436,2022,14,San Francisco 49ers,Tampa Bay Buccaneers,SF,-3.5,38.5,False,SF,TB
+13437,2022,14,Seattle Seahawks,Carolina Panthers,SEA,-4.0,44,False,SEA,CAR
+13438,2022,14,Tennessee Titans,Jacksonville Jaguars,TEN,-3.0,41.5,False,TEN,JAX
+13439,2022,14,Arizona Cardinals,New England Patriots,NE,-2.5,44,False,ARI,NE
+13440,2022,15,Seattle Seahawks,San Francisco 49ers,SF,-3.0,42.5,False,SEA,SF
+13441,2022,15,Buffalo Bills,Miami Dolphins,BUF,-7.0,43.5,False,BUF,MIA
+13442,2022,15,Cleveland Browns,Baltimore Ravens,CLE,-3.0,39,False,CLE,BAL
+13443,2022,15,Minnesota Vikings,Indianapolis Colts,MIN,-3.5,47,False,MIN,IND
+13444,2022,15,Carolina Panthers,Pittsburgh Steelers,CAR,-2.5,37,False,CAR,PIT
+13445,2022,15,Chicago Bears,Philadelphia Eagles,PHI,-8.5,48,False,CHI,PHI
+13446,2022,15,Denver Broncos,Arizona Cardinals,DEN,-1.5,37,False,DEN,ARI
+13447,2022,15,Houston Texans,Kansas City Chiefs,KC,-14.5,48.5,False,HOU,KC
+13448,2022,15,Jacksonville Jaguars,Dallas Cowboys,DAL,-4.0,48,False,JAX,DAL
+13449,2022,15,Las Vegas Raiders,New England Patriots,LVR,-2.5,45.5,False,LVR,NE
+13450,2022,15,Los Angeles Chargers,Tennessee Titans,LAC,-3.0,46.5,False,LAC,TEN
+13451,2022,15,New Orleans Saints,Atlanta Falcons,NO,-5.0,43.5,False,NO,ATL
+13452,2022,15,New York Jets,Detroit Lions,NYJ,-2.0,44,False,NYJ,DET
+13453,2022,15,Tampa Bay Buccaneers,Cincinnati Bengals,CIN,-3.5,47.5,False,TB,CIN
+13454,2022,15,Washington Commanders,New York Giants,WAS,-4.0,40.5,False,WAS,NYG
+13455,2022,15,Green Bay Packers,Los Angeles Rams,GB,-7.5,39.5,False,GB,LAR
+13456,2022,16,New York Jets,Jacksonville Jaguars,NYJ,-2.5,36.5,False,NYJ,JAX
+13457,2022,16,Baltimore Ravens,Atlanta Falcons,BAL,-6.5,35,False,BAL,ATL
+13458,2022,16,Carolina Panthers,Detroit Lions,DET,-2.5,43.5,False,CAR,DET
+13459,2022,16,Chicago Bears,Buffalo Bills,BUF,-8.0,40.5,False,CHI,BUF
+13460,2022,16,Cleveland Browns,New Orleans Saints,CLE,-3.0,32,False,CLE,NO
+13461,2022,16,Dallas Cowboys,Philadelphia Eagles,DAL,-4.0,48,False,DAL,PHI
+13462,2022,16,Kansas City Chiefs,Seattle Seahawks,KC,-10.0,50.5,False,KC,SEA
+13463,2022,16,Minnesota Vikings,New York Giants,MIN,-4.5,48,False,MIN,NYG
+13464,2022,16,New England Patriots,Cincinnati Bengals,CIN,-3.0,41.5,False,NE,CIN
+13465,2022,16,Pittsburgh Steelers,Las Vegas Raiders,PIT,-2.0,38,False,PIT,LVR
+13466,2022,16,San Francisco 49ers,Washington Commanders,SF,-6.5,37,False,SF,WAS
+13467,2022,16,Tennessee Titans,Houston Texans,TEN,-3.0,34,False,TEN,HOU
+13468,2022,16,Arizona Cardinals,Tampa Bay Buccaneers,TB,-7.5,41.5,False,ARI,TB
+13469,2022,16,Los Angeles Rams,Denver Broncos,DEN,-3.0,36,False,LAR,DEN
+13470,2022,16,Miami Dolphins,Green Bay Packers,MIA,-3.5,49.5,False,MIA,GB
+13471,2022,16,Indianapolis Colts,Los Angeles Chargers,LAC,-3.5,44.5,False,IND,LAC
+13472,2022,17,Tennessee Titans,Dallas Cowboys,DAL,-14.0,40.5,False,TEN,DAL
+13473,2022,17,Atlanta Falcons,Arizona Cardinals,ATL,-6.5,40.5,False,ATL,ARI
+13474,2022,17,Baltimore Ravens,Pittsburgh Steelers,BAL,-1.0,35.5,False,BAL,PIT
+13475,2022,17,Detroit Lions,Chicago Bears,DET,-4.5,52.5,False,DET,CHI
+13476,2022,17,Green Bay Packers,Minnesota Vikings,GB,-3.5,47.5,False,GB,MIN
+13477,2022,17,Houston Texans,Jacksonville Jaguars,JAX,-3.5,43,False,HOU,JAX
+13478,2022,17,Kansas City Chiefs,Denver Broncos,KC,-12.5,45.5,False,KC,DEN
+13479,2022,17,Las Vegas Raiders,San Francisco 49ers,SF,-10.0,41,False,LVR,SF
+13480,2022,17,Los Angeles Chargers,Los Angeles Rams,LAC,-6.5,41,False,LAC,LAR
+13481,2022,17,New England Patriots,Miami Dolphins,NE,-3.0,41.5,False,NE,MIA
+13482,2022,17,New York Giants,Indianapolis Colts,NYG,-5.5,38.5,False,NYG,IND
+13483,2022,17,Philadelphia Eagles,New Orleans Saints,PHI,-5.0,42,False,PHI,NO
+13484,2022,17,Seattle Seahawks,New York Jets,NYJ,-1.5,43,False,SEA,NYJ
+13485,2022,17,Tampa Bay Buccaneers,Carolina Panthers,TB,-3.5,40.5,False,TB,CAR
+13486,2022,17,Washington Commanders,Cleveland Browns,WAS,-2.0,41.5,False,WAS,CLE
+13487,2022,18,Jacksonville Jaguars,Tennessee Titans,JAX,-6.5,39.5,False,JAX,TEN
+13488,2022,18,Las Vegas Raiders,Kansas City Chiefs,KC,-8.5,52,False,LVR,KC
+13489,2022,18,Atlanta Falcons,Tampa Bay Buccaneers,ATL,-6.0,40.5,False,ATL,TB
+13490,2022,18,Buffalo Bills,New England Patriots,BUF,-8.0,44,False,BUF,NE
+13491,2022,18,Chicago Bears,Minnesota Vikings,MIN,-6.5,42.5,False,CHI,MIN
+13492,2022,18,Cincinnati Bengals,Baltimore Ravens,CIN,-11.0,39,False,CIN,BAL
+13493,2022,18,Denver Broncos,Los Angeles Chargers,DEN,-6.5,39,False,DEN,LAC
+13494,2022,18,Green Bay Packers,Detroit Lions,GB,-4.0,48,False,GB,DET
+13495,2022,18,Indianapolis Colts,Houston Texans,IND,-3.0,37.5,False,IND,HOU
+13496,2022,18,Miami Dolphins,New York Jets,MIA,-3.5,37.5,False,MIA,NYJ
+13497,2022,18,New Orleans Saints,Carolina Panthers,NO,-3.5,41.5,False,NO,CAR
+13498,2022,18,Philadelphia Eagles,New York Giants,PHI,-17.0,43,False,PHI,NYG
+13499,2022,18,Pittsburgh Steelers,Cleveland Browns,PIT,-2.5,40,False,PIT,CLE
+13500,2022,18,San Francisco 49ers,Arizona Cardinals,SF,-14.5,40,False,SF,ARI
+13501,2022,18,Seattle Seahawks,Los Angeles Rams,SEA,-4.5,43,False,SEA,LAR
+13502,2022,18,Washington Commanders,Dallas Cowboys,DAL,-7.5,41,False,WAS,DAL
+13503,2022,Wildcard,Jacksonville Jaguars,Los Angeles Chargers,LAC,-2.5,46.5,True,JAX,LAC
+13504,2022,Wildcard,San Francisco 49ers,Seattle Seahawks,SF,-9.5,42,True,SF,SEA
+13505,2022,Wildcard,Buffalo Bills,Miami Dolphins,BUF,-14.0,44.5,True,BUF,MIA
+13506,2022,Wildcard,Cincinnati Bengals,Baltimore Ravens,CIN,-8.0,40,True,CIN,BAL
+13507,2022,Wildcard,Minnesota Vikings,New York Giants,MIN,-2.5,48,True,MIN,NYG
+13508,2022,Wildcard,Tampa Bay Buccaneers,Dallas Cowboys,DAL,-2.5,45.5,True,TB,DAL
+13509,2022,Division,Kansas City Chiefs,Jacksonville Jaguars,KC,-9.5,52,True,KC,JAX
+13510,2022,Division,Philadelphia Eagles,New York Giants,PHI,-8.0,48,True,PHI,NYG
+13511,2022,Division,Buffalo Bills,Cincinnati Bengals,BUF,-6.0,48.5,True,BUF,CIN
+13512,2022,Division,San Francisco 49ers,Dallas Cowboys,SF,-3.5,46.5,True,SF,DAL
+13513,2022,Conference,Kansas City Chiefs,Cincinnati Bengals,KC,-1.5,48,True,KC,CIN
+13514,2022,Conference,Philadelphia Eagles,San Francisco 49ers,PHI,-2.5,45.5,True,PHI,SF
+13515,2022,Superbowl,Philadelphia Eagles,Kansas City Chiefs,PHI,-1.0,51,True,PHI,KC
+13516,2023,1,Kansas City Chiefs,Detroit Lions,KC,-4.5,53,False,KC,DET
+13517,2023,1,Atlanta Falcons,Carolina Panthers,ATL,-3.5,39.5,False,ATL,CAR
+13518,2023,1,Baltimore Ravens,Houston Texans,BAL,-9.5,43.5,False,BAL,HOU
+13519,2023,1,Chicago Bears,Green Bay Packers,CHI,-1.0,41.5,False,CHI,GB
+13520,2023,1,Cleveland Browns,Cincinnati Bengals,CIN,-2.0,47.5,False,CLE,CIN
+13521,2023,1,Denver Broncos,Las Vegas Raiders,DEN,-3.5,43,False,DEN,LVR
+13522,2023,1,Indianapolis Colts,Jacksonville Jaguars,JAX,-4.5,46,False,IND,JAX
+13523,2023,1,Los Angeles Chargers,Miami Dolphins,LAC,-3.0,51,False,LAC,MIA
+13524,2023,1,Minnesota Vikings,Tampa Bay Buccaneers,MIN,-5.0,46,False,MIN,TB
+13525,2023,1,New England Patriots,Philadelphia Eagles,PHI,-3.5,44.5,False,NE,PHI
+13526,2023,1,New Orleans Saints,Tennessee Titans,NO,-3.0,41.5,False,NO,TEN
+13527,2023,1,New York Giants,Dallas Cowboys,DAL,-3.5,45,False,NYG,DAL
+13528,2023,1,Pittsburgh Steelers,San Francisco 49ers,SF,-2.0,41.5,False,PIT,SF
+13529,2023,1,Seattle Seahawks,Los Angeles Rams,SEA,-5.0,46,False,SEA,LAR
+13530,2023,1,Washington Commanders,Arizona Cardinals,WAS,-7.0,38,False,WAS,ARI
+13531,2023,1,New York Jets,Buffalo Bills,BUF,-2.0,45.5,False,NYJ,BUF
+13532,2023,2,Philadelphia Eagles,Minnesota Vikings,PHI,-6.0,49,False,PHI,MIN
+13533,2023,2,Arizona Cardinals,New York Giants,NYG,-4.0,39.5,False,ARI,NYG
+13534,2023,2,Atlanta Falcons,Green Bay Packers,ATL,-1.5,40,False,ATL,GB
+13535,2023,2,Buffalo Bills,Las Vegas Raiders,BUF,-8.0,47,False,BUF,LVR
+13536,2023,2,Cincinnati Bengals,Baltimore Ravens,CIN,-3.0,45.5,False,CIN,BAL
+13537,2023,2,Dallas Cowboys,New York Jets,DAL,-8.5,38.5,False,DAL,NYJ
+13538,2023,2,Denver Broncos,Washington Commanders,DEN,-3.5,38.5,False,DEN,WAS
+13539,2023,2,Detroit Lions,Seattle Seahawks,DET,-4.5,47,False,DET,SEA
+13540,2023,2,Houston Texans,Indianapolis Colts,HOU,-1.0,39.5,False,HOU,IND
+13541,2023,2,Jacksonville Jaguars,Kansas City Chiefs,KC,-3.0,51,False,JAX,KC
+13542,2023,2,Los Angeles Rams,San Francisco 49ers,SF,-7.5,45,False,LAR,SF
+13543,2023,2,New England Patriots,Miami Dolphins,MIA,-2.5,46.5,False,NE,MIA
+13544,2023,2,Tampa Bay Buccaneers,Chicago Bears,TB,-2.5,41,False,TB,CHI
+13545,2023,2,Tennessee Titans,Los Angeles Chargers,LAC,-2.5,45.5,False,TEN,LAC
+13546,2023,2,Carolina Panthers,New Orleans Saints,NO,-3.0,39.5,False,CAR,NO
+13547,2023,2,Pittsburgh Steelers,Cleveland Browns,CLE,-2.0,38,False,PIT,CLE
+13548,2023,3,San Francisco 49ers,New York Giants,SF,-10.0,44,False,SF,NYG
+13549,2023,3,Arizona Cardinals,Dallas Cowboys,DAL,-13.0,43,False,ARI,DAL
+13550,2023,3,Baltimore Ravens,Indianapolis Colts,BAL,-8.0,43,False,BAL,IND
+13551,2023,3,Cleveland Browns,Tennessee Titans,CLE,-3.5,38.5,False,CLE,TEN
+13552,2023,3,Detroit Lions,Atlanta Falcons,DET,-3.0,46,False,DET,ATL
+13553,2023,3,Green Bay Packers,New Orleans Saints,GB,-1.0,42,False,GB,NO
+13554,2023,3,Jacksonville Jaguars,Houston Texans,JAX,-7.5,43.5,False,JAX,HOU
+13555,2023,3,Kansas City Chiefs,Chicago Bears,KC,-12.5,48,False,KC,CHI
+13556,2023,3,Las Vegas Raiders,Pittsburgh Steelers,LV,-2.5,43,False,LVR,PIT
+13557,2023,3,Miami Dolphins,Denver Broncos,MIA,-6.0,47,False,MIA,DEN
+13558,2023,3,Minnesota Vikings,Los Angeles Chargers,MIN,-1.0,54,False,MIN,LAC
+13559,2023,3,New York Jets,New England Patriots,NE,-2.5,36,False,NYJ,NE
+13560,2023,3,Seattle Seahawks,Carolina Panthers,SEA,-5.0,42,False,SEA,CAR
+13561,2023,3,Washington Commanders,Buffalo Bills,BUF,-6.0,43,False,WAS,BUF
+13562,2023,3,Cincinnati Bengals,Los Angeles Rams,CIN,-2.0,43.5,False,CIN,LAR
+13563,2023,3,Tampa Bay Buccaneers,Philadelphia Eagles,PHI,-5.0,45,False,TB,PHI
+13564,2023,4,Green Bay Packers,Detroit Lions,DET,-1.5,46,False,GB,DET
+13565,2023,4,Buffalo Bills,Miami Dolphins,BUF,-2.5,53.5,False,BUF,MIA
+13566,2023,4,Carolina Panthers,Minnesota Vikings,MIN,-4.5,46.5,False,CAR,MIN
+13567,2023,4,Chicago Bears,Denver Broncos,DEN,-3.0,46.5,False,CHI,DEN
+13568,2023,4,Cleveland Browns,Baltimore Ravens,CLE,-2.5,38.5,False,CLE,BAL
+13569,2023,4,Dallas Cowboys,New England Patriots,DAL,-6.0,43.5,False,DAL,NE
+13570,2023,4,Houston Texans,Pittsburgh Steelers,PIT,-3.0,42,False,HOU,PIT
+13571,2023,4,Indianapolis Colts,Los Angeles Rams,IND,-1.0,45.5,False,IND,LAR
+13572,2023,4,Jacksonville Jaguars,Atlanta Falcons,JAX,-3.0,42.5,False,JAX,ATL
+13573,2023,4,Los Angeles Chargers,Las Vegas Raiders,LAC,-6.0,48,False,LAC,LVR
+13574,2023,4,New Orleans Saints,Tampa Bay Buccaneers,NO,-3.5,40,False,NO,TB
+13575,2023,4,New York Jets,Kansas City Chiefs,KC,-8.5,41.5,False,NYJ,KC
+13576,2023,4,Philadelphia Eagles,Washington Commanders,PHI,-9.0,43,False,PHI,WAS
+13577,2023,4,San Francisco 49ers,Arizona Cardinals,SF,-14.0,43.5,False,SF,ARI
+13578,2023,4,Tennessee Titans,Cincinnati Bengals,CIN,-2.5,41,False,TEN,CIN
+13579,2023,4,New York Giants,Seattle Seahawks,SEA,-1.5,47,False,NYG,SEA
+13580,2023,5,Washington Commanders,Chicago Bears,WAS,-6.0,44.5,False,WAS,CHI
+13581,2023,5,Arizona Cardinals,Cincinnati Bengals,CIN,-3.0,45,False,ARI,CIN
+13582,2023,5,Atlanta Falcons,Houston Texans,ATL,-2.5,42,False,ATL,HOU
+13583,2023,5,Buffalo Bills,Jacksonville Jaguars,BUF,-5.0,48.5,False,BUF,JAX
+13584,2023,5,Denver Broncos,New York Jets,DEN,-2.0,42.5,False,DEN,NYJ
+13585,2023,5,Detroit Lions,Carolina Panthers,DET,-9.0,43.5,False,DET,CAR
+13586,2023,5,Indianapolis Colts,Tennessee Titans,TEN,-2.5,43.5,False,IND,TEN
+13587,2023,5,Los Angeles Rams,Philadelphia Eagles,PHI,-3.5,50.5,False,LAR,PHI
+13588,2023,5,Miami Dolphins,New York Giants,MIA,-13.0,47.5,False,MIA,NYG
+13589,2023,5,Minnesota Vikings,Kansas City Chiefs,KC,-3.5,52.5,False,MIN,KC
+13590,2023,5,New England Patriots,New Orleans Saints,NE,-1.5,38.5,False,NE,NO
+13591,2023,5,Pittsburgh Steelers,Baltimore Ravens,BAL,-4.5,38.5,False,PIT,BAL
+13592,2023,5,San Francisco 49ers,Dallas Cowboys,SF,-3.5,45.5,False,SF,DAL
+13593,2023,5,Las Vegas Raiders,Green Bay Packers,LVR,-2.0,45,False,LVR,GB
+13594,2023,6,Kansas City Chiefs,Denver Broncos,KC,-10.5,47.5,False,KC,DEN
+13595,2023,6,Atlanta Falcons,Washington Commanders,ATL,-1.5,42,False,ATL,WAS
+13596,2023,6,Buffalo Bills,New York Giants,BUF,-15.0,43.5,False,BUF,NYG
+13597,2023,6,Chicago Bears,Minnesota Vikings,MIN,-3.0,44.5,False,CHI,MIN
+13598,2023,6,Cincinnati Bengals,Seattle Seahawks,CIN,-3.0,45.5,False,CIN,SEA
+13599,2023,6,Cleveland Browns,San Francisco 49ers,SF,-9.5,36,False,CLE,SF
+13600,2023,6,Houston Texans,New Orleans Saints,NO,-2.5,41.5,False,HOU,NO
+13601,2023,6,Jacksonville Jaguars,Indianapolis Colts,JAX,-4.0,44,False,JAX,IND
+13602,2023,6,Las Vegas Raiders,New England Patriots,LVR,-3.0,41.5,False,LVR,NE
+13603,2023,6,Los Angeles Rams,Arizona Cardinals,LAR,-7.0,48,False,LAR,ARI
+13604,2023,6,Miami Dolphins,Carolina Panthers,MIA,-14.0,47.5,False,MIA,CAR
+13605,2023,6,New York Jets,Philadelphia Eagles,PHI,-6.5,43.5,False,NYJ,PHI
+13606,2023,6,Tampa Bay Buccaneers,Detroit Lions,DET,-3.0,43,False,TB,DET
+13607,2023,6,Tennessee Titans,Baltimore Ravens,BAL,-5.5,42.5,False,TEN,BAL
+13608,2023,6,Los Angeles Chargers,Dallas Cowboys,DAL,-1.0,50,False,LAC,DAL
+13609,2023,7,New Orleans Saints,Jacksonville Jaguars,NO,-2.5,41,False,NO,JAX
+13610,2023,7,Baltimore Ravens,Detroit Lions,BAL,-3.0,43.5,False,BAL,DET
+13611,2023,7,Chicago Bears,Las Vegas Raiders,LVR,-2.5,38.5,False,CHI,LVR
+13612,2023,7,Denver Broncos,Green Bay Packers,DEN,-1.5,44,False,DEN,GB
+13613,2023,7,Indianapolis Colts,Cleveland Browns,CLE,-3.5,39.5,False,IND,CLE
+13614,2023,7,Kansas City Chiefs,Los Angeles Chargers,KC,-5.5,48.5,False,KC,LAC
+13615,2023,7,Los Angeles Rams,Pittsburgh Steelers,LAR,-3.5,44,False,LAR,PIT
+13616,2023,7,New England Patriots,Buffalo Bills,BUF,-7.5,41,False,NE,BUF
+13617,2023,7,New York Giants,Washington Commanders,WAS,-3.0,37,False,NYG,WAS
+13618,2023,7,Philadelphia Eagles,Miami Dolphins,PHI,-3.0,52,False,PHI,MIA
+13619,2023,7,Seattle Seahawks,Arizona Cardinals,SEA,-9.0,43.5,False,SEA,ARI
+13620,2023,7,Tampa Bay Buccaneers,Atlanta Falcons,TB,-3.0,37.5,False,TB,ATL
+13621,2023,7,Minnesota Vikings,San Francisco 49ers,SF,-7.0,44,False,MIN,SF
+13622,2023,8,Buffalo Bills,Tampa Bay Buccaneers,BUF,-10.0,43,False,BUF,TB
+13623,2023,8,Arizona Cardinals,Baltimore Ravens,BAL,-9.5,45,False,ARI,BAL
+13624,2023,8,Carolina Panthers,Houston Texans,HOU,-3.5,43,False,CAR,HOU
+13625,2023,8,Dallas Cowboys,Los Angeles Rams,DAL,-7.0,45.5,False,DAL,LAR
+13626,2023,8,Denver Broncos,Kansas City Chiefs,KC,-7.0,45.5,False,DEN,KC
+13627,2023,8,Green Bay Packers,Minnesota Vikings,MIN,-1.5,41.5,False,GB,MIN
+13628,2023,8,Indianapolis Colts,New Orleans Saints,NO,-2.0,43.5,False,IND,NO
+13629,2023,8,Los Angeles Chargers,Chicago Bears,LAC,-9.5,46,False,LAC,CHI
+13630,2023,8,Miami Dolphins,New England Patriots,MIA,-8.0,47,False,MIA,NE
+13631,2023,8,New York Giants,New York Jets,NYJ,-3.0,34.5,False,NYG,NYJ
+13632,2023,8,Pittsburgh Steelers,Jacksonville Jaguars,JAX,-2.5,40.5,False,PIT,JAX
+13633,2023,8,San Francisco 49ers,Cincinnati Bengals,SF,-4.0,44,False,SF,CIN
+13634,2023,8,Seattle Seahawks,Cleveland Browns,SEA,-4.0,38.5,False,SEA,CLE
+13635,2023,8,Tennessee Titans,Atlanta Falcons,ATL,-2.5,35.5,False,TEN,ATL
+13636,2023,8,Washington Commanders,Philadelphia Eagles,PHI,-7.0,43,False,WAS,PHI
+13637,2023,8,Detroit Lions,Las Vegas Raiders,DET,-7.0,46,False,DET,LVR
+13638,2023,9,Pittsburgh Steelers,Tennessee Titans,PIT,-3.0,37,False,PIT,TEN
+13639,2023,9,Atlanta Falcons,Minnesota Vikings,ATL,-3.5,39,False,ATL,MIN
+13640,2023,9,Baltimore Ravens,Seattle Seahawks,BAL,-6.0,44.5,False,BAL,SEA
+13641,2023,9,Carolina Panthers,Indianapolis Colts,IND,-1.5,45,False,CAR,IND
+13642,2023,9,Cincinnati Bengals,Buffalo Bills,CIN,-1.5,51,False,CIN,BUF
+13643,2023,9,Cleveland Browns,Arizona Cardinals,CLE,-13.0,38,False,CLE,ARI
+13644,2023,9,Green Bay Packers,Los Angeles Rams,GB,-3.5,37.5,False,GB,LAR
+13645,2023,9,Houston Texans,Tampa Bay Buccaneers,HOU,-2.5,40,False,HOU,TB
+13646,2023,9,Kansas City Chiefs,Miami Dolphins,KC,-1.0,51,False,KC,MIA
+13647,2023,9,Las Vegas Raiders,New York Giants,LVR,-1.5,38.5,False,LVR,NYG
+13648,2023,9,New England Patriots,Washington Commanders,NE,-3.0,40.5,False,NE,WAS
+13649,2023,9,New Orleans Saints,Chicago Bears,NO,-9.0,42,False,NO,CHI
+13650,2023,9,Philadelphia Eagles,Dallas Cowboys,PHI,-3.0,46.5,False,PHI,DAL
+13651,2023,9,New York Jets,Los Angeles Chargers,LAC,-3.0,41,False,NYJ,LAC
+13652,2023,10,Chicago Bears,Carolina Panthers,CHI,-3.5,38,False,CHI,CAR
+13653,2023,10,Arizona Cardinals,Atlanta Falcons,ATL,-2.0,43.5,False,ARI,ATL
+13654,2023,10,Baltimore Ravens,Cleveland Browns,BAL,-6.0,38,False,BAL,CLE
+13655,2023,10,Cincinnati Bengals,Houston Texans,CIN,-5.5,45.5,False,CIN,HOU
+13656,2023,10,Dallas Cowboys,New York Giants,DAL,-17.5,39,False,DAL,NYG
+13657,2023,10,Jacksonville Jaguars,San Francisco 49ers,SF,-3.0,44.5,False,JAX,SF
+13658,2023,10,Las Vegas Raiders,New York Jets,NYJ,-1.0,35.5,False,LVR,NYJ
+13659,2023,10,Los Angeles Chargers,Detroit Lions,DET,-2.5,48.5,False,LAC,DET
+13660,2023,10,Minnesota Vikings,New Orleans Saints,NO,-3.0,40.5,False,MIN,NO
+13661,2023,10,New England Patriots,Indianapolis Colts,IND,-1.5,42.5,False,NE,IND
+13662,2023,10,Pittsburgh Steelers,Green Bay Packers,PIT,-3.0,38.5,False,PIT,GB
+13663,2023,10,Seattle Seahawks,Washington Commanders,SEA,-6.0,44,False,SEA,WAS
+13664,2023,10,Tampa Bay Buccaneers,Tennessee Titans,TB,-2.5,39,False,TB,TEN
+13665,2023,10,Buffalo Bills,Denver Broncos,BUF,-7.5,47.5,False,BUF,DEN
+13666,2023,11,Baltimore Ravens,Cincinnati Bengals,BAL,-4.0,46.5,False,BAL,CIN
+13667,2023,11,Buffalo Bills,New York Jets,BUF,-8.5,39,False,BUF,NYJ
+13668,2023,11,Carolina Panthers,Dallas Cowboys,DAL,-11.0,43,False,CAR,DAL
+13669,2023,11,Cleveland Browns,Pittsburgh Steelers,CLE,-2.0,34.5,False,CLE,PIT
+13670,2023,11,Denver Broncos,Minnesota Vikings,DEN,-2.5,43,False,DEN,MIN
+13671,2023,11,Detroit Lions,Chicago Bears,DET,-8.0,48,False,DET,CHI
+13672,2023,11,Green Bay Packers,Los Angeles Chargers,LAC,-3.0,44,False,GB,LAC
+13673,2023,11,Houston Texans,Arizona Cardinals,HOU,-5.0,48,False,HOU,ARI
+13674,2023,11,Jacksonville Jaguars,Tennessee Titans,JAX,-6.5,40,False,JAX,TEN
+13675,2023,11,Los Angeles Rams,Seattle Seahawks,LAR,-2.0,46,False,LAR,SEA
+13676,2023,11,Miami Dolphins,Las Vegas Raiders,MIA,-14.0,44.5,False,MIA,LVR
+13677,2023,11,San Francisco 49ers,Tampa Bay Buccaneers,SF,-13.5,41.5,False,SF,TB
+13678,2023,11,Washington Commanders,New York Giants,WAS,-8.5,39,False,WAS,NYG
+13679,2023,11,Kansas City Chiefs,Philadelphia Eagles,KC,-2.5,46,False,KC,PHI
+13680,2023,12,Dallas Cowboys,Washington Commanders,DAL,-13.0,48,False,DAL,WAS
+13681,2023,12,Detroit Lions,Green Bay Packers,DET,-8.5,47,False,DET,GB
+13682,2023,12,Seattle Seahawks,San Francisco 49ers,SF,-7.0,43,False,SEA,SF
+13683,2023,12,New York Jets,Miami Dolphins,MIA,-9.5,40,False,NYJ,MIA
+13684,2023,12,Arizona Cardinals,Los Angeles Rams,LAR,-3.0,45,False,ARI,LAR
+13685,2023,12,Atlanta Falcons,New Orleans Saints,NO,-2.0,42,False,ATL,NO
+13686,2023,12,Cincinnati Bengals,Pittsburgh Steelers,PIT,-2.0,37,False,CIN,PIT
+13687,2023,12,Denver Broncos,Cleveland Browns,DEN,-1.5,37.5,False,DEN,CLE
+13688,2023,12,Houston Texans,Jacksonville Jaguars,JAX,-1.5,47.5,False,HOU,JAX
+13689,2023,12,Indianapolis Colts,Tampa Bay Buccaneers,IND,-2.5,45,False,IND,TB
+13690,2023,12,Las Vegas Raiders,Kansas City Chiefs,KC,-9.0,42.5,False,LVR,KC
+13691,2023,12,Los Angeles Chargers,Baltimore Ravens,BAL,-3.0,49,False,LAC,BAL
+13692,2023,12,New York Giants,New England Patriots,NE,-4.5,36,False,NYG,NE
+13693,2023,12,Philadelphia Eagles,Buffalo Bills,PHI,-2.5,48.5,False,PHI,BUF
+13694,2023,12,Tennessee Titans,Carolina Panthers,TEN,-3.5,35.5,False,TEN,CAR
+13695,2023,12,Minnesota Vikings,Chicago Bears,MIN,-3.0,43.5,False,MIN,CHI
+13696,2023,13,Dallas Cowboys,Seattle Seahawks,DAL,-9.5,47.5,False,DAL,SEA
+13697,2023,13,Green Bay Packers,Kansas City Chiefs,KC,-6.0,44,False,GB,KC
+13698,2023,13,Houston Texans,Denver Broncos,HOU,-3.0,47,False,HOU,DEN
+13699,2023,13,Los Angeles Rams,Cleveland Browns,LAR,-3.5,39.5,False,LAR,CLE
+13700,2023,13,New England Patriots,Los Angeles Chargers,LAC,-4.5,39,False,NE,LAC
+13701,2023,13,New Orleans Saints,Detroit Lions,DET,-4.0,47.5,False,NO,DET
+13702,2023,13,New York Jets,Atlanta Falcons,ATL,-2.0,33,False,NYJ,ATL
+13703,2023,13,Philadelphia Eagles,San Francisco 49ers,SF,-3.0,46.5,False,PHI,SF
+13704,2023,13,Pittsburgh Steelers,Arizona Cardinals,PIT,-6.0,41,False,PIT,ARI
+13705,2023,13,Tampa Bay Buccaneers,Carolina Panthers,TB,-3.5,36.5,False,TB,CAR
+13706,2023,13,Tennessee Titans,Indianapolis Colts,IND,-1.0,42,False,TEN,IND
+13707,2023,13,Washington Commanders,Miami Dolphins,MIA,-9.0,49.5,False,WAS,MIA
+13708,2023,13,Jacksonville Jaguars,Cincinnati Bengals,JAX,-10.0,41,False,JAX,CIN
+13709,2023,14,Pittsburgh Steelers,New England Patriots,PIT,-5.0,30.5,False,PIT,NE
+13710,2023,14,Atlanta Falcons,Tampa Bay Buccaneers,ATL,-1.5,41.5,False,ATL,TB
+13711,2023,14,Baltimore Ravens,Los Angeles Rams,BAL,-7.5,42,False,BAL,LAR
+13712,2023,14,Chicago Bears,Detroit Lions,DET,-3.0,44.5,False,CHI,DET
+13713,2023,14,Cincinnati Bengals,Indianapolis Colts,CIN,-3.0,44.5,False,CIN,IND
+13714,2023,14,Cleveland Browns,Jacksonville Jaguars,CLE,-2.0,37.5,False,CLE,JAX
+13715,2023,14,Dallas Cowboys,Philadelphia Eagles,DAL,-3.5,52.5,False,DAL,PHI
+13716,2023,14,Kansas City Chiefs,Buffalo Bills,KC,-2.0,49.5,False,KC,BUF
+13717,2023,14,Las Vegas Raiders,Minnesota Vikings,MIN,-3.0,40.5,False,LVR,MIN
+13718,2023,14,Los Angeles Chargers,Denver Broncos,LAC,-3.0,46,False,LAC,DEN
+13719,2023,14,New Orleans Saints,Carolina Panthers,NO,-5.0,39,False,NO,CAR
+13720,2023,14,New York Jets,Houston Texans,HOU,-3.0,33.5,False,NYJ,HOU
+13721,2023,14,San Francisco 49ers,Seattle Seahawks,SF,-14.5,44.5,False,SF,SEA
+13722,2023,14,Miami Dolphins,Tennessee Titans,MIA,-13.5,45,False,MIA,TEN
+13723,2023,14,New York Giants,Green Bay Packers,GB,-5.5,37,False,NYG,GB
+13724,2023,15,Las Vegas Raiders,Los Angeles Chargers,LVR,-3.0,35.5,False,LVR,LAC
+13725,2023,15,Cincinnati Bengals,Minnesota Vikings,CIN,-3.0,41,False,CIN,MIN
+13726,2023,15,Detroit Lions,Denver Broncos,DET,-5.0,49,False,DET,DEN
+13727,2023,15,Indianapolis Colts,Pittsburgh Steelers,IND,-1.0,41.5,False,IND,PIT
+13728,2023,15,Arizona Cardinals,San Francisco 49ers,SF,-11.5,48.5,False,ARI,SF
+13729,2023,15,Buffalo Bills,Dallas Cowboys,BUF,-2.5,49,False,BUF,DAL
+13730,2023,15,Carolina Panthers,Atlanta Falcons,ATL,-2.5,32,False,CAR,ATL
+13731,2023,15,Cleveland Browns,Chicago Bears,CLE,-3.0,37.5,False,CLE,CHI
+13732,2023,15,Green Bay Packers,Tampa Bay Buccaneers,GB,-4.0,41.5,False,GB,TB
+13733,2023,15,Jacksonville Jaguars,Baltimore Ravens,JAX,-4.0,42.5,False,JAX,BAL
+13734,2023,15,Los Angeles Rams,Washington Commanders,LAR,-6.5,48.5,False,LAR,WAS
+13735,2023,15,Miami Dolphins,New York Jets,MIA,-7.0,35.5,False,MIA,NYJ
+13736,2023,15,New England Patriots,Kansas City Chiefs,KC,-9.5,39.5,False,NE,KC
+13737,2023,15,New Orleans Saints,New York Giants,NO,-6.0,39.5,False,NO,NYG
+13738,2023,15,Tennessee Titans,Houston Texans,TEN,-3.0,38,False,TEN,HOU
+13739,2023,15,Seattle Seahawks,Philadelphia Eagles,PHI,-4.0,46.5,False,SEA,PHI
+13740,2023,16,Los Angeles Rams,New Orleans Saints,LAR,-4.0,45,False,LAR,NO
+13741,2023,16,Los Angeles Chargers,Buffalo Bills,BUF,-12.5,44.5,False,LAC,BUF
+13742,2023,16,Pittsburgh Steelers,Cincinnati Bengals,CIN,-3.0,39,False,PIT,CIN
+13743,2023,16,Atlanta Falcons,Indianapolis Colts,ATL,-2.5,44.5,False,ATL,IND
+13744,2023,16,Carolina Panthers,Green Bay Packers,GB,-3.5,38.5,False,CAR,GB
+13745,2023,16,Chicago Bears,Arizona Cardinals,CHI,-4.5,42,False,CHI,ARI
+13746,2023,16,Denver Broncos,New England Patriots,DEN,-7.0,37.5,False,DEN,NE
+13747,2023,16,Houston Texans,Cleveland Browns,CLE,-3.0,40,False,HOU,CLE
+13748,2023,16,Miami Dolphins,Dallas Cowboys,MIA,-1.5,48.5,False,MIA,DAL
+13749,2023,16,Minnesota Vikings,Detroit Lions,DET,-2.5,47.5,False,MIN,DET
+13750,2023,16,New York Jets,Washington Commanders,NYJ,-3.0,37,False,NYJ,WAS
+13751,2023,16,Tampa Bay Buccaneers,Jacksonville Jaguars,JAX,-2.0,43,False,TB,JAX
+13752,2023,16,Tennessee Titans,Seattle Seahawks,SEA,-3.0,42,False,TEN,SEA
+13753,2023,16,Kansas City Chiefs,Las Vegas Raiders,KC,-11.0,40.5,False,KC,LVR
+13754,2023,16,Philadelphia Eagles,New York Giants,PHI,-14.0,41.5,False,PHI,NYG
+13755,2023,16,San Francisco 49ers,Baltimore Ravens,SF,-6.5,47.5,False,SF,BAL
+13756,2023,17,Cleveland Browns,New York Jets,CLE,-7.0,33.5,False,CLE,NYJ
+13757,2023,17,Dallas Cowboys,Detroit Lions,DAL,-4.0,53,False,DAL,DET
+13758,2023,17,Baltimore Ravens,Miami Dolphins,BAL,-3.0,46.5,False,BAL,MIA
+13759,2023,17,Buffalo Bills,New England Patriots,BUF,-14.5,40,False,BUF,NE
+13760,2023,17,Chicago Bears,Atlanta Falcons,CHI,-2.5,39,False,CHI,ATL
+13761,2023,17,Denver Broncos,Los Angeles Chargers,DEN,-3.5,39,False,DEN,LAC
+13762,2023,17,Houston Texans,Tennessee Titans,HOU,-5.0,44,False,HOU,TEN
+13763,2023,17,Indianapolis Colts,Las Vegas Raiders,IND,-3.5,42,False,IND,LVR
+13764,2023,17,Jacksonville Jaguars,Carolina Panthers,JAX,-3.5,37.5,False,JAX,CAR
+13765,2023,17,Kansas City Chiefs,Cincinnati Bengals,KC,-7.0,46.5,False,KC,CIN
+13766,2023,17,Minnesota Vikings,Green Bay Packers,MIN,-1.0,42.5,False,MIN,GB
+13767,2023,17,New York Giants,Los Angeles Rams,LAR,-6.0,43.5,False,NYG,LAR
+13768,2023,17,Philadelphia Eagles,Arizona Cardinals,PHI,-12.5,48,False,PHI,ARI
+13769,2023,17,Seattle Seahawks,Pittsburgh Steelers,SEA,-4.0,40.5,False,SEA,PIT
+13770,2023,17,Tampa Bay Buccaneers,New Orleans Saints,TB,-2.5,42.5,False,TB,NO
+13771,2023,17,Washington Commanders,San Francisco 49ers,SF,-14.0,48.5,False,WAS,SF
+13772,2023,18,Baltimore Ravens,Pittsburgh Steelers,PIT,-3.0,34,False,BAL,PIT
+13773,2023,18,Arizona Cardinals,Seattle Seahawks,SEA,-3.0,48,False,ARI,SEA
+13774,2023,18,Carolina Panthers,Tampa Bay Buccaneers,TB,-4.5,36.5,False,CAR,TB
+13775,2023,18,Cincinnati Bengals,Cleveland Browns,CIN,-7.0,37,False,CIN,CLE
+13776,2023,18,Detroit Lions,Minnesota Vikings,DET,-4.0,47.5,False,DET,MIN
+13777,2023,18,Green Bay Packers,Chicago Bears,GB,-2.5,46,False,GB,CHI
+13778,2023,18,Indianapolis Colts,Houston Texans,HOU,-1.0,47.5,False,IND,HOU
+13779,2023,18,Las Vegas Raiders,Denver Broncos,LVR,-3.5,37.5,False,LVR,DEN
+13780,2023,18,Los Angeles Chargers,Kansas City Chiefs,LAC,-3.5,35,False,LAC,KC
+13781,2023,18,Miami Dolphins,Buffalo Bills,BUF,-2.5,48,False,MIA,BUF
+13782,2023,18,New England Patriots,New York Jets,NE,-2.0,28.5,False,NE,NYJ
+13783,2023,18,New Orleans Saints,Atlanta Falcons,NO,-3.0,41.5,False,NO,ATL
+13784,2023,18,New York Giants,Philadelphia Eagles,PHI,-5.0,43.5,False,NYG,PHI
+13785,2023,18,San Francisco 49ers,Los Angeles Rams,SF,-5.5,40,False,SF,LAR
+13786,2023,18,Tennessee Titans,Jacksonville Jaguars,JAX,-3.5,41.5,False,TEN,JAX
+13787,2023,18,Washington Commanders,Dallas Cowboys,DAL,-13.0,47.5,False,WAS,DAL
+13788,2023,Wildcard,Houston Texans,Cleveland Browns,CLE,-2.5,45,True,HOU,CLE
+13789,2023,Wildcard,Kansas City Chiefs,Miami Dolphins,KC,-4.5,43.5,True,KC,MIA
+13790,2023,Wildcard,Dallas Cowboys,Green Bay Packers,DAL,-7.0,52.5,True,DAL,GB
+13791,2023,Wildcard,Detroit Lions,Los Angeles Rams,DET,-3.0,53,True,DET,LAR
+13792,2023,Wildcard,Buffalo Bills,Pittsburgh Steelers,BUF,-9.0,33,True,BUF,PIT
+13793,2023,Wildcard,Tampa Bay Buccaneers,Philadelphia Eagles,PHI,-3.0,43,True,TB,PHI
+13794,2023,Division,Baltimore Ravens,Houston Texans,BAL,-10.0,44,True,BAL,HOU
+13795,2023,Division,San Francisco 49ers,Green Bay Packers,SF,-10.0,50.5,True,SF,GB
+13796,2023,Division,Buffalo Bills,Kansas City Chiefs,BUF,-2.5,46,True,BUF,KC
+13797,2023,Division,Detroit Lions,Tampa Bay Buccaneers,DET,-6.0,49.5,True,DET,TB
+13798,2023,Conference,Baltimore Ravens,Kansas City Chiefs,BAL,-4.5,44,True,BAL,KC
+13799,2023,Conference,San Francisco 49ers,Detroit Lions,SF,-7.5,53.5,True,SF,DET
+13800,2023,Superbowl,Kansas City Chiefs,San Francisco 49ers,SF,-2.0,47,True,KC,SF
+13801,2024,1,Kansas City Chiefs,Baltimore Ravens,KC,-3.0,47,False,KC,BAL
+13802,2024,1,Philadelphia Eagles,Green Bay Packers,PHI,-2.0,49.5,False,PHI,GB
+13803,2024,1,Atlanta Falcons,Pittsburgh Steelers,ATL,-3.5,42,False,ATL,PIT
+13804,2024,1,Buffalo Bills,Arizona Cardinals,BUF,-6.5,46.5,False,BUF,ARI
+13805,2024,1,Chicago Bears,Tennessee Titans,CHI,-4.0,44.5,False,CHI,TEN
+13806,2024,1,Cincinnati Bengals,New England Patriots,CIN,-8.0,41,False,CIN,NE
+13807,2024,1,Cleveland Browns,Dallas Cowboys,CLE,-2.5,41,False,CLE,DAL
+13808,2024,1,Detroit Lions,Los Angeles Rams,DET,-4.5,52.5,False,DET,LAR
+13809,2024,1,Indianapolis Colts,Houston Texans,HOU,-3.0,48.5,False,IND,HOU
+13810,2024,1,Los Angeles Chargers,Las Vegas Raiders,LAC,-3.0,40,False,LAC,LVR
+13811,2024,1,Miami Dolphins,Jacksonville Jaguars,MIA,-3.5,49,False,MIA,JAX
+13812,2024,1,New Orleans Saints,Carolina Panthers,NO,-4.0,41.5,False,NO,CAR
+13813,2024,1,New York Giants,Minnesota Vikings,MIN,-1.5,41,False,NYG,MIN
+13814,2024,1,Seattle Seahawks,Denver Broncos,SEA,-6.0,42,False,SEA,DEN
+13815,2024,1,Tampa Bay Buccaneers,Washington Commanders,TB,-3.5,42.5,False,TB,WAS
+13816,2024,1,San Francisco 49ers,New York Jets,SF,-3.5,43.5,False,SF,NYJ
+13817,2024,2,Miami Dolphins,Buffalo Bills,MIA,-2.5,48.5,False,MIA,BUF
+13818,2024,2,Arizona Cardinals,Los Angeles Rams,ARI,-1.0,47.5,False,ARI,LAR
+13819,2024,2,Baltimore Ravens,Las Vegas Raiders,BAL,-8.5,41.5,False,BAL,LVR
+13820,2024,2,Carolina Panthers,Los Angeles Chargers,LAC,-4.5,38.5,False,CAR,LAC
+13821,2024,2,Dallas Cowboys,New Orleans Saints,DAL,-6.5,47,False,DAL,NO
+13822,2024,2,Denver Broncos,Pittsburgh Steelers,PIT,-2.5,36.5,False,DEN,PIT
+13823,2024,2,Detroit Lions,Tampa Bay Buccaneers,DET,-7.5,51.5,False,DET,TB
+13824,2024,2,Green Bay Packers,Indianapolis Colts,IND,-2.5,41.5,False,GB,IND
+13825,2024,2,Houston Texans,Chicago Bears,HOU,-6.0,45.5,False,HOU,CHI
+13826,2024,2,Jacksonville Jaguars,Cleveland Browns,JAX,-3.0,41.5,False,JAX,CLE
+13827,2024,2,Kansas City Chiefs,Cincinnati Bengals,KC,-6.5,47.5,False,KC,CIN
+13828,2024,2,Minnesota Vikings,San Francisco 49ers,SF,-4.5,46.5,False,MIN,SF
+13829,2024,2,New England Patriots,Seattle Seahawks,SEA,-3.0,38.5,False,NE,SEA
+13830,2024,2,Tennessee Titans,New York Jets,NYJ,-4.0,41.5,False,TEN,NYJ
+13831,2024,2,Washington Commanders,New York Giants,WAS,-1.5,42.5,False,WAS,NYG
+13832,2024,2,Philadelphia Eagles,Atlanta Falcons,PHI,-5.5,46.5,False,PHI,ATL
+13833,2024,3,New York Jets,New England Patriots,NJY,-6.0,39,False,NYJ,NE
+13834,2024,3,Arizona Cardinals,Detroit Lions,DET,-3.0,51.5,False,ARI,DET
+13835,2024,3,Atlanta Falcons,Kansas City Chiefs,KC,-3.5,46.5,False,ATL,KC
+13836,2024,3,Cleveland Browns,New York Giants,CLE,-6.5,38,False,CLE,NYG
+13837,2024,3,Dallas Cowboys,Baltimore Ravens,BAL,-1.5,47.5,False,DAL,BAL
+13838,2024,3,Indianapolis Colts,Chicago Bears,IND,-1.5,43.5,False,IND,CHI
+13839,2024,3,Las Vegas Raiders,Carolina Panthers,LVR,-5.5,40,False,LVR,CAR
+13840,2024,3,Los Angeles Rams,San Francisco 49ers,SF,-6.0,44.5,False,LAR,SF
+13841,2024,3,Minnesota Vikings,Houston Texans,HOU,-2.0,46.5,False,MIN,HOU
+13842,2024,3,New Orleans Saints,Philadelphia Eagles,NO,-2.5,49.5,False,NO,PHI
+13843,2024,3,Pittsburgh Steelers,Los Angeles Chargers,PIT,-2.5,35.5,False,PIT,LAC
+13844,2024,3,Seattle Seahawks,Miami Dolphins,SEA,-4.0,41.5,False,SEA,MIA
+13845,2024,3,Tampa Bay Buccaneers,Denver Broncos,TB,-6.0,40.5,False,TB,DEN
+13846,2024,3,Tennessee Titans,Green Bay Packers,TEN,-3.0,37,False,TEN,GB
+13847,2024,3,Buffalo Bills,Jacksonville Jaguars,BUF,-4.0,46.5,False,BUF,JAX
+13848,2024,3,Cincinnati Bengals,Washington Commanders,CIN,-7.5,46,False,CIN,WAS
+13849,2024,4,New York Giants,Dallas Cowboys,DAL,-5.0,44.5,False,NYG,DAL
+13850,2024,4,Arizona Cardinals,Washington Commanders,ARI,-3.5,48.5,False,ARI,WAS
+13851,2024,4,Atlanta Falcons,New Orleans Saints,ATL,-2.5,42.5,False,ATL,NO
+13852,2024,4,Baltimore Ravens,Buffalo Bills,BAL,-2.5,47.5,False,BAL,BUF
+13853,2024,4,Carolina Panthers,Cincinnati Bengals,CIN,-4.5,47,False,CAR,CIN
+13854,2024,4,Chicago Bears,Los Angeles Rams,CHI,-3.0,40.5,False,CHI,LAR
+13855,2024,4,Green Bay Packers,Minnesota Vikings,GB,-2.5,44.5,False,GB,MIN
+13856,2024,4,Houston Texans,Jacksonville Jaguars,HOU,-5.5,44.5,False,HOU,JAX
+13857,2024,4,Indianapolis Colts,Pittsburgh Steelers,PIT,-2.5,40.5,False,IND,PIT
+13858,2024,4,Las Vegas Raiders,Cleveland Browns,CLE,-2.5,37,False,LVR,CLE
+13859,2024,4,Los Angeles Chargers,Kansas City Chiefs,KC,-7.0,41.5,False,LAC,KC
+13860,2024,4,New York Jets,Denver Broncos,NYJ,-8.0,39.5,False,NYJ,DEN
+13861,2024,4,San Francisco 49ers,New England Patriots,SF,-10.5,41.5,False,SF,NE
+13862,2024,4,Tampa Bay Buccaneers,Philadelphia Eagles,PHI,-1.0,42.5,False,TB,PHI
+13863,2024,4,Detroit Lions,Seattle Seahawks,DET,-4.0,47,False,DET,SEA
+13864,2024,4,Miami Dolphins,Tennessee Titans,MIA,-2.5,38,False,MIA,TEN
+13865,2024,5,Atlanta Falcons,Tampa Bay Buccaneers,ATL,-2.5,44,False,ATL,TB
+13866,2024,5,Chicago Bears,Carolina Panthers,CHI,-4.0,40.5,False,CHI,CAR
+13867,2024,5,Cincinnati Bengals,Baltimore Ravens,BAL,-2.5,48,False,CIN,BAL
+13868,2024,5,Denver Broncos,Las Vegas Raiders,DEN,-3.0,36,False,DEN,LVR
+13869,2024,5,Houston Texans,Buffalo Bills,HOU,-1.0,47.5,False,HOU,BUF
+13870,2024,5,Jacksonville Jaguars,Indianapolis Colts,JAX,-3.5,45,False,JAX,IND
+13871,2024,5,Los Angeles Rams,Green Bay Packers,GB,-3.0,49.5,False,LAR,GB
+13872,2024,5,Minnesota Vikings,New York Jets,MIN,-2.5,42,False,MIN,NYJ
+13873,2024,5,New England Patriots,Miami Dolphins,MIA,-2.0,37,False,NE,MIA
+13874,2024,5,Pittsburgh Steelers,Dallas Cowboys,PIT,-2.5,44,False,PIT,DAL
+13875,2024,5,San Francisco 49ers,Arizona Cardinals,SF,-7.0,49,False,SF,ARI
+13876,2024,5,Seattle Seahawks,New York Giants,SEA,-7.0,42.5,False,SEA,NYG
+13877,2024,5,Washington Commanders,Cleveland Browns,WAS,-3.0,44,False,WAS,CLE
+13878,2024,5,Kansas City Chiefs,New Orleans Saints,KC,-5.5,43,False,KC,NO
+13879,2024,6,Seattle Seahawks,San Francisco 49ers,SF,-3.5,48.5,False,SEA,SF
+13880,2024,6,Baltimore Ravens,Washington Commanders,BAL,-7.0,51,False,BAL,WAS
+13881,2024,6,Carolina Panthers,Atlanta Falcons,ATL,-6.0,46,False,CAR,ATL
+13882,2024,6,Chicago Bears,Jacksonville Jaguars,JAX,-1.5,44.5,False,CHI,JAX
+13883,2024,6,Dallas Cowboys,Detroit Lions,DET,-3.5,53.5,False,DAL,DET
+13884,2024,6,Denver Broncos,Los Angeles Chargers,LAC,-3.0,36.5,False,DEN,LAC
+13885,2024,6,Green Bay Packers,Arizona Cardinals,GB,-5.5,47,False,GB,ARI
+13886,2024,6,Las Vegas Raiders,Pittsburgh Steelers,PIT,-3.0,36.5,False,LVR,PIT
+13887,2024,6,New England Patriots,Houston Texans,HOU,-6.5,38,False,NE,HOU
+13888,2024,6,New Orleans Saints,Tampa Bay Buccaneers,TB,-3.5,42.5,False,NO,TB
+13889,2024,6,New York Giants,Cincinnati Bengals,CIN,-4.0,46.5,False,NYG,CIN
+13890,2024,6,Philadelphia Eagles,Cleveland Browns,PHI,-8.5,42,False,PHI,CLE
+13891,2024,6,Tennessee Titans,Indianapolis Colts,TEN,-2.5,42.5,False,TEN,IND
+13892,2024,6,New York Jets,Buffalo Bills,BUF,-1.0,41,False,NYJ,BUF
+13893,2024,7,New Orleans Saints,Denver Broncos,DEN,-3.0,37,False,NO,DEN
+13894,2024,7,Atlanta Falcons,Seattle Seahawks,ATL,-3.0,51.5,False,ATL,SEA
+13895,2024,7,Buffalo Bills,Tennessee Titans,BUF,-9.5,41,False,BUF,TEN
+13896,2024,7,Cleveland Browns,Cincinnati Bengals,CIN,-5.5,41.5,False,CLE,CIN
+13897,2024,7,Green Bay Packers,Houston Texans,GB,-3.0,48,False,GB,HOU
+13898,2024,7,Indianapolis Colts,Miami Dolphins,IND,-3.0,44,False,IND,MIA
+13899,2024,7,Jacksonville Jaguars,New England Patriots,JAX,-7.0,42.5,False,JAX,NE
+13900,2024,7,Los Angeles Rams,Las Vegas Raiders,LAR,-7.0,43.5,False,LAR,LVR
+13901,2024,7,Minnesota Vikings,Detroit Lions,MIN,-1.0,50.5,False,MIN,DET
+13902,2024,7,New York Giants,Philadelphia Eagles,PHI,-3.0,42,False,NYG,PHI
+13903,2024,7,Pittsburgh Steelers,New York Jets,NYJ,-2.5,40.5,False,PIT,NYJ
+13904,2024,7,San Francisco 49ers,Kansas City Chiefs,SF,-2.5,48,False,SF,KC
+13905,2024,7,Washington Commanders,Carolina Panthers,WAS,-10.0,51,False,WAS,CAR
+13906,2024,7,Arizona Cardinals,Los Angeles Chargers,LAC,-1.0,44.5,False,ARI,LAC
+13907,2024,7,Tampa Bay Buccaneers,Baltimore Ravens,BAL,-4.0,51,False,TB,BAL
+13908,2024,8,Los Angeles Rams,Minnesota Vikings,MIN,-3.0,47,False,LAR,MIN
+13909,2024,8,Cincinnati Bengals,Philadelphia Eagles,CIN,-2.5,47.5,False,CIN,PHI
+13910,2024,8,Cleveland Browns,Baltimore Ravens,BAL,-7.5,44.5,False,CLE,BAL
+13911,2024,8,Denver Broncos,Carolina Panthers,DEN,-13.0,40.5,False,DEN,CAR
+13912,2024,8,Detroit Lions,Tennessee Titans,DET,-12.0,45,False,DET,TEN
+13913,2024,8,Houston Texans,Indianapolis Colts,HOU,-4.5,45,False,HOU,IND
+13914,2024,8,Jacksonville Jaguars,Green Bay Packers,GB,-3.5,49,False,JAX,GB
+13915,2024,8,Las Vegas Raiders,Kansas City Chiefs,KC,-8.5,43,False,LVR,KC
+13916,2024,8,Los Angeles Chargers,New Orleans Saints,LAC,-7.0,41.5,False,LAC,NO
+13917,2024,8,Miami Dolphins,Arizona Cardinals,MIA,-4.0,46.5,False,MIA,ARI
+13918,2024,8,New England Patriots,New York Jets,NYJ,-7.0,41,False,NE,NYJ
+13919,2024,8,San Francisco 49ers,Dallas Cowboys,SF,-5.5,47.5,False,SF,DAL
+13920,2024,8,Seattle Seahawks,Buffalo Bills,BUF,-3.0,45,False,SEA,BUF
+13921,2024,8,Tampa Bay Buccaneers,Atlanta Falcons,ATL,-1.5,46.5,False,TB,ATL
+13922,2024,8,Washington Commanders,Chicago Bears,WAS,-1.5,46.5,False,WAS,CHI
+13923,2024,8,Pittsburgh Steelers,New York Giants,PIT,-6.0,37.5,False,PIT,NYG
+13924,2024,9,New York Jets,Houston Texans,NYJ,-2.5,43,False,NYJ,HOU
+13925,2024,9,Arizona Cardinals,Chicago Bears,ARI,-1.5,44.5,False,ARI,CHI
+13926,2024,9,Atlanta Falcons,Dallas Cowboys,ATL,-3.0,52,False,ATL,DAL
+13927,2024,9,Baltimore Ravens,Denver Broncos,BAL,-9.0,46.5,False,BAL,DEN
+13928,2024,9,Buffalo Bills,Miami Dolphins,BUF,-6.0,49,False,BUF,MIA
+13929,2024,9,Carolina Panthers,New Orleans Saints,NO,-7.0,43.5,False,CAR,NO
+13930,2024,9,Cincinnati Bengals,Las Vegas Raiders,CIN,-7.5,45,False,CIN,LVR
+13931,2024,9,Cleveland Browns,Los Angeles Chargers,LAC,-2.0,42.5,False,CLE,LAC
+13932,2024,9,Green Bay Packers,Detroit Lions,DET,-2.5,48.5,False,GB,DET
+13933,2024,9,Minnesota Vikings,Indianapolis Colts,MIN,-6.0,47,False,MIN,IND
+13934,2024,9,New York Giants,Washington Commanders,WAS,-4.0,44,False,NYG,WAS
+13935,2024,9,Philadelphia Eagles,Jacksonville Jaguars,PHI,-7.5,46,False,PHI,JAX
+13936,2024,9,Seattle Seahawks,Los Angeles Rams,LAR,-1.5,48.5,False,SEA,LAR
+13937,2024,9,Tennessee Titans,New England Patriots,TEN,-3.5,38,False,TEN,NE
+13938,2024,9,Kansas City Chiefs,Tampa Bay Buccaneers,KC,-9.0,45.5,False,KC,TB
+13939,2024,10,Baltimore Ravens,Cincinnati Bengals,BAL,-6.0,52.5,False,BAL,CIN
+13940,2024,10,Arizona Cardinals,New York Jets,NYJ,-2.0,46,False,ARI,NYJ
+13941,2024,10,Carolina Panthers,New York Giants,NYG,-6.5,40.5,False,CAR,NYG
+13942,2024,10,Chicago Bears,New England Patriots,CHI,-6.0,37.5,False,CHI,NE
+13943,2024,10,Dallas Cowboys,Philadelphia Eagles,PHI,-7.0,44.5,False,DAL,PHI
+13944,2024,10,Houston Texans,Detroit Lions,DET,-4.0,49,False,HOU,DET
+13945,2024,10,Indianapolis Colts,Buffalo Bills,BUF,-4.5,47,False,IND,BUF
+13946,2024,10,Jacksonville Jaguars,Minnesota Vikings,MIN,-7.0,42.5,False,JAX,MIN
+13947,2024,10,Kansas City Chiefs,Denver Broncos,KC,-7.0,42.5,False,KC,DEN
+13948,2024,10,Los Angeles Chargers,Tennessee Titans,LAC,-8.0,40,False,LAC,TEN
+13949,2024,10,New Orleans Saints,Atlanta Falcons,ATL,-3.5,47.5,False,NO,ATL
+13950,2024,10,Tampa Bay Buccaneers,San Francisco 49ers,SF,-6.5,50,False,TB,SF
+13951,2024,10,Washington Commanders,Pittsburgh Steelers,WAS,-2.0,45,False,WAS,PIT
+13952,2024,10,Los Angeles Rams,Miami Dolphins,LAR,-2.0,49.5,False,LAR,MIA
+13953,2024,11,Philadelphia Eagles,Washington Commanders,PHI,-4.0,49.5,False,PHI,WAS
+13954,2024,11,Buffalo Bills,Kansas City Chiefs,BUF,-2.5,47,False,BUF,KC
+13955,2024,11,Chicago Bears,Green Bay Packers,GB,-6.0,41,False,CHI,GB
+13956,2024,11,Denver Broncos,Atlanta Falcons,DEN,-2.0,44.5,False,DEN,ATL
+13957,2024,11,Detroit Lions,Jacksonville Jaguars,DET,-13.5,47.5,False,DET,JAX
+13958,2024,11,Los Angeles Chargers,Cincinnati Bengals,LAC,-1.0,48,False,LAC,CIN
+13959,2024,11,Miami Dolphins,Las Vegas Raiders,MIA,-7.5,43.5,False,MIA,LVR
+13960,2024,11,New England Patriots,Los Angeles Rams,LAR,-4.0,43,False,NE,LAR
+13961,2024,11,New Orleans Saints,Cleveland Browns,CLE,-1.0,44,False,NO,CLE
+13962,2024,11,New York Jets,Indianapolis Colts,NYJ,-4.0,43,False,NYJ,IND
+13963,2024,11,Pittsburgh Steelers,Baltimore Ravens,BAL,-3.0,48,False,PIT,BAL
+13964,2024,11,San Francisco 49ers,Seattle Seahawks,SF,-6.0,49,False,SF,SEA
+13965,2024,11,Tennessee Titans,Minnesota Vikings,MIN,-6.0,40,False,TEN,MIN
+13966,2024,11,Dallas Cowboys,Houston Texans,HOU,-7.0,41.5,False,DAL,HOU
+13967,2024,12,Cleveland Browns,Pittsburgh Steelers,PIT,-3.5,36.5,False,CLE,PIT
+13968,2024,12,Carolina Panthers,Kansas City Chiefs,KC,-10.5,43,False,CAR,KC
+13969,2024,12,Chicago Bears,Minnesota Vikings,MIN,-3.0,39.5,False,CHI,MIN
+13970,2024,12,Green Bay Packers,San Francisco 49ers,GB,-6.0,44.5,False,GB,SF
+13971,2024,12,Houston Texans,Tennessee Titans,HOU,-8.0,40.5,False,HOU,TEN
+13972,2024,12,Indianapolis Colts,Detroit Lions,DET,-7.0,50.5,False,IND,DET
+13973,2024,12,Las Vegas Raiders,Denver Broncos,DEN,-5.5,41.5,False,LVR,DEN
+13974,2024,12,Los Angeles Rams,Philadelphia Eagles,PHI,-3.0,48.5,False,LAR,PHI
+13975,2024,12,Miami Dolphins,New England Patriots,MIA,-7.5,45.5,False,MIA,NE
+13976,2024,12,New York Giants,Tampa Bay Buccaneers,TB,-6.0,40,False,NYG,TB
+13977,2024,12,Seattle Seahawks,Arizona Cardinals,ARI,-1.0,46.5,False,SEA,ARI
+13978,2024,12,Washington Commanders,Dallas Cowboys,WAS,-10.5,44.5,False,WAS,DAL
+13979,2024,12,Los Angeles Chargers,Baltimore Ravens,BAL,-3.0,51,False,LAC,BAL
+13980,2024,13,Dallas Cowboys,New York Giants,DAL,-4.0,38.5,False,DAL,NYG
+13981,2024,13,Detroit Lions,Chicago Bears,DET,-10.0,48,False,DET,CHI
+13982,2024,13,Green Bay Packers,Miami Dolphins,GB,-3.5,47.5,False,GB,MIA
+13983,2024,13,Kansas City Chiefs,Las Vegas Raiders,KC,-13.5,42,False,KC,LVR
+13984,2024,13,Atlanta Falcons,Los Angeles Chargers,LAC,-1.0,47,False,ATL,LAC
+13985,2024,13,Baltimore Ravens,Philadelphia Eagles,BAL,-3.0,50,False,BAL,PHI
+13986,2024,13,Buffalo Bills,San Francisco 49ers,BUF,-6.5,45.5,False,BUF,SF
+13987,2024,13,Carolina Panthers,Tampa Bay Buccaneers,TB,-6.5,46,False,CAR,TB
+13988,2024,13,Cincinnati Bengals,Pittsburgh Steelers,CIN,-3.0,46,False,CIN,PIT
+13989,2024,13,Jacksonville Jaguars,Houston Texans,HOU,-3.0,45,False,JAX,HOU
+13990,2024,13,Minnesota Vikings,Arizona Cardinals,MIN,-3.5,45,False,MIN,ARI
+13991,2024,13,New England Patriots,Indianapolis Colts,IND,-2.5,41.5,False,NE,IND
+13992,2024,13,New Orleans Saints,Los Angeles Rams,LAR,-2.5,49,False,NO,LAR
+13993,2024,13,New York Jets,Seattle Seahawks,NYJ,-1.5,41.5,False,NYJ,SEA
+13994,2024,13,Washington Commanders,Tennessee Titans,WAS,-6.0,45,False,WAS,TEN
+13995,2024,13,Denver Broncos,Cleveland Browns,DEN,-6.5,41.5,False,DEN,CLE
+13996,2024,14,Detroit Lions,Green Bay Packers,DET,-3.5,52.5,False,DET,GB
+13997,2024,14,Arizona Cardinals,Seattle Seahawks,ARI,-3.0,45.5,False,ARI,SEA
+13998,2024,14,Kansas City Chiefs,Los Angeles Chargers,KC,-4.5,43,False,KC,LAC
+13999,2024,14,Los Angeles Rams,Buffalo Bills,BUF,-3.5,50.5,False,LAR,BUF
+14000,2024,14,Miami Dolphins,New York Jets,MIA,-6.5,45,False,MIA,NYJ
+14001,2024,14,Minnesota Vikings,Atlanta Falcons,MIN,-6.0,46.5,False,MIN,ATL
+14002,2024,14,New York Giants,New Orleans Saints,NO,-5.5,41,False,NYG,NO
+14003,2024,14,Philadelphia Eagles,Carolina Panthers,PHI,-14.0,45,False,PHI,CAR
+14004,2024,14,Pittsburgh Steelers,Cleveland Browns,PIT,-6.0,43,False,PIT,CLE
+14005,2024,14,San Francisco 49ers,Chicago Bears,SF,-3.0,43.5,False,SF,CHI
+14006,2024,14,Tampa Bay Buccaneers,Las Vegas Raiders,TB,-6.5,47,False,TB,LVR
+14007,2024,14,Tennessee Titans,Jacksonville Jaguars,TEN,-3.0,40.5,False,TEN,JAX
+14008,2024,14,Dallas Cowboys,Cincinnati Bengals,CIN,-4.5,50.5,False,DAL,CIN
+14009,2024,15,San Francisco 49ers,Los Angeles Rams,SF,-3.0,48.5,False,SF,LAR
+14010,2024,15,Arizona Cardinals,New England Patriots,ARI,-6.0,46.5,False,ARI,NE
+14011,2024,15,Carolina Panthers,Dallas Cowboys,CAR,-2.5,42,False,CAR,DAL
+14012,2024,15,Cleveland Browns,Kansas City Chiefs,KC,-4.0,41,False,CLE,KC
+14013,2024,15,Denver Broncos,Indianapolis Colts,DEN,-4.5,44,False,DEN,IND
+14014,2024,15,Detroit Lions,Buffalo Bills,DET,-2.0,55.5,False,DET,BUF
+14015,2024,15,Houston Texans,Miami Dolphins,HOU,-2.5,46,False,HOU,MIA
+14016,2024,15,Jacksonville Jaguars,New York Jets,NYJ,-3.5,41.5,False,JAX,NYJ
+14017,2024,15,Los Angeles Chargers,Tampa Bay Buccaneers,LAC,-3.0,46,False,LAC,TB
+14018,2024,15,New Orleans Saints,Washington Commanders,WAS,-7.5,44.5,False,NO,WAS
+14019,2024,15,New York Giants,Baltimore Ravens,BAL,-17.0,43.5,False,NYG,BAL
+14020,2024,15,Philadelphia Eagles,Pittsburgh Steelers,PHI,-5.5,43,False,PHI,PIT
+14021,2024,15,Seattle Seahawks,Green Bay Packers,GB,-3.0,48,False,SEA,GB
+14022,2024,15,Tennessee Titans,Cincinnati Bengals,CIN,-6.0,46,False,TEN,CIN
+14023,2024,15,Las Vegas Raiders,Atlanta Falcons,ATL,-6.0,44.5,False,LVR,ATL
+14024,2024,15,Minnesota Vikings,Chicago Bears,MIN,-7.0,43.5,False,MIN,CHI
+14025,2024,16,Los Angeles Chargers,Denver Broncos,LAC,-2.5,41.5,False,LAC,DEN
+14026,2024,16,Baltimore Ravens,Pittsburgh Steelers,BAL,-7.0,44,False,BAL,PIT
+14027,2024,16,Kansas City Chiefs,Houston Texans,KC,-3.5,42.5,False,KC,HOU
+14028,2024,16,Atlanta Falcons,New York Giants,ATL,-9.5,43,False,ATL,NYG
+14029,2024,16,Buffalo Bills,New England Patriots,BUF,-14.0,48,False,BUF,NE
+14030,2024,16,Carolina Panthers,Arizona Cardinals,ARI,-5.5,47,False,CAR,ARI
+14031,2024,16,Chicago Bears,Detroit Lions,DET,-7.0,47.5,False,CHI,DET
+14032,2024,16,Cincinnati Bengals,Cleveland Browns,CIN,-10.0,46.5,False,CIN,CLE
+14033,2024,16,Dallas Cowboys,Tampa Bay Buccaneers,TB,-4.5,47.5,False,DAL,TB
+14034,2024,16,Indianapolis Colts,Tennessee Titans,IND,-4.0,42.5,False,IND,TEN
+14035,2024,16,Las Vegas Raiders,Jacksonville Jaguars,LVR,-2.5,41.5,False,LVR,JAX
+14036,2024,16,Miami Dolphins,San Francisco 49ers,SF,-1.5,44,False,MIA,SF
+14037,2024,16,New York Jets,Los Angeles Rams,LAR,-3.0,47,False,NYJ,LAR
+14038,2024,16,Seattle Seahawks,Minnesota Vikings,MIN,-2.5,43,False,SEA,MIN
+14039,2024,16,Washington Commanders,Philadelphia Eagles,PHI,-4.0,47,False,WAS,PHI
+14040,2024,16,Green Bay Packers,New Orleans Saints,GB,-14.0,43.5,False,GB,NO
+14041,2024,17,Houston Texans,Baltimore Ravens,BAL,-6.5,47,False,HOU,BAL
+14042,2024,17,Pittsburgh Steelers,Kansas City Chiefs,KC,-2.0,46,False,PIT,KC
+14043,2024,17,Chicago Bears,Seattle Seahawks,SEA,-4.5,42,False,CHI,SEA
+14044,2024,17,Buffalo Bills,New York Jets,BUF,-10.0,44.5,False,BUF,NYJ
+14045,2024,17,Cincinnati Bengals,Denver Broncos,CIN,-3.0,50.5,False,CIN,DEN
+14046,2024,17,Los Angeles Rams,Arizona Cardinals,LAR,-6.5,48,False,LAR,ARI
+14047,2024,17,New England Patriots,Los Angeles Chargers,LAC,-6.0,42,False,NE,LAC
+14048,2024,17,Cleveland Browns,Miami Dolphins,MIA,-3.0,32.5,False,CLE,MIA
+14049,2024,17,Jacksonville Jaguars,Tennessee Titans,JAX,-1.0,38,False,JAX,TEN
+14050,2024,17,Minnesota Vikings,Green Bay Packers,MIN,-1.0,49,False,MIN,GB
+14051,2024,17,New Orleans Saints,Las Vegas Raiders,LVR,-1.5,37.5,False,NO,LVR
+14052,2024,17,New York Giants,Indianapolis Colts,IND,-7.5,40.5,False,NYG,IND
+14053,2024,17,Philadelphia Eagles,Dallas Cowboys,PHI,-7.5,37.5,False,PHI,DAL
+14054,2024,17,Tampa Bay Buccaneers,Carolina Panthers,TB,-10.0,47.5,False,TB,CAR
+14055,2024,17,Washington Commanders,Atlanta Falcons,WAS,-3.5,46.5,False,WAS,ATL
+14056,2024,17,San Francisco 49ers,Detroit Lions,DET,-4.0,50,False,SF,DET
+14057,2024,18,Baltimore Ravens,Cleveland Browns,BAL,-20.0,42,False,BAL,CLE
+14058,2024,18,Arizona Cardinals,San Francisco 49ers,ARI,-5.0,43,False,ARI,SF
+14059,2024,18,Atlanta Falcons,Carolina Panthers,ATL,-8.0,49,False,ATL,CAR
+14060,2024,18,Dallas Cowboys,Washington Commanders,WAS,-7.0,43.5,False,DAL,WAS
+14061,2024,18,Denver Broncos,Kansas City Chiefs,DEN,-11.0,40.5,False,DEN,KC
+14062,2024,18,Detroit Lions,Minnesota Vikings,DET,-3.0,56.5,False,DET,MIN
+14063,2024,18,Green Bay Packers,Chicago Bears,GB,-10.0,41.5,False,GB,CHI
+14064,2024,18,Indianapolis Colts,Jacksonville Jaguars,IND,-3.5,45.5,False,IND,JAX
+14065,2024,18,Las Vegas Raiders,Los Angeles Chargers,LAC,-7.0,42,False,LVR,LAC
+14066,2024,18,Los Angeles Rams,Seattle Seahawks,SEA,-7.5,38.5,False,LAR,SEA
+14067,2024,18,New England Patriots,Buffalo Bills,BUF,-3.5,36.5,False,NE,BUF
+14068,2024,18,New York Jets,Miami Dolphins,NYJ,-2.0,39.5,False,NYJ,MIA
+14069,2024,18,Philadelphia Eagles,New York Giants,PHI,-3.0,36,False,PHI,NYG
+14070,2024,18,Pittsburgh Steelers,Cincinnati Bengals,CIN,-2.5,48.5,False,PIT,CIN
+14071,2024,18,Tampa Bay Buccaneers,New Orleans Saints,TB,-14.5,44.5,False,TB,NO
+14072,2024,18,Tennessee Titans,Houston Texans,TEN,-2.5,36.5,False,TEN,HOU
+14073,2024,Wildcard,Houston Texans,Los Angeles Chargers,LAC,-2.5,42,True,HOU,LAC
+14074,2024,Wildcard,Baltimore Ravens,Pittsburgh Steelers,BAL,-9.0,44.5,True,BAL,PIT
+14075,2024,Wildcard,Buffalo Bills,Denver Broncos,BUF,-7.5,49,True,BUF,DEN
+14076,2024,Wildcard,Philadelphia Eagles,Green Bay Packers,PHI,-5.5,46,True,PHI,GB
+14077,2024,Wildcard,Tampa Bay Buccaneers,Washington Commanders,TB,-3.0,51.5,True,TB,WAS
+14078,2024,Wildcard,Los Angeles Rams,Minnesota Vikings,MIN,-2.5,48,True,LAR,MIN
+14079,2024,Division,Detroit Lions,Washington Commanders,DET,-8.0,55,True,DET,WAS
+14080,2024,Division,Kansas City Chiefs,Houston Texans,KC,-9.5,41.5,True,KC,HOU
+14081,2024,Division,Buffalo Bills,Baltimore Ravens,BAL,-1.5,52,True,BUF,BAL
+14082,2024,Division,Philadelphia Eagles,Los Angeles Rams,PHI,-7.0,43.5,True,PHI,LAR
+14083,2024,Conference,Philadelphia Eagles,Washington Commanders,PHI,-6.0,47,True,PHI,WAS
+14084,2024,Conference,Kansas City Chiefs,Buffalo Bills,KC,-1.0,49.5,True,KC,BUF
+14085,2024,Superbowl,Philadelphia Eagles,Kansas City Chiefs,KC,-1.0,48.5,True,PHI,KC
+14086,2025,1,Philadelphia Eagles,Dallas Cowboys,PHI,-8.5,47.5,False,PHI,DAL
+14087,2025,1,Los Angeles Chargers,Kansas City Chiefs,KC,-3.0,46.5,False,LAC,KC
+14088,2025,1,New Orleans Saints,Arizona Cardinals,ARI,-6.5,43.5,False,NO,ARI
+14089,2025,1,Atlanta Falcons,Tampa Bay Buccaneers,TB,-2.5,47.5,False,ATL,TB
+14090,2025,1,Jacksonville Jaguars,Carolina Panthers,JAX,-3.5,46.5,False,JAX,CAR
+14091,2025,1,Cleveland Browns,Cincinnati Bengals,CIN,-5.5,47.5,False,CLE,CIN
+14092,2025,1,Indianapolis Colts,Miami Dolphins,IND,-1.5,47.5,False,IND,MIA
+14093,2025,1,New England Patriots,Las Vegas Raiders,NE,-3.0,43.5,False,NE,LVR
+14094,2025,1,Washington Commanders,New York Giants,WAS,-6.0,45.5,False,WAS,NYG
+14095,2025,1,New York Jets,Pittsburgh Steelers,PIT,-3.0,38.5,False,NYJ,PIT
+14096,2025,1,Denver Broncos,Tennessee Titans,DEN,-8.5,42.5,False,DEN,TEN
+14097,2025,1,Seattle Seahawks,San Francisco 49ers,SF,-2.5,43.5,False,SEA,SF
+14098,2025,1,Green Bay Packers,Detroit Lions,GB,-2.5,47.5,False,GB,DET
+14099,2025,1,Los Angeles Rams,Houston Texans,LAR,-3.0,43.5,False,LAR,HOU
+14100,2025,1,Buffalo Bills,Baltimore Ravens,BUF,-1.5,50.5,False,BUF,BAL
+14101,2025,1,Chicago Bears,Minnesota Vikings,MIN,-1.5,43.5,False,CHI,MIN

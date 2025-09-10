@@ -169,6 +169,7 @@ LGBM_PARAM_DIST = {
 # [Feature engineering function from the original script is included here]
 def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df):
     """Engineers features from the raw data to improve model performance."""
+   
     df = pd.merge(df, redzone_df, on=['player_id', 'week', 'season'], how='left')
     #df = pd.merge(df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
     df = pd.merge(df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
@@ -178,19 +179,21 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
     df = pd.merge(df, depth_chart_df, on=['player_id', 'season', 'week'], how='left')
     df['depth_chart_rank'] = pd.to_numeric(df['depth_chart_rank'], errors='coerce').fillna(4).astype(int)
     
+    
 
-    df = pd.merge(df, snap_counts_df, on=['player_id', 'season', 'week'])
+    df = pd.merge(df, snap_counts_df, on=['merge_name', 'season', 'week'])
     df['offense_snap_share'].fillna(0, inplace=True)
+
 
     df = pd.merge(df, ngs_rushing_df, on=['player_id', 'season', 'week'], how='left')
     df = pd.merge(df, ngs_receiving_df, on=['player_id', 'season', 'week'], how='left')
 
     df.fillna(0, inplace=True)
-    df.sort_values(by=['player_id','season', 'week'], inplace=True)
+
+    df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
     
     
  
-
 
     player_stats = ['carries', 'rushing_yards', 'receptions', 'receiving_yards', 'wopr', 'rushing_epa', 'receiving_epa', 'target_share',
                       'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_carry_share', 'redzone_target_share',
@@ -208,6 +211,8 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
     # Assume no continuity for a player's first game in the dataset
     df['team_continuity'].fillna(0, inplace=True)
     df.drop(columns=['previous_team'], inplace=True)
+
+    
 
    
    
@@ -237,7 +242,9 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
     df.fillna(0, inplace=True)
     df['position_encoded'] = LabelEncoder().fit_transform(df['position'])
     df['opponent_encoded'] = LabelEncoder().fit_transform(df['opponent_team'])
+
     return df
+    
 
 
 
@@ -477,139 +484,6 @@ def train_model_on_all_data(df_position, features, best_rf_params, best_lgbm_par
 
 
 
-def simulate_betting_profitability(results_df, historical_odds_df, bet_size=10):
-    """
-    Simulates betting based on model edge and calculates profitability.
-
-    Args:
-        results_df (pd.DataFrame): DataFrame with model predictions ('predicted_prob') and outcomes.
-        historical_odds_df (pd.DataFrame): DataFrame with historical betting odds ('price').
-        bet_size (int): The size of each flat bet (e.g., 10 units).
-
-    Returns:
-        A DataFrame summarizing the weekly betting results.
-    """
-    print("\n" + "="*60 + f"\nSIMULATING BETTING PROFITABILITY (Bet Size: ${bet_size})\n" + "="*60)
-
-    # Merge model predictions with historical odds
-    # Note: Requires a clean way to merge player names
-    results_with_odds = pd.merge(results_df, historical_odds_df, on=['player_display_name', 'week'], how='left')
-    results_with_odds.dropna(subset=['price'], inplace=True)
-
-    # Calculate market-implied probability and model edge
-    prob_if_pos = 100 / (results_with_odds['price'] + 100)
-    prob_if_neg = abs(results_with_odds['price']) / (abs(results_with_odds['price']) + 100)
-    results_with_odds['market_implied_prob'] = np.where(results_with_odds['price'] > 0, prob_if_pos, prob_if_neg)
-    results_with_odds['model_edge'] = results_with_odds['predicted_prob'] - results_with_odds['market_implied_prob']
-
-    # Filter for bets where the model finds a positive edge
-    bets_to_place = results_with_odds[results_with_odds['model_edge'] > 0].copy()
-
-    def calculate_profit(row):
-        # Bet was a winner
-        if row['scored_touchdown'] == 1:
-            if row['price'] > 0:
-                # Positive odds
-                return bet_size * (row['price'] / 100.0)
-            else:
-                # Negative odds
-                return bet_size * (100.0 / abs(row['price']))
-        # Bet was a loser
-        else:
-            return -bet_size
-
-    if bets_to_place.empty:
-        print("No profitable bets found by the model.")
-        return pd.DataFrame()
-
-    bets_to_place['profit'] = bets_to_place.apply(calculate_profit, axis=1)
-
-    # Summarize results
-    weekly_summary = bets_to_place.groupby('week').agg(
-        num_bets=('profit', 'size'),
-        total_profit=('profit', 'sum')
-    ).reset_index()
-
-    total_profit = weekly_summary['total_profit'].sum()
-    total_wagered = weekly_summary['num_bets'].sum() * bet_size
-    roi = (total_profit / total_wagered) * 100 if total_wagered > 0 else 0
-
-    print("\n--- Weekly Betting Summary ---")
-    print(weekly_summary)
-    print("\n--- Overall Season Performance ---")
-    print(f"Total Bets Placed: {weekly_summary['num_bets'].sum()}")
-    print(f"Total Amount Wagered: ${total_wagered:.2f}")
-    print(f"Total Profit: ${total_profit:.2f}")
-    print(f"Return on Investment (ROI): {roi:.2f}%")
-    
-    return weekly_summary
-
-def simulate_top_k_profitability(results_df, historical_odds_df, position_list, top_k=10, bet_size=10):
-    """
-    Simulates betting on the top K players for a given position group each week.
-
-    Args:
-        results_df (pd.DataFrame): DataFrame with all model predictions and outcomes.
-        historical_odds_df (pd.DataFrame): DataFrame with historical betting odds.
-        position_list (list): The positions to include (e.g., ['RB'] or ['WR', 'TE']).
-        top_k (int): The number of top players to bet on each week.
-        bet_size (int): The size of each flat bet.
-    """
-    position_str = ' & '.join(position_list)
-    print("\n" + "="*60 + f"\nSIMULATING 'TOP {top_k}' BETTING FOR: {position_str} (Bet Size: ${bet_size})\n" + "="*60)
-
-    # 1. Filter for the specified positions and merge with odds
-    position_df = results_df[results_df['position'].isin(position_list)].copy()
-    results_with_odds = pd.merge(position_df, historical_odds_df, on=['player_display_name', 'week'], how='left')
-    results_with_odds.dropna(subset=['price'], inplace=True)
-
-    # 2. Identify the top K bets for each week
-    bets_to_place_list = []
-    for week in results_with_odds['week'].unique():
-        weekly_bets = results_with_odds[results_with_odds['week'] == week]
-        top_k_bets = weekly_bets.sort_values(by='predicted_prob', ascending=False).head(top_k)
-        bets_to_place_list.append(top_k_bets)
-    
-    if not bets_to_place_list:
-        print(f"No bets to place for position group: {position_str}")
-        return
-
-    bets_to_place = pd.concat(bets_to_place_list)
-
-    # 3. Define the profit calculation logic
-    def calculate_profit(row):
-        # Bet was a winner
-        if row['scored_touchdown'] == 1:
-            if row['price'] > 0:
-                return bet_size * (row['price'] / 100.0)
-            else:
-                return bet_size * (100.0 / abs(row['price']))
-        # Bet was a loser
-        else:
-            return -bet_size
-
-    bets_to_place['profit'] = bets_to_place.apply(calculate_profit, axis=1)
-
-    # 4. Summarize and print results
-    weekly_summary = bets_to_place.groupby('week').agg(
-        num_bets=('profit', 'size'),
-        total_profit=('profit', 'sum')
-    ).reset_index()
-
-    total_profit = weekly_summary['total_profit'].sum()
-    total_wagered = weekly_summary['num_bets'].sum() * bet_size
-    roi = (total_profit / total_wagered) * 100 if total_wagered > 0 else 0
-
-    print("\n--- Weekly Betting Summary ---")
-    print(weekly_summary)
-    print("\n--- Overall Season Performance ---")
-    print(f"Total Bets Placed: {weekly_summary['num_bets'].sum()}")
-    print(f"Total Amount Wagered: ${total_wagered:.2f}")
-    print(f"Total Profit: ${total_profit:.2f}")
-    print(f"Return on Investment (ROI): {roi:.2f}%")
-
-
-
 # --- S3 Upload Helper Function ---
 def write_joblib_to_s3(python_object, bucket_name, s3_key):
     """
@@ -648,7 +522,9 @@ def upload_csv_to_s3(local_file_path, bucket_name, s3_key):
 
 if __name__ == '__main__':
     # -- Configuration --
-    all_years_to_load = range(2020, 2025)
+    all_years_to_load = range(2020, 2026) ### TODO: change to 2026
+
+    
 
 
 
@@ -662,8 +538,18 @@ if __name__ == '__main__':
     
     # Ensure we only load data for weeks 1-18
     pbp = pbp[pbp['week'] <= 18]
-    nfl_df = data.get_nfl_data(all_years_to_load)
+
+    nfl_df = data.get_nfl_data([2020,2021,2022,2023,2024])
+    nfl_2025_df = data.get_nfl_2025_weekly_data()
+
+    nfl_df = pd.concat([nfl_df, nfl_2025_df], ignore_index=True)
+
     nfl_df = nfl_df[nfl_df['week'] <= 18]
+
+    nfl_df['merge_name'] = nfl_df['player_display_name'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
+
+
+    
     redzone_df = data.get_redzone_data(pbp)
     redzone_df = redzone_df[redzone_df['week'] <= 18]
     redzone_td_df = data.get_redzone_td_rate(pbp)
@@ -676,8 +562,14 @@ if __name__ == '__main__':
     goal_line_df = goal_line_df[goal_line_df['week'] <= 18]
     positional_defense_df = data.get_opponent_positional_data(pbp, rosters)
     positional_defense_df = positional_defense_df[positional_defense_df['week'] <= 18]
-    depth_chart_df = data.get_depth_chart_data(all_years_to_load)
+    depth_chart_df = data.get_depth_chart_data([2020, 2021, 2022, 2023, 2024])
+    depth_chart_df_2025 = data.get_2025_depth_chart_data()
+
+    depth_chart_df = pd.concat([depth_chart_df, depth_chart_df_2025], ignore_index=True)
+    depth_chart_df = depth_chart_df[depth_chart_df['week'] <= 18]
+
     snap_counts_df = data.get_snap_counts(all_years_to_load)
+    snap_count_df = snap_counts_df[snap_counts_df['week']<=18]
     ngs_rushing_df = data.get_ngs_data_rushing(all_years_to_load)
     ngs_receiving_df = data.get_ngs_data_receiving(all_years_to_load)
     ngs_receiving_df = ngs_receiving_df[ngs_receiving_df['week'] <= 18]
@@ -686,6 +578,10 @@ if __name__ == '__main__':
     print("Engineering features...")
     feature_df = feature_engineering(nfl_df, redzone_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df)
     feature_df.to_csv("feature_df.csv", index=False)
+
+    
+
+    
 
 
     df_rb = feature_df[feature_df['position'] == 'RB'].copy()
@@ -708,9 +604,11 @@ if __name__ == '__main__':
     val_df_qb = validation_df[validation_df['position'] == 'QB'].copy()
 
     # Pass the scaler object during the evaluation call
-    evaluate_specialist_model(rb_models, rb_meta_model, rb_scaler, "RB Model", val_df_rb, RB_FEATURES)
+    evaluate_specialist_model(rb_models, rb_meta_model, rb_scaler, "RB Model", val_df_rb, RB_FEATURES, k=15)
     evaluate_specialist_model(wr_te_models, wr_te_meta_model, wr_te_scaler, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES)
     evaluate_specialist_model(qb_models, qb_meta_model, qb_scaler, "QB Model", val_df_qb, QB_FEATURES,k=5)
+
+    
 
 
 
@@ -746,44 +644,8 @@ if __name__ == '__main__':
 
 
     
-
-     # --- Profitability Backtest ---
-    # Load your historical odds data for the validation season
-    try:
-        odds_2024_df = pd.read_csv('historical_td_odds_2024.csv')
-        # Run the simulation
-        simulate_betting_profitability(combined_results_df, odds_2024_df, bet_size=10)
-    except FileNotFoundError:
-        print("\nCould not find 'historical_td_odds_2024.csv'. Skipping profitability backtest.")
-
-    # ... (Inside the main block, after creating combined_results_df) ...
-
-    # --- Profitability Backtest ---
-    try:
-        odds_2024_df = pd.read_csv('historical_td_odds_2024.csv')
-        
-        # Run the +EV simulation (optional, can be commented out)
-        # simulate_betting_profitability(combined_results_df, odds_2024_df, bet_size=10)
-
-        # Run the "Top 10" simulations
-        simulate_top_k_profitability(
-            combined_results_df, 
-            odds_2024_df, 
-            position_list=['RB'], 
-            top_k=10
-        )
-        
-        simulate_top_k_profitability(
-            combined_results_df, 
-            odds_2024_df, 
-            position_list=['WR', 'TE'], 
-            top_k=10
-        )
-
-    except FileNotFoundError:
-        print("\nCould not find 'historical_td_odds_2024.csv'. Skipping profitability backtest.")
-
-
+  
+   
     # --- Phase 2: Retrain Final Models on All Data (2020-2024) ---
     print("\n" + "="*60 + "\nRETRAINING FINAL MODELS ON ALL HISTORICAL DATA FOR PREDICTION\n" + "="*60)
     rb_base_final, rb_meta_final, rb_scaler_final = train_model_on_all_data(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
@@ -810,7 +672,7 @@ if __name__ == '__main__':
     
     print("\n" + "="*60 + "\nUPLOADING DATA FILES TO S3\n" + "="*60)
     # List of data files required by the prediction app
-    required_data_files = ['nfl_teams.csv', 'week_1_lines.csv', 'week_1_td_odds.csv', 'feature_df.csv']
+    required_data_files = ['nfl_teams.csv', 'data/week_2_lines.csv', 'data/week_2_td_odds.csv', 'feature_df.csv']
     for file_name in required_data_files:
         s3_key = f"data/{file_name}"
         upload_csv_to_s3(file_name, S3_BUCKET_NAME, s3_key)
