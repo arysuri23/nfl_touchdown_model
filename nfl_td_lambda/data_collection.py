@@ -203,8 +203,9 @@ def transform_future_odds(df, team_map):
     
     # Create final dataframe
     result_df = pd.DataFrame(games)
-    
+    result_df['team'] = result_df['team'].replace({'LAR': 'LA', 'LVR': 'LV'})
     # Sort by team for consistency
+
     
     return result_df
 
@@ -304,3 +305,79 @@ def get_injury_data(years):
     injury_df = injury_df.drop_duplicates(subset=['player_id', 'season', 'week'], keep='last')
 
     return injury_df[['player_id', 'season', 'week', 'report_status']]
+
+
+def get_all_historic_data(years, team_map):
+    pbp = nfl.import_pbp_data(years, downcast=True)
+    
+    rosters = nfl.import_seasonal_rosters(years)
+    
+    
+    # Ensure we only load data for weeks 1-18
+    pbp = pbp[pbp['week'] <= 18]
+
+    nfl_df = get_nfl_data([2020,2021,2022,2023,2024])
+    nfl_2025_df = get_nfl_2025_weekly_data()
+
+    nfl_df = pd.concat([nfl_df, nfl_2025_df], ignore_index=True)
+
+    nfl_df = nfl_df[nfl_df['week'] <= 18]
+
+    nfl_df['merge_name'] = nfl_df['player_display_name'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
+
+    
+    redzone_df = get_redzone_data(pbp)
+    redzone_df = redzone_df[redzone_df['week'] <= 18]
+
+    redzone_td_df = get_redzone_td_rate(pbp)
+    redzone_td_df = redzone_td_df[redzone_td_df['week'] <= 18]
+
+    ez_target_df = get_endzone_target_data(pbp)
+    ez_target_df = ez_target_df[ez_target_df['week'] <= 18]
+
+    odds_df = get_odds_data(years, team_map)
+    odds_df = odds_df[odds_df['week'] <= 18]
+
+    goal_line_df = get_goal_line_data(pbp)
+    goal_line_df = goal_line_df[goal_line_df['week'] <= 18]
+
+    positional_defense_df = get_opponent_positional_data(pbp, rosters)
+    positional_defense_df = positional_defense_df[positional_defense_df['week'] <= 18]
+
+    depth_chart_df = get_depth_chart_data([2020, 2021, 2022, 2023, 2024])
+    depth_chart_df_2025 = get_2025_depth_chart_data()
+
+    depth_chart_df = pd.concat([depth_chart_df, depth_chart_df_2025], ignore_index=True)
+    depth_chart_df = depth_chart_df[depth_chart_df['week'] <= 18]
+
+    snap_counts_df = get_snap_counts(years)
+    snap_counts_df = snap_counts_df[snap_counts_df['week']<=18]
+
+    ngs_rushing_df = get_ngs_data_rushing(years)
+    ngs_rushing_df = ngs_rushing_df[ngs_rushing_df['week'] <= 18]
+
+    ngs_receiving_df = get_ngs_data_receiving(years)
+    ngs_receiving_df = ngs_receiving_df[ngs_receiving_df['week'] <= 18]
+
+    nfl_df = pd.merge(nfl_df, redzone_df, on=['player_id', 'week', 'season'], how='left')
+    #nfl_df = pd.merge(nfl_df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
+    nfl_df = pd.merge(nfl_df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
+    nfl_df = pd.merge(nfl_df, odds_df, left_on=['recent_team', 'season', 'week'], right_on=['team', 'season', 'week'], how='left')
+    nfl_df = pd.merge(nfl_df, goal_line_df, on=['player_id', 'week', 'season'], how='left')
+    nfl_df = pd.merge(nfl_df, positional_defense_df, on=['opponent_team', 'season', 'week'], how='left')
+    nfl_df = pd.merge(nfl_df, depth_chart_df, on=['player_id', 'season', 'week'], how='left')
+    nfl_df['depth_chart_rank'] = pd.to_numeric(nfl_df['depth_chart_rank'], errors='coerce').fillna(4).astype(int)
+
+    nfl_df = pd.merge(nfl_df, snap_counts_df, on=['merge_name', 'season', 'week'])
+    nfl_df['offense_snap_share'].fillna(0, inplace=True)
+
+    nfl_df = pd.merge(nfl_df, ngs_rushing_df, on=['player_id', 'season', 'week'], how='left')
+    nfl_df = pd.merge(nfl_df, ngs_receiving_df, on=['player_id', 'season', 'week'], how='left')
+
+    nfl_df.fillna(0, inplace=True)
+
+    nfl_df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
+    
+    return nfl_df
+    
+

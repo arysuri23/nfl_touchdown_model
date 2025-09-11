@@ -31,7 +31,7 @@ CATEGORICAL_FEATURES = ['opponent_encoded']
 
 RB_FEATURES = [
     'avg_offense_snap_share',
-    'team_continuity', # Creative feature, monitor its importance as it could be noisy.
+    #'team_continuity', # Creative feature, monitor its importance as it could be noisy.
 
     # --- Usage & Opportunity Metrics ---
     # avg_wopr is a powerful composite metric. It's calculated from target share and air yards share.
@@ -84,7 +84,7 @@ RB_FEATURES = [
 ]
 WR_TE_FEATURES = [
     'avg_offense_snap_share',
-    'team_continuity', # Creative feature, monitor its importance.
+    #'team_continuity', # Creative feature, monitor its importance.
 
     # --- Opportunity & Usage Metrics ---
     # avg_wopr is a composite of target share and air yards share. It's highly correlated with
@@ -136,7 +136,8 @@ WR_TE_FEATURES = [
 ]
 QB_FEATURES = [
     'avg_offense_snap_share',
-    'team_continuity', 'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
+    #'team_continuity',
+    'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
     'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
     'rush_matchup_value', 
     #'redzone_td_rate', 
@@ -167,30 +168,31 @@ LGBM_PARAM_DIST = {
 
 # --- 3. Feature Engineering ---
 # [Feature engineering function from the original script is included here]
-def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df):
+#def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df):
+def feature_engineering(df): 
     """Engineers features from the raw data to improve model performance."""
    
-    df = pd.merge(df, redzone_df, on=['player_id', 'week', 'season'], how='left')
-    #df = pd.merge(df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
-    df = pd.merge(df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
-    df = pd.merge(df, odds_df, left_on=['recent_team', 'season', 'week'], right_on=['team', 'season', 'week'], how='left')
-    df = pd.merge(df, goal_line_df, on=['player_id', 'week', 'season'], how='left')
-    df = pd.merge(df, positional_defense_df, on=['opponent_team', 'season', 'week'], how='left')
-    df = pd.merge(df, depth_chart_df, on=['player_id', 'season', 'week'], how='left')
-    df['depth_chart_rank'] = pd.to_numeric(df['depth_chart_rank'], errors='coerce').fillna(4).astype(int)
+    # df = pd.merge(df, redzone_df, on=['player_id', 'week', 'season'], how='left')
+    # #df = pd.merge(df, redzone_td_rate, on=['recent_team', 'season', 'week'], how='left')
+    # df = pd.merge(df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
+    # df = pd.merge(df, odds_df, left_on=['recent_team', 'season', 'week'], right_on=['team', 'season', 'week'], how='left')
+    # df = pd.merge(df, goal_line_df, on=['player_id', 'week', 'season'], how='left')
+    # df = pd.merge(df, positional_defense_df, on=['opponent_team', 'season', 'week'], how='left')
+    # df = pd.merge(df, depth_chart_df, on=['player_id', 'season', 'week'], how='left')
+    # df['depth_chart_rank'] = pd.to_numeric(df['depth_chart_rank'], errors='coerce').fillna(4).astype(int)
     
     
 
-    df = pd.merge(df, snap_counts_df, on=['merge_name', 'season', 'week'])
-    df['offense_snap_share'].fillna(0, inplace=True)
+    # df = pd.merge(df, snap_counts_df, on=['merge_name', 'season', 'week'])
+    # df['offense_snap_share'].fillna(0, inplace=True)
 
 
-    df = pd.merge(df, ngs_rushing_df, on=['player_id', 'season', 'week'], how='left')
-    df = pd.merge(df, ngs_receiving_df, on=['player_id', 'season', 'week'], how='left')
+    # df = pd.merge(df, ngs_rushing_df, on=['player_id', 'season', 'week'], how='left')
+    # df = pd.merge(df, ngs_receiving_df, on=['player_id', 'season', 'week'], how='left')
 
-    df.fillna(0, inplace=True)
+    # df.fillna(0, inplace=True)
 
-    df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
+    # df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
     
     
  
@@ -206,11 +208,11 @@ def feature_engineering(df, redzone_df, redzone_td_rate, ez_target_df, odds_df, 
         df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
 
     # NEW: Engineer Team Continuity Feature
-    df['previous_team'] = df.groupby('player_id')['recent_team'].shift(1)
-    df['team_continuity'] = (df['recent_team'] == df['previous_team']).astype(int)
+    #df['previous_team'] = df.groupby('player_id')['recent_team'].shift(1)
+   # df['team_continuity'] = (df['recent_team'] == df['previous_team']).astype(int)
     # Assume no continuity for a player's first game in the dataset
-    df['team_continuity'].fillna(0, inplace=True)
-    df.drop(columns=['previous_team'], inplace=True)
+    #df['team_continuity'].fillna(0, inplace=True)
+    #df.drop(columns=['previous_team'], inplace=True)
 
     
 
@@ -530,53 +532,55 @@ if __name__ == '__main__':
 
     # -- Data Loading --
     print("Loading data...")
-    pbp = nfl.import_pbp_data(all_years_to_load, downcast=True)
+    #pbp = nfl.import_pbp_data(all_years_to_load, downcast=True)
     
-    rosters = nfl.import_seasonal_rosters(all_years_to_load)
+    #rosters = nfl.import_seasonal_rosters(all_years_to_load)
     nfl_teams = pd.read_csv('nfl_teams.csv')
     team_map = dict(zip(nfl_teams['team_name'], nfl_teams['team_id']))
     
     # Ensure we only load data for weeks 1-18
-    pbp = pbp[pbp['week'] <= 18]
+    # pbp = pbp[pbp['week'] <= 18]
 
-    nfl_df = data.get_nfl_data([2020,2021,2022,2023,2024])
-    nfl_2025_df = data.get_nfl_2025_weekly_data()
+    # nfl_df = data.get_nfl_data([2020,2021,2022,2023,2024])
+    # nfl_2025_df = data.get_nfl_2025_weekly_data()
 
-    nfl_df = pd.concat([nfl_df, nfl_2025_df], ignore_index=True)
+    # nfl_df = pd.concat([nfl_df, nfl_2025_df], ignore_index=True)
 
-    nfl_df = nfl_df[nfl_df['week'] <= 18]
+    # nfl_df = nfl_df[nfl_df['week'] <= 18]
 
-    nfl_df['merge_name'] = nfl_df['player_display_name'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
+    # nfl_df['merge_name'] = nfl_df['player_display_name'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
 
 
     
-    redzone_df = data.get_redzone_data(pbp)
-    redzone_df = redzone_df[redzone_df['week'] <= 18]
-    redzone_td_df = data.get_redzone_td_rate(pbp)
-    redzone_td_df = redzone_td_df[redzone_td_df['week'] <= 18]
-    ez_target_df = data.get_endzone_target_data(pbp)
-    ez_target_df = ez_target_df[ez_target_df['week'] <= 18]
-    odds_df = data.get_odds_data(all_years_to_load, team_map)
-    odds_df = odds_df[odds_df['week'] <= 18]
-    goal_line_df = data.get_goal_line_data(pbp)
-    goal_line_df = goal_line_df[goal_line_df['week'] <= 18]
-    positional_defense_df = data.get_opponent_positional_data(pbp, rosters)
-    positional_defense_df = positional_defense_df[positional_defense_df['week'] <= 18]
-    depth_chart_df = data.get_depth_chart_data([2020, 2021, 2022, 2023, 2024])
-    depth_chart_df_2025 = data.get_2025_depth_chart_data()
+    # redzone_df = data.get_redzone_data(pbp)
+    # redzone_df = redzone_df[redzone_df['week'] <= 18]
+    # redzone_td_df = data.get_redzone_td_rate(pbp)
+    # redzone_td_df = redzone_td_df[redzone_td_df['week'] <= 18]
+    # ez_target_df = data.get_endzone_target_data(pbp)
+    # ez_target_df = ez_target_df[ez_target_df['week'] <= 18]
+    # odds_df = data.get_odds_data(all_years_to_load, team_map)
+    # odds_df = odds_df[odds_df['week'] <= 18]
+    # goal_line_df = data.get_goal_line_data(pbp)
+    # goal_line_df = goal_line_df[goal_line_df['week'] <= 18]
+    # positional_defense_df = data.get_opponent_positional_data(pbp, rosters)
+    # positional_defense_df = positional_defense_df[positional_defense_df['week'] <= 18]
+    # depth_chart_df = data.get_depth_chart_data([2020, 2021, 2022, 2023, 2024])
+    # depth_chart_df_2025 = data.get_2025_depth_chart_data()
 
-    depth_chart_df = pd.concat([depth_chart_df, depth_chart_df_2025], ignore_index=True)
-    depth_chart_df = depth_chart_df[depth_chart_df['week'] <= 18]
+    # depth_chart_df = pd.concat([depth_chart_df, depth_chart_df_2025], ignore_index=True)
+    # depth_chart_df = depth_chart_df[depth_chart_df['week'] <= 18]
 
-    snap_counts_df = data.get_snap_counts(all_years_to_load)
-    snap_count_df = snap_counts_df[snap_counts_df['week']<=18]
-    ngs_rushing_df = data.get_ngs_data_rushing(all_years_to_load)
-    ngs_receiving_df = data.get_ngs_data_receiving(all_years_to_load)
-    ngs_receiving_df = ngs_receiving_df[ngs_receiving_df['week'] <= 18]
+    # snap_counts_df = data.get_snap_counts(all_years_to_load)
+    # snap_counts_df = snap_counts_df[snap_counts_df['week']<=18]
+    # ngs_rushing_df = data.get_ngs_data_rushing(all_years_to_load)
+    # ngs_receiving_df = data.get_ngs_data_receiving(all_years_to_load)
+    # ngs_receiving_df = ngs_receiving_df[ngs_receiving_df['week'] <= 18]
 
     # -- Feature Engineering --
     print("Engineering features...")
-    feature_df = feature_engineering(nfl_df, redzone_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df)
+    nfl_df = data.get_all_historic_data(all_years_to_load, team_map)
+    feature_df = feature_engineering(nfl_df)
+    #feature_df = feature_engineering(nfl_df, redzone_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df)
     feature_df.to_csv("feature_df.csv", index=False)
 
     

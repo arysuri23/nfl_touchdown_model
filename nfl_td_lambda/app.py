@@ -22,7 +22,7 @@ CATEGORICAL_FEATURES = ['opponent_encoded']
 
 RB_FEATURES = [
     'avg_offense_snap_share',
-    'team_continuity', # Creative feature, monitor its importance as it could be noisy.
+    #'team_continuity', # Creative feature, monitor its importance as it could be noisy.
 
     # --- Usage & Opportunity Metrics ---
     # avg_wopr is a powerful composite metric. It's calculated from target share and air yards share.
@@ -75,7 +75,7 @@ RB_FEATURES = [
 ]
 WR_TE_FEATURES = [
     'avg_offense_snap_share',
-    'team_continuity', # Creative feature, monitor its importance.
+    #'team_continuity', # Creative feature, monitor its importance.
 
     # --- Opportunity & Usage Metrics ---
     # avg_wopr is a composite of target share and air yards share. It's highly correlated with
@@ -126,7 +126,9 @@ WR_TE_FEATURES = [
     'avg_avg_intended_air_yards', # Player's aDOT; consider testing this uncommented. It shows role (deep threat vs. possession).
 ]
 QB_FEATURES = [
-    'avg_offense_snap_share', 'team_continuity', 'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
+    'avg_offense_snap_share', 
+    #'team_continuity', 
+    'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
     'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
     'rush_matchup_value', 
     #'redzone_td_rate', 
@@ -192,7 +194,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     for f in all_features:
         if 'allowed_to' in f or f in ['rush_matchup_value', 'pass_matchup_value', 
                                       #'redzone_td_rate', 
-                                      'implied_total', 'opponent_encoded', 'team_continuity']:
+                                      'implied_total', 'opponent_encoded']:
             non_player_features.add(f)
     
     player_history_features = sorted(list(all_features - non_player_features))
@@ -206,7 +208,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
 
      # NEW: Calculate team_continuity for the prediction week
     # A player has continuity if their team for the upcoming week is the same as their last known team from history.
-    prediction_df['team_continuity'] = (prediction_df['team'] == prediction_df['recent_team']).astype(int) # Note: pandas may add a suffix like _y
+   # prediction_df['team_continuity'] = (prediction_df['team'] == prediction_df['recent_team']).astype(int) # Note: pandas may add a suffix like _y
     
     # Get the latest opponent data for each team
     opponent_stats_df = feature_df[['season', 'week', 'opponent_team'] + opponent_history_features]
@@ -288,11 +290,13 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     td_odds_df['market_implied_prob'] = np.where(td_odds_df['price'] > 0, prob_if_pos, prob_if_neg)
     
     final_predictions = pd.merge(final_predictions, td_odds_df[['merge_name', 'price', 'market_implied_prob']], on='merge_name', how='left')
-    final_predictions[['price', 'market_implied_prob']] = final_predictions[['price', 'market_implied_prob']].fillna(0)
+    final_predictions[['price', 'market_implied_prob']] = final_predictions[['price', 'market_implied_prob']]
     final_predictions['model_edge'] = final_predictions['predicted_touchdown_probability'] - final_predictions['market_implied_prob']
-    
+    final_predictions.drop_duplicates(subset=['player_id'], keep='last', inplace=True)
+
     display_cols = ['player_display_name', 'team', 'position', 'predicted_touchdown_probability', 'price', 'market_implied_prob', 'model_edge']
     final_predictions.dropna(subset=['price'], inplace=True)
+    
     
     return final_predictions.sort_values(by='predicted_touchdown_probability', ascending=False)
 
