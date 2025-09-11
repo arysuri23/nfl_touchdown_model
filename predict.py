@@ -163,7 +163,7 @@ def transform_features(df):
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
     
     for stat in player_stats:
-        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(span=4, min_periods=1).mean())
 
     pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
 
@@ -171,7 +171,7 @@ def transform_features(df):
     opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
     
     for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(span=4, min_periods=1).mean())
 
 
     df.drop(columns=pos_defense_cols, inplace=True)
@@ -360,6 +360,8 @@ if __name__ == '__main__':
     Main entry point for the AWS Lambda function.
     """
     print("Lambda function initiated.")
+    prediction_year = 2025
+    prediction_week = 2
     
     # --- 1. Load Models and Encoders from S3 ---
     print("Loading model artifacts from S3...")
@@ -383,12 +385,15 @@ if __name__ == '__main__':
     # --- 2. Load Data Files from S3 ---
     print("Loading data files from S3...")
     nfl_teams_df = read_csv_from_s3('data/nfl_teams.csv')
-    future_odds_raw = read_csv_from_s3('data/week_1_lines.csv')
-    td_odds_df = read_csv_from_s3('data/week_1_td_odds.csv')
-    #feature_df = read_csv_from_s3('data/feature_df.csv')
+    future_odds_raw = read_csv_from_s3('data/data/week_2_lines.csv')
+    td_odds_df = read_csv_from_s3('data/data/week_2_td_odds.csv')
+    feature_df = read_csv_from_s3('data/raw_nfl_data.csv')
     team_map = dict(zip(nfl_teams_df['team_name'], nfl_teams_df['team_id']))
+
     
-    feature_df = data.get_all_historic_data([2020,2021,2022,2023,2024,2025], team_map)
+    
+    #feature_df = data.get_all_historic_data([2020,2021,2022,2023,2024,2025], team_map)
+    #feature_df = feature_df[(feature_df['season'] < prediction_year) | ((feature_df['season'] == prediction_year) & (feature_df['week'] < prediction_week))]
 
     feature_df = transform_features(feature_df)
     
@@ -399,8 +404,7 @@ if __name__ == '__main__':
 
     # --- 3. Run Prediction ---
     # In a real app, you would get the year/week from the API Gateway event
-    prediction_year = 2025
-    prediction_week = 1
+   
     print(f"Generating predictions for {prediction_year}, Week {prediction_week}...")
     
     final_predictions_df = predict_touchdown_scorers(feature_df, models,scalers, opponent_le, prediction_year, prediction_week, future_odds_df, td_odds_df)
