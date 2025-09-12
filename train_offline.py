@@ -205,7 +205,7 @@ def feature_engineering(df):
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
     
     for stat in player_stats:
-        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(span=5, min_periods=1).mean())
    
     pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
 
@@ -213,7 +213,7 @@ def feature_engineering(df):
     opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
     
     for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(span=5, min_periods=1).mean())
 
 
     df.drop(columns=pos_defense_cols, inplace=True)
@@ -578,91 +578,91 @@ if __name__ == '__main__':
     
 
 
-    # df_rb = feature_df[feature_df['position'] == 'RB'].copy()
-    # df_wr_te = feature_df[feature_df['position'].isin(['WR', 'TE'])].copy()
-    # df_qb = feature_df[feature_df['position'] == 'QB'].copy()
+    df_rb = feature_df[feature_df['position'] == 'RB'].copy()
+    df_wr_te = feature_df[feature_df['position'].isin(['WR', 'TE'])].copy()
+    df_qb = feature_df[feature_df['position'] == 'QB'].copy()
 
 
-    # # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
-    # # The function now returns the trained base/meta models and the best params
-    # rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params, rb_scaler = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    # wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params, wr_te_scaler = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    # qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params, qb_scaler = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
+    # The function now returns the trained base/meta models and the best params
+    rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params, rb_scaler = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params, wr_te_scaler = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params, qb_scaler = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
 
 
-    # # --- MODEL EVALUATION ON 2024 SEASON ---
-    # validation_year = 2024
-    # validation_df = feature_df[feature_df['season'] == validation_year]
-    # val_df_rb = validation_df[validation_df['position'] == 'RB'].copy()
-    # val_df_wr_te = validation_df[validation_df['position'].isin(['WR', 'TE'])].copy()
-    # val_df_qb = validation_df[validation_df['position'] == 'QB'].copy()
+    # --- MODEL EVALUATION ON 2024 SEASON ---
+    validation_year = 2024
+    validation_df = feature_df[feature_df['season'] == validation_year]
+    val_df_rb = validation_df[validation_df['position'] == 'RB'].copy()
+    val_df_wr_te = validation_df[validation_df['position'].isin(['WR', 'TE'])].copy()
+    val_df_qb = validation_df[validation_df['position'] == 'QB'].copy()
 
-    # # Pass the scaler object during the evaluation call
-    # evaluate_specialist_model(rb_models, rb_meta_model, rb_scaler, "RB Model", val_df_rb, RB_FEATURES, k=15)
-    # evaluate_specialist_model(wr_te_models, wr_te_meta_model, wr_te_scaler, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES)
-    # evaluate_specialist_model(qb_models, qb_meta_model, qb_scaler, "QB Model", val_df_qb, QB_FEATURES,k=5)
+    # Pass the scaler object during the evaluation call
+    evaluate_specialist_model(rb_models, rb_meta_model, rb_scaler, "RB Model", val_df_rb, RB_FEATURES, k=15)
+    evaluate_specialist_model(wr_te_models, wr_te_meta_model, wr_te_scaler, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES)
+    evaluate_specialist_model(qb_models, qb_meta_model, qb_scaler, "QB Model", val_df_qb, QB_FEATURES,k=5)
 
     
 
 
 
-    #  # --- UNIFIED MODEL EVALUATION ON 2024 SEASON ---
-    # print("\n" + "="*60 + "\nUNIFIED EVALUATION ON 2024 SEASON\n" + "="*60)
-    # validation_year = 2024
-    # validation_df = feature_df[feature_df['season'] == validation_year].copy()
+     # --- UNIFIED MODEL EVALUATION ON 2024 SEASON ---
+    print("\n" + "="*60 + "\nUNIFIED EVALUATION ON 2024 SEASON\n" + "="*60)
+    validation_year = 2024
+    validation_df = feature_df[feature_df['season'] == validation_year].copy()
 
-    # # Get predictions for each position group
-    # val_df_rb = validation_df[validation_df['position'] == 'RB'].copy()
-    # val_df_rb['predicted_prob'] = predict_stacked_proba(val_df_rb[RB_FEATURES], rb_models, rb_meta_model)
+    # Get predictions for each position group
+    val_df_rb = validation_df[validation_df['position'] == 'RB'].copy()
+    val_df_rb['predicted_prob'] = predict_stacked_proba(val_df_rb[RB_FEATURES], rb_models, rb_meta_model)
 
-    # val_df_wr_te = validation_df[validation_df['position'].isin(['WR', 'TE'])].copy()
-    # val_df_wr_te['predicted_prob'] = predict_stacked_proba(val_df_wr_te[WR_TE_FEATURES], wr_te_models, wr_te_meta_model)
+    val_df_wr_te = validation_df[validation_df['position'].isin(['WR', 'TE'])].copy()
+    val_df_wr_te['predicted_prob'] = predict_stacked_proba(val_df_wr_te[WR_TE_FEATURES], wr_te_models, wr_te_meta_model)
 
-    # val_df_qb = validation_df[validation_df['position'] == 'QB'].copy()
-    # val_df_qb['predicted_prob'] = predict_stacked_proba(val_df_qb[QB_FEATURES], qb_models, qb_meta_model)
+    val_df_qb = validation_df[validation_df['position'] == 'QB'].copy()
+    val_df_qb['predicted_prob'] = predict_stacked_proba(val_df_qb[QB_FEATURES], qb_models, qb_meta_model)
 
-    # # Combine all predictions into a single DataFrame
-    # combined_results_df = pd.concat([val_df_rb, val_df_wr_te, val_df_qb])
+    # Combine all predictions into a single DataFrame
+    combined_results_df = pd.concat([val_df_rb, val_df_wr_te, val_df_qb])
 
-    # # Now, evaluate the combined results
-    # # This will give a true measure of performance across all positions
-    # unified_weekly_performance = evaluate_model_at_k(combined_results_df, k=25)
-    # print("\n--- Weekly Performance @ K=25 (All Positions) ---")
-    # print(unified_weekly_performance)
+    # Now, evaluate the combined results
+    # This will give a true measure of performance across all positions
+    unified_weekly_performance = evaluate_model_at_k(combined_results_df, k=25)
+    print("\n--- Weekly Performance @ K=25 (All Positions) ---")
+    print(unified_weekly_performance)
 
-    # average_performance = unified_weekly_performance.mean()
-    # print("\n--- Average Season Performance (All Positions) ---")
-    # print(f"Average Precision@25: {average_performance['precision_at_k']:.3f}")
-    # print(f"Average Recall@25:    {average_performance['recall_at_k']:.3f}")
-    # print(f"Average Successful Picks Per Week: {average_performance['successful_picks']:.1f}")
+    average_performance = unified_weekly_performance.mean()
+    print("\n--- Average Season Performance (All Positions) ---")
+    print(f"Average Precision@25: {average_performance['precision_at_k']:.3f}")
+    print(f"Average Recall@25:    {average_performance['recall_at_k']:.3f}")
+    print(f"Average Successful Picks Per Week: {average_performance['successful_picks']:.1f}")
 
 
     
   
    
-    # # --- Phase 2: Retrain Final Models on All Data (2020-2024) ---
-    # print("\n" + "="*60 + "\nRETRAINING FINAL MODELS ON ALL HISTORICAL DATA FOR PREDICTION\n" + "="*60)
-    # rb_base_final, rb_meta_final, rb_scaler_final = train_model_on_all_data(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
-    # wr_te_base_final, wr_te_meta_final, wr_te_scaler_final = train_model_on_all_data(df_wr_te, WR_TE_FEATURES, wr_te_rf_params, wr_te_lgbm_params)
-    # qb_base_final, qb_meta_final, qb_scaler_final = train_model_on_all_data(df_qb, QB_FEATURES, qb_rf_params, qb_lgbm_params)
+    # --- Phase 2: Retrain Final Models on All Data (2020-2024) ---
+    print("\n" + "="*60 + "\nRETRAINING FINAL MODELS ON ALL HISTORICAL DATA FOR PREDICTION\n" + "="*60)
+    rb_base_final, rb_meta_final, rb_scaler_final = train_model_on_all_data(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
+    wr_te_base_final, wr_te_meta_final, wr_te_scaler_final = train_model_on_all_data(df_wr_te, WR_TE_FEATURES, wr_te_rf_params, wr_te_lgbm_params)
+    qb_base_final, qb_meta_final, qb_scaler_final = train_model_on_all_data(df_qb, QB_FEATURES, qb_rf_params, qb_lgbm_params)
 
-    # print("\n" + "="*60 + "\nUPLOADING MODEL ARTIFACTS TO S3\n" + "="*60)
-    # # Save RB models
-    # write_joblib_to_s3(rb_base_final, S3_BUCKET_NAME, 'models/rb_base_final.pkl')
-    # write_joblib_to_s3(rb_meta_final, S3_BUCKET_NAME, 'models/rb_meta_final.pkl')
-    # # Save WR/TE models
-    # write_joblib_to_s3(wr_te_base_final, S3_BUCKET_NAME, 'models/wr_te_base_final.pkl')
-    # write_joblib_to_s3(wr_te_meta_final, S3_BUCKET_NAME, 'models/wr_te_meta_final.pkl')
-    # # Save QB models
-    # write_joblib_to_s3(qb_base_final, S3_BUCKET_NAME, 'models/qb_base_final.pkl')
-    # write_joblib_to_s3(qb_meta_final, S3_BUCKET_NAME, 'models/qb_meta_final.pkl')
-    # # Save the crucial opponent label encoder
-    # opponent_le = LabelEncoder().fit(feature_df['opponent_team'].unique())
-    # write_joblib_to_s3(opponent_le, S3_BUCKET_NAME, 'models/opponent_encoder.pkl')
+    print("\n" + "="*60 + "\nUPLOADING MODEL ARTIFACTS TO S3\n" + "="*60)
+    # Save RB models
+    write_joblib_to_s3(rb_base_final, S3_BUCKET_NAME, 'models/rb_base_final.pkl')
+    write_joblib_to_s3(rb_meta_final, S3_BUCKET_NAME, 'models/rb_meta_final.pkl')
+    # Save WR/TE models
+    write_joblib_to_s3(wr_te_base_final, S3_BUCKET_NAME, 'models/wr_te_base_final.pkl')
+    write_joblib_to_s3(wr_te_meta_final, S3_BUCKET_NAME, 'models/wr_te_meta_final.pkl')
+    # Save QB models
+    write_joblib_to_s3(qb_base_final, S3_BUCKET_NAME, 'models/qb_base_final.pkl')
+    write_joblib_to_s3(qb_meta_final, S3_BUCKET_NAME, 'models/qb_meta_final.pkl')
+    # Save the crucial opponent label encoder
+    opponent_le = LabelEncoder().fit(feature_df['opponent_team'].unique())
+    write_joblib_to_s3(opponent_le, S3_BUCKET_NAME, 'models/opponent_encoder.pkl')
 
-    # write_joblib_to_s3(rb_scaler_final, S3_BUCKET_NAME, 'models/rb_scaler.pkl')
-    # write_joblib_to_s3(wr_te_scaler_final, S3_BUCKET_NAME, 'models/wr_te_scaler.pkl')
-    # write_joblib_to_s3(qb_scaler_final, S3_BUCKET_NAME, 'models/qb_scaler.pkl')
+    write_joblib_to_s3(rb_scaler_final, S3_BUCKET_NAME, 'models/rb_scaler.pkl')
+    write_joblib_to_s3(wr_te_scaler_final, S3_BUCKET_NAME, 'models/wr_te_scaler.pkl')
+    write_joblib_to_s3(qb_scaler_final, S3_BUCKET_NAME, 'models/qb_scaler.pkl')
     
     print("\n" + "="*60 + "\nUPLOADING DATA FILES TO S3\n" + "="*60)
     # List of data files required by the prediction app
