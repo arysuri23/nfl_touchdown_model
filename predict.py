@@ -163,7 +163,7 @@ def transform_features(df):
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
     
     for stat in player_stats:
-        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(span=6, min_periods=1).mean())
+        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(span=5, min_periods=1).mean())
 
     pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
 
@@ -171,7 +171,7 @@ def transform_features(df):
     opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
     
     for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(span=6, min_periods=1).mean())
+         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(span=5, min_periods=1).mean())
 
 
     df.drop(columns=pos_defense_cols, inplace=True)

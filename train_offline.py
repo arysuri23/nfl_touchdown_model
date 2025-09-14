@@ -394,6 +394,66 @@ def evaluate_model_at_k(predictions_df: pd.DataFrame, k: int = 25):
     return pd.DataFrame(weekly_results)
 
 
+def evaluate_model_at_50_threshold(predictions_df: pd.DataFrame):
+    """
+    Evaluates model performance based on a fixed 50% probability threshold.
+    Any player with a predicted probability > 0.5 is considered a 'positive' prediction.
+    Calculates precision, recall, and F1-score on a weekly and seasonal basis.
+    """
+    print("\n" + "="*60 + "\nEVALUATION AT 50% PROBABILITY THRESHOLD\n" + "="*60)
+
+    weekly_results = []
+    
+    # Ensure prediction column exists
+    if 'predicted_prob' not in predictions_df.columns:
+        print("Error: 'predicted_prob' column not found.")
+        return
+
+    for week in sorted(predictions_df['week'].unique()):
+        week_df = predictions_df[predictions_df['week'] == week].copy()
+        
+        # Define predictions and actuals based on the threshold
+        predicted_scorers = week_df['predicted_prob'] > 0.5
+        actual_scorers = week_df['scored_touchdown'] == 1
+        
+        # Calculate confusion matrix components
+        tp = (predicted_scorers & actual_scorers).sum()
+        fp = (predicted_scorers & ~actual_scorers).sum()
+        fn = (~predicted_scorers & actual_scorers).sum()
+        
+        # Calculate metrics, handling division by zero
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
+        
+        weekly_results.append({
+            'week': week,
+            'scorers_predicted': tp + fp,
+            'true_positives': tp,
+            'false_positives': fp,
+            'false_negatives': fn,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1_score
+        })
+
+    # Create and display results
+    results_summary = pd.DataFrame(weekly_results)
+    print("\n--- Weekly Performance Summary ---")
+    print(results_summary.round(3))
+    
+    # Calculate and display overall season averages
+    average_performance = results_summary.drop(columns=['week']).mean()
+    print("\n--- Average Season Performance ---")
+    print(f"Average Scorers Predicted per Week: {average_performance['scorers_predicted']:.2f}")
+    print(f"Average True Positives per Week:    {average_performance['true_positives']:.2f}")
+    print(f"Average Precision:                  {average_performance['precision']:.3f}")
+    print(f"Average Recall:                     {average_performance['recall']:.3f}")
+    print(f"Average F1-Score:                   {average_performance['f1_score']:.3f}")
+    
+    return results_summary
+
+
 def evaluate_specialist_model(base_models, meta_model,scaler, model_name, validation_df, features, k=25):
     """Calculates performance metrics for a manually stacked model."""
     print("\n" + "="*60 + f"\nEVALUATION FOR: {model_name}\n" + "="*60)
@@ -626,7 +686,7 @@ if __name__ == '__main__':
 
     # Now, evaluate the combined results
     # This will give a true measure of performance across all positions
-    unified_weekly_performance = evaluate_model_at_k(combined_results_df, k=25)
+    unified_weekly_performance = evaluate_model_at_k(combined_results_df, k=16)
     print("\n--- Weekly Performance @ K=25 (All Positions) ---")
     print(unified_weekly_performance)
 
@@ -637,6 +697,7 @@ if __name__ == '__main__':
     print(f"Average Successful Picks Per Week: {average_performance['successful_picks']:.1f}")
 
 
+    #evaluate_model_at_50_threshold(combined_results_df)
     
   
    
