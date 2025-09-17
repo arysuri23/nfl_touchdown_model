@@ -1,437 +1,205 @@
-import json
-import sys
-import boto3
+import os
 import pandas as pd
-import numpy as np
-import joblib
+from datetime import datetime
+
+from data_collection import (
+    get_all_historic_data,
+    transform_future_odds,
+)
+from feature_engineering import engineer_features_for_touchdown_prediction
+from model import load_model
 import nfl_data_py as nfl
-from io import BytesIO, StringIO
-import nfl_td_lambda.data_collection as data # Assuming data_collection.py is in the same deployment package
 
 
-### CONSTANTS ###
-S3_BUCKET_NAME = "nfl-touchdown-model-data"
+TEAM_MAP = {
+    'Arizona Cardinals': 'ARI', 'Atlanta Falcons': 'ATL', 'Baltimore Ravens': 'BAL',
+    'Buffalo Bills': 'BUF', 'Carolina Panthers': 'CAR', 'Chicago Bears': 'CHI',
+    'Cincinnati Bengals': 'CIN', 'Cleveland Browns': 'CLE', 'Dallas Cowboys': 'DAL',
+    'Denver Broncos': 'DEN', 'Detroit Lions': 'DET', 'Green Bay Packers': 'GB',
+    'Houston Texans': 'HOU', 'Indianapolis Colts': 'IND', 'Jacksonville Jaguars': 'JAX',
+    'Kansas City Chiefs': 'KC', 'Las Vegas Raiders': 'LVR', 'Los Angeles Chargers': 'LAC',
+    'Los Angeles Rams': 'LAR', 'Miami Dolphins': 'MIA', 'Minnesota Vikings': 'MIN',
+    'New England Patriots': 'NE', 'New Orleans Saints': 'NO', 'New York Giants': 'NYG',
+    'New York Jets': 'NYJ', 'Philadelphia Eagles': 'PHI', 'Pittsburgh Steelers': 'PIT',
+    'San Francisco 49ers': 'SF', 'Seattle Seahawks': 'SEA', 'Tampa Bay Buccaneers': 'TB',
+    'Tennessee Titans': 'TEN', 'Washington Commanders': 'WAS'
+}
 
-# Feature lists must match those used during training
-
-# Updated, Streamlined Feature Lists
-# These lists are curated to reduce multicollinearity and noise, focusing on the strongest predictors.
-
-CATEGORICAL_FEATURES = ['opponent_encoded']
-
-
-RB_FEATURES = [
-    'avg_offense_snap_share',
-    #'team_continuity', # Creative feature, monitor its importance as it could be noisy.
-
-    # --- Usage & Opportunity Metrics ---
-    # avg_wopr is a powerful composite metric. It's calculated from target share and air yards share.
-    # It might be correlated with target_share. Test model performance with one or the other commented out.
-    'avg_wopr',
-    #'target_share', # Potentially correlated with avg_wopr.
-
-    # --- Efficiency Metrics ---
-    'avg_rushing_epa', # Advanced metric for rushing efficiency.
-    'avg_receiving_epa', # Advanced metric for receiving efficiency.
-    'avg_racr', # Measures efficiency in converting air yards to receiving yards.
-    
-    # These Next Gen Stats measure rushing efficiency and style. They might be correlated with avg_rushing_epa.
-    # Consider testing the model with avg_rushing_epa vs. this block of features.
-    'avg_rush_yards_over_expected_per_att', # Correlated with avg_rushing_epa.
-    'avg_rush_pct_over_expected',
-    'avg_avg_time_to_los',
-    'avg_percent_attempts_gte_eight_defenders', # Measures ability against stacked boxes.
-
-    # --- High-Value Touches ---
-    # These features are crucial but can be correlated. For example, a high redzone carry share
-    # often leads to a high inside_5 carry share. The model should handle this, but it's worth noting.
-    'avg_redzone_carry_share',
-    'avg_redzone_target_share',
-    'avg_endzone_targets',
-    'avg_endzone_target_share',
-    'avg_inside_5_carry_share',
-    'avg_inside_5_target_share',
-
-    # --- Contextual & Matchup Features ---
-    'rush_matchup_value',
-    'pass_matchup_value',
-    #'redzone_td_rate', # Team-level efficiency in the red zone.
-    'rushing_tds_allowed_to_RB', # Opponent tendency.
-    'passing_tds_allowed_to_RB', # Opponent tendency.
-    'implied_total', # Game script proxy.
-    'depth_chart_rank',
-
-    # --- Target Variable Lag ---
-    # This is a lagged version of the target. Highly predictive, but ensure no data leakage.
-    'avg_scored_touchdown',
-
-    # --- Commented Out: Base Volume Stats ---
-    # These are likely redundant given the advanced metrics above (e.g., avg_wopr, avg_rushing_epa).
-    #'avg_carries',
-    #'avg_rushing_yards',
-    #'avg_receptions',
-   # 'avg_receiving_yards',
-    #'avg_receiving_air_yards',
-]
-WR_TE_FEATURES = [
-    'avg_offense_snap_share',
-   #'team_continuity', # Creative feature, monitor its importance.
-
-    # --- Opportunity & Usage Metrics ---
-    # avg_wopr is a composite of target share and air yards share. It's highly correlated with
-    # avg_percent_share_of_intended_air_yards. Test them against each other.
-    'avg_wopr',
-    'target_share', # Consider testing this uncommented. It's a fundamental metric and might offer value alongside wopr.
-
-    # --- Efficiency & Route-Running Metrics ---
-    'avg_receiving_epa', # Advanced efficiency metric.
-    'avg_racr', # Efficiency in converting air yards to real yards.
-
-    # avg_avg_cushion and avg_avg_separation both measure a receiver's ability to get open.
-    # They are likely correlated. Test with one or both.
-    #'avg_avg_cushion',
-    'avg_avg_separation',
-
-    # These metrics describe how a player is used and how well they perform on their targets.
-    # They are generally complementary.
-    'avg_percent_share_of_intended_air_yards', # Correlated with avg_wopr.
-    'avg_catch_percentage',
-    'avg_avg_expected_yac',
-    'avg_avg_yac_above_expectation',
-
-    # --- High-Value Touches ---
-    # Crucial for touchdown prediction.
-    'avg_redzone_target_share',
-    'avg_endzone_targets',
-    'avg_endzone_target_share',
-    'avg_inside_5_target_share',
-
-    # --- Contextual & Matchup Features ---
-    'pass_matchup_value',
-    #'redzone_td_rate', # Team-level efficiency.
-    'passing_tds_allowed_to_WR', # Opponent tendency.
-    'passing_tds_allowed_to_TE', # Opponent tendency.
-    'implied_total', # Game script proxy.
-    'depth_chart_rank',
-
-    # --- Target Variable Lag ---
-    # Highly predictive, but ensure no data leakage.
-    'avg_scored_touchdown',
-
-    # --- Commented Out: Base Volume & Air Yard Stats ---
-    # Mostly captured by more advanced metrics.
-    'avg_receptions',
-    'avg_receiving_yards',
-    'avg_receiving_air_yards', # Raw air yards; avg_percent_share_of_intended_air_yards is often more predictive.
-    'avg_avg_intended_air_yards', # Player's aDOT; consider testing this uncommented. It shows role (deep threat vs. possession).
-]
-QB_FEATURES = [
-    'avg_offense_snap_share', 
-    #'team_continuity',
-    'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
-    'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
-    'rush_matchup_value', 
-    #'redzone_td_rate',
-    'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
-    'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',]
+def _normalize_name(s: str) -> str:
+    if not isinstance(s, str):
+        return ''
+    import re
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9\s]", "", s)
+    s = re.sub(r"\s(jr|sr|ii|iii|iv)$", "", s).strip()
+    return s
 
 
+def load_week_lines(lines_csv: str) -> pd.DataFrame:
+    raw = pd.read_csv(lines_csv)
+    lines = transform_future_odds(raw, TEAM_MAP)
+    # Ensure abbreviations align with model data conventions
+    # Our training uses 'LAR' and 'LVR'; transform_future_odds ends with 'LA'/'LV'
+    lines['team'] = lines['team'].replace({'LA': 'LAR', 'LV': 'LVR'})
+    lines['opponent'] = lines['opponent'].replace({'LA': 'LAR', 'LV': 'LVR'})
+    return lines
 
-### S3 HELPER FUNCTIONS ###
-def read_joblib_from_s3(s3_key):
-    """Loads a joblib file from S3."""
-    s3_client = boto3.client('s3')
-    with BytesIO() as buffer:
-        s3_client.download_fileobj(Bucket=S3_BUCKET_NAME, Key=s3_key, Fileobj=buffer)
-        buffer.seek(0)
-        return joblib.load(buffer)
-
-def read_csv_from_s3(s3_key):
-    """Loads a CSV file from S3 into a pandas DataFrame."""
-    s3_client = boto3.client('s3')
-    response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=s3_key)
-    csv_string = response['Body'].read().decode('utf-8')
-    return pd.read_csv(StringIO(csv_string))
-
-
-def transform_features(df):
-    player_stats = ['carries', 'rushing_yards', 'receptions', 'receiving_yards', 'wopr', 'rushing_epa', 'receiving_epa', 'target_share',
-                      'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_carry_share', 'redzone_target_share',
-                      'endzone_targets', 'endzone_target_share', 'inside_5_carry_share', 'inside_5_target_share', 'offense_snap_share', 
-                      'rush_yards_over_expected_per_att', 'rush_pct_over_expected', 'avg_time_to_los', 'percent_attempts_gte_eight_defenders',
-                      'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards', 
-                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
-    
-    for stat in player_stats:
-        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(span=5, min_periods=1).mean())
-
-    pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
-
-    opponent_stats_df = df[['season', 'week', 'opponent_team'] + pos_defense_cols].drop_duplicates()
-    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
-    
-    for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(span=5, min_periods=1).mean())
+def load_td_odds_player_list(td_odds_csv: str) -> pd.DataFrame:
+    df = pd.read_csv(td_odds_csv)
+    df = df[df['market'] == 'player_anytime_td'].copy()
+    df['merge_name'] = df['description'].apply(_normalize_name)
+    df = df.drop_duplicates(subset=['merge_name'])
+    return df[['merge_name', 'description', 'home_team', 'away_team']]
 
 
-    df.drop(columns=pos_defense_cols, inplace=True)
-    df = pd.merge(df, opponent_stats_df, on=['season', 'week', 'opponent_team'], how='left')
+def build_inference_dataframe_for_week(season: int, week: int, lines_csv: str) -> pd.DataFrame:
+    """
+    Build a player-week inference dataframe for the given season/week using only past data.
+    Returns one row per player with historical avg_* features (up to week-1) and week-level
+    opponent/implied_total merged in.
+    """
+    assert season == 2025, "This helper is currently tailored for 2025 inference."
+
+    # 1) Historic engineered features up to 2024 (no 2025 stats to avoid leakage)
+    historic_years = [2020, 2021, 2022, 2023, 2024]
+    engineered = engineer_features_for_touchdown_prediction(historic_years, TEAM_MAP, window=5)
+
+    # Latest per-player feature snapshot (through 2024)
+    engineered = engineered.sort_values(['player_id', 'season', 'week'])
+    latest_player_feats = engineered.groupby('player_id').tail(1).copy()
+
+    # Keep essential identity columns for later joins
+    id_cols = ['player_id', 'player_display_name', 'position', 'recent_team']
+    base_cols = [c for c in latest_player_feats.columns if c.startswith('avg_')] + [
+        'rush_matchup_value', 'pass_matchup_value', 'implied_total', 'depth_chart_rank'
+    ]
+    latest_player_feats = latest_player_feats[[c for c in id_cols + base_cols if c in latest_player_feats.columns]]
+
+    # 2) Load lines for target week (team, opponent, implied_total)
+    lines = load_week_lines(lines_csv)
+    lines = lines.rename(columns={'team': 'recent_team', 'opponent': 'opponent_team'})
+
+    # 3) Build a roster for week (from lines opponents, we select all players historically seen on each team)
+    # Use latest_player_feats to select players by their most recent team
+    week_df = latest_player_feats.merge(lines[['recent_team', 'opponent_team', 'implied_total']],
+                                        on='recent_team', how='inner')
+
+    # 4) Recompute matchup features using week opponent defensive avgs as-of end 2024
+    # Derive team-level opponent defensive averages (end of 2024) from engineered df
+    def_cols = [
+        'avg_rushing_tds_allowed_to_RB', 'avg_passing_tds_allowed_to_RB',
+        'avg_passing_tds_allowed_to_WR', 'avg_passing_tds_allowed_to_TE',
+        'avg_rushing_tds_allowed_to_QB'
+    ]
+    team_def = engineered.sort_values(['opponent_team', 'season', 'week']).groupby('opponent_team').tail(1)
+    team_def = team_def[['opponent_team'] + [c for c in def_cols if c in engineered.columns]].copy()
+
+    week_df = week_df.merge(team_def, on='opponent_team', how='left')
+
+    # Updated matchup values
+    if 'avg_redzone_carry_share' in week_df.columns and 'avg_rushing_tds_allowed_to_RB' in week_df.columns:
+        rb_mask = week_df['position'] == 'RB'
+        week_df.loc[rb_mask, 'rush_matchup_value'] = (
+            week_df.loc[rb_mask, 'avg_redzone_carry_share'] * week_df.loc[rb_mask, 'avg_rushing_tds_allowed_to_RB']
+        )
+    if 'avg_redzone_carry_share' in week_df.columns and 'avg_rushing_tds_allowed_to_QB' in week_df.columns:
+        qb_mask = week_df['position'] == 'QB'
+        week_df.loc[qb_mask, 'rush_matchup_value'] = (
+            week_df.loc[qb_mask, 'avg_redzone_carry_share'] * week_df.loc[qb_mask, 'avg_rushing_tds_allowed_to_QB']
+        )
+    if 'avg_redzone_target_share' in week_df.columns:
+        wr_mask = week_df['position'] == 'WR'
+        te_mask = week_df['position'] == 'TE'
+        if 'avg_passing_tds_allowed_to_WR' in week_df.columns:
+            week_df.loc[wr_mask, 'pass_matchup_value'] = (
+                week_df.loc[wr_mask, 'avg_redzone_target_share'] * week_df.loc[wr_mask, 'avg_passing_tds_allowed_to_WR']
+            )
+        if 'avg_passing_tds_allowed_to_TE' in week_df.columns:
+            week_df.loc[te_mask, 'pass_matchup_value'] = (
+                week_df.loc[te_mask, 'avg_redzone_target_share'] * week_df.loc[te_mask, 'avg_passing_tds_allowed_to_TE']
+            )
+
+    # Ensure required columns exist (fill missing engineered columns with 0)
+    week_df = week_df.fillna(0)
+    week_df['season'] = season
+    week_df['week'] = week
+
+    return week_df
 
 
-    
-   # df['redzone_td_rate'] = df.groupby('recent_team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
-    df['rush_matchup_value'] = np.select(
-        [df['position'] == 'RB', df['position'] == 'QB'],
-        [df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_RB'], df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_QB']],
-        default=0)
-    df['pass_matchup_value'] = np.select(
-        [df['position'] == 'RB', df['position'] == 'WR', df['position'] == 'TE'],
-        [df['avg_redzone_target_share'] * df['passing_tds_allowed_to_RB'], df['avg_redzone_target_share'] * df['passing_tds_allowed_to_WR'], df['avg_redzone_target_share'] * df['passing_tds_allowed_to_TE']],
-        default=0)
-    df.fillna(0, inplace=True)
-    return df
+def score_and_rank_all_players(week_df: pd.DataFrame) -> pd.DataFrame:
+    """Score players with calibrated models per position and return unified ranked list."""
+    positions = ['RB', 'WR_TE', 'QB']
+    model_files = {
+        'RB': 'models/RB_RandomForest_touchdown_model.joblib',
+        'WR_TE': 'models/WR_TE_RandomForest_touchdown_model.joblib',
+        'QB': 'models/QB_RandomForest_touchdown_model.joblib',
+    }
 
-### PREDICTION LOGIC ###
-def predict_stacked_proba(X, base_models, meta_model):
-    """Generates final probabilities from a manually stacked model."""
-    if X.empty:
-        return np.array([])
-    meta_features = np.column_stack([model.predict_proba(X)[:, 1] for model in base_models])
-    final_predictions = meta_model.predict_proba(meta_features)[:, 1]
-    return final_predictions
+    scored_frames = []
+    for pos in positions:
+        model_path = model_files[pos]
+        if not os.path.exists(model_path):
+            continue
+        pkg = load_model(model_path)
+        model = pkg['model']
+        feature_cols = pkg['feature_columns']
 
-def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, week, future_odds_df, td_odds_df):
-    """Predicts touchdown scorers using loaded, position-specific models."""
-    print("Assembling features for prediction...")
+        if pos == 'WR_TE':
+            pos_mask = week_df['position'].isin(['WR', 'TE'])
+        else:
+            pos_mask = week_df['position'] == pos
 
-    ### Filter feature-df to only include data up to the week before the prediction week
-    feature_df = feature_df[(feature_df['season'] < year) | ((feature_df['season'] == year) & (feature_df['week'] < week))]
+        df_pos = week_df.loc[pos_mask].copy()
+        # Align features to training columns
+        for c in feature_cols:
+            if c not in df_pos.columns:
+                df_pos[c] = 0
+        X = df_pos[feature_cols].fillna(0)
 
-    # Get schedule and roster for the prediction week
-    schedule = nfl.import_schedules([year])
-    #schedule['home_team'] = schedule['home_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
-    #schedule['away_team'] = schedule['away_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
-    
-    week_schedule = schedule[schedule['week'] == week]
-    
-    rosters = nfl.import_weekly_rosters([year])
-    rosters = rosters[rosters['status']=='ACT']
-    
-    #rosters['team'] = rosters['team'].replace({'LA': 'LAR', 'LV': 'LVR'})
+        df_pos['prob_td'] = model.predict_proba(X)[:, 1]
+        df_pos['position_group'] = pos
+        scored_frames.append(df_pos)
 
+    if not scored_frames:
+        return pd.DataFrame()
 
-    
-    opponent_map = {row['home_team']: row['away_team'] for _, row in week_schedule.iterrows()}
-    opponent_map.update({row['away_team']: row['home_team'] for _, row in week_schedule.iterrows()})
-    
-    teams_playing = list(opponent_map.keys())
-    
-    week_rosters = rosters[rosters['team'].isin(teams_playing) & rosters['position'].isin(['QB', 'RB', 'WR', 'TE'])].drop_duplicates(subset=['player_id'], keep='last')
-
-    
-    prediction_df = week_rosters[['player_id', 'player_name', 'position', 'team']]
-    
-    prediction_df.rename(columns={'player_name': 'player_display_name'}, inplace=True)
-    prediction_df['opponent_team'] = prediction_df['team'].map(opponent_map)
-
-    # Assemble features using historical data from the pre-engineered feature_df
-    all_features = set(RB_FEATURES + WR_TE_FEATURES + QB_FEATURES)
-    non_player_features = set()
-    for f in all_features:
-        if 'allowed_to' in f or f in ['rush_matchup_value', 'pass_matchup_value', 
-                                      #'redzone_td_rate', 
-                                      'implied_total', 'opponent_encoded']:
-            non_player_features.add(f)
-    
-    player_history_features = sorted(list(all_features - non_player_features))
-    #team_history_features = ['redzone_td_rate']
-    opponent_history_features = [f for f in all_features if 'allowed_to' in f]
-    
-    features_from_player_history = player_history_features #+ team_history_features
-    latest_player_data = feature_df.groupby('player_id')[features_from_player_history].last().reset_index()
-
-    prediction_df = pd.merge(prediction_df, latest_player_data, on='player_id', how='left')
+    scored = pd.concat(scored_frames, ignore_index=True)
+    scored = scored.sort_values('prob_td', ascending=False)
+    # Select output columns
+    out_cols = [
+        'season', 'week', 'player_id', 'player_display_name', 'position', 'position_group',
+        'recent_team', 'opponent_team', 'implied_total', 'prob_td'
+    ]
+    out_cols = [c for c in out_cols if c in scored.columns]
+    return scored[out_cols]
 
 
-     # NEW: Calculate team_continuity for the prediction week
-    # A player has continuity if their team for the upcoming week is the same as their last known team from history.
-   # prediction_df['team_continuity'] = (prediction_df['team'] == prediction_df['recent_team']).astype(int) # Note: pandas may add a suffix like _y
-    
-    # Get the latest opponent data for each team
-    opponent_stats_df = feature_df[['season', 'week', 'opponent_team'] + opponent_history_features]
-    #opponent_stats_df = opponent_stats_df[(opponent_stats_df['opponent_team'] == "NO") & (opponent_stats_df['season'] == 2024) & (opponent_stats_df['week'] == 18)]
-    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
-  
-   
+def main():
+    season = 2025
+    week = 1
+    lines_csv = 'data/week_1_lines.csv'
+    td_odds_csv = 'data/week_1_td_odds.csv'
 
-     # Debugging output
-    latest_opponent_data = opponent_stats_df.groupby('opponent_team')[opponent_history_features].last().reset_index()
-    
+    print('🔧 Building inference dataset...')
+    week_df = build_inference_dataframe_for_week(season, week, lines_csv)
 
-    
-    
-   
-    #rename recent_team to opponent_team
-    #latest_opponent_data.rename(columns={'recent_team': 'opponent_team'}, inplace=True)
+    # Filter to only players present in TD odds list
+    print('🧾 Loading TD odds player list...')
+    td_list = load_td_odds_player_list(td_odds_csv)
+    week_df['merge_name'] = week_df['player_display_name'].apply(_normalize_name)
+    week_df = week_df.merge(td_list[['merge_name']], on='merge_name', how='inner')
 
-    prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
+    print('🔮 Scoring players...')
+    ranked = score_and_rank_all_players(week_df)
 
-    print(prediction_df.team.unique())
-    print(future_odds_df.team.unique())
-    
-    
-    prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total']], on='team', how='left')
-    
-    known_opponents = opponent_le.classes_
-    prediction_df['opponent_team'] = prediction_df['opponent_team'].apply(lambda x: x if x in known_opponents else 'UNKNOWN')
-    if 'UNKNOWN' not in opponent_le.classes_:
-        opponent_le.classes_ = np.append(opponent_le.classes_, 'UNKNOWN')
-    prediction_df['opponent_encoded'] = opponent_le.transform(prediction_df['opponent_team'])
-
-    prediction_df['rush_matchup_value'] = np.select(
-        [prediction_df['position'] == 'RB', prediction_df['position'] == 'QB'],
-        [prediction_df['avg_redzone_carry_share'] * prediction_df['rushing_tds_allowed_to_RB'], prediction_df['avg_redzone_carry_share'] * prediction_df['rushing_tds_allowed_to_QB']],
-        default=0)
-    prediction_df['pass_matchup_value'] = np.select(
-        [prediction_df['position'] == 'RB', prediction_df['position'] == 'WR', prediction_df['position'] == 'TE'],
-        [prediction_df['avg_redzone_target_share'] * prediction_df['passing_tds_allowed_to_RB'], prediction_df['avg_redzone_target_share'] * prediction_df['passing_tds_allowed_to_WR'], prediction_df['avg_redzone_target_share'] * prediction_df['passing_tds_allowed_to_TE']],
-        default=0)
-    
-    depth_chart_2025_data = data.get_2025_depth_chart_data()
-    prediction_df.drop(columns=['depth_chart_rank'], inplace=True)  # Ensure no duplicate column
-    #merge 2025 depth chart data on player_id and use depth_chart_rank from depth_chart_2025_data
-    prediction_df = pd.merge(prediction_df, depth_chart_2025_data, on='player_id', how='left')
-    #fill depth_chart_rank with 0 if NaN
-    prediction_df['depth_chart_rank'] = prediction_df['depth_chart_rank'].fillna(4).astype(int)
-    
-    
-    prediction_df.fillna(0, inplace=True)
-    print("Feature assembly complete.")
+    os.makedirs('candidates', exist_ok=True)
+    out_path = f'candidates/{season}_week_{week}_candidates.csv'
+    ranked.to_csv(out_path, index=False)
+    print(f'✅ Saved ranked candidates: {out_path} ({len(ranked)} players)')
 
 
-    prediction_df.to_csv('unscaled.csv', index=False)
-      # Save unscaled features for debugging
-
-    # Split data and apply correct model
-    pred_df_rb = prediction_df[prediction_df['position'] == 'RB'].copy()
-    pred_df_wr_te = prediction_df[prediction_df['position'].isin(['WR', 'TE'])].copy()
-    pred_df_qb = prediction_df[prediction_df['position'] == 'QB'].copy()
-
-    #Scale each position's data with its specific scaler ---
-    if not pred_df_rb.empty:
-        numerical_features_rb = [f for f in RB_FEATURES if f not in CATEGORICAL_FEATURES]
-        pred_df_rb.loc[:, numerical_features_rb] = scalers['rb'].transform(pred_df_rb[numerical_features_rb])
-
-    if not pred_df_wr_te.empty:
-        numerical_features_wr_te = [f for f in WR_TE_FEATURES if f not in CATEGORICAL_FEATURES]
-        pred_df_wr_te.loc[:, numerical_features_wr_te] = scalers['wr_te'].transform(pred_df_wr_te[numerical_features_wr_te])
-
-    if not pred_df_qb.empty:
-        numerical_features_qb = [f for f in QB_FEATURES if f not in CATEGORICAL_FEATURES]
-        pred_df_qb.loc[:, numerical_features_qb] = scalers['qb'].transform(pred_df_qb[numerical_features_qb])
-
-    pred_df_rb['predicted_touchdown_probability'] = predict_stacked_proba(pred_df_rb[RB_FEATURES], models['rb_base'], models['rb_meta'])
-    pred_df_wr_te['predicted_touchdown_probability'] = predict_stacked_proba(pred_df_wr_te[WR_TE_FEATURES], models['wr_te_base'], models['wr_te_meta'])
-    pred_df_qb['predicted_touchdown_probability'] = predict_stacked_proba(pred_df_qb[QB_FEATURES], models['qb_base'], models['qb_meta'])
-
-    # Combine results and find market edge
-    final_predictions = pd.concat([pred_df_rb, pred_df_wr_te, pred_df_qb])
-    
-    td_odds_df['merge_name'] = td_odds_df['description'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
-    final_predictions['merge_name'] = final_predictions['player_display_name'].str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
-    
-    prob_if_pos = 100 / (td_odds_df['price'] + 100)
-    prob_if_neg = abs(td_odds_df['price']) / (abs(td_odds_df['price']) + 100)
-    td_odds_df['market_implied_prob'] = np.where(td_odds_df['price'] > 0, prob_if_pos, prob_if_neg)
-    
-    final_predictions = pd.merge(final_predictions, td_odds_df[['merge_name', 'price', 'market_implied_prob']], on='merge_name', how='left')
-    
-    final_predictions['model_edge'] = final_predictions['predicted_touchdown_probability'] - final_predictions['market_implied_prob']
-    
-    display_cols = ['player_display_name', 'team', 'position', 'predicted_touchdown_probability', 'price', 'market_implied_prob', 'model_edge']
-    final_predictions.dropna(subset=['price'], inplace=True)
-    
-    return final_predictions.sort_values(by='predicted_touchdown_probability', ascending=False)
-
-
-### main
 if __name__ == '__main__':
-    """
-    Main entry point for the AWS Lambda function.
-    """
-    print("Lambda function initiated.")
-    prediction_year = 2025
-    prediction_week = 2
-    
-    # --- 1. Load Models and Encoders from S3 ---
-    print("Loading model artifacts from S3...")
-    models = {
-        'rb_base': read_joblib_from_s3('models/rb_base_final.pkl'),
-        'rb_meta': read_joblib_from_s3('models/rb_meta_final.pkl'),
-        'wr_te_base': read_joblib_from_s3('models/wr_te_base_final.pkl'),
-        'wr_te_meta': read_joblib_from_s3('models/wr_te_meta_final.pkl'),
-        'qb_base': read_joblib_from_s3('models/qb_base_final.pkl'),
-        'qb_meta': read_joblib_from_s3('models/qb_meta_final.pkl')
-    }
-    # --- NEW: Load the scalers ---
-    scalers = {
-        'rb': read_joblib_from_s3('models/rb_scaler.pkl'),
-        'wr_te': read_joblib_from_s3('models/wr_te_scaler.pkl'),
-        'qb': read_joblib_from_s3('models/qb_scaler.pkl')
-    }
-    opponent_le = read_joblib_from_s3('models/opponent_encoder.pkl')
-    print("Model loading complete.")
+    main()
 
-    # --- 2. Load Data Files from S3 ---
-    print("Loading data files from S3...")
-    nfl_teams_df = read_csv_from_s3('data/nfl_teams.csv')
-    future_odds_raw = read_csv_from_s3('data/data/week_2_lines.csv')
-    td_odds_df = read_csv_from_s3('data/data/week_2_td_odds.csv')
-    feature_df = read_csv_from_s3('data/raw_nfl_data.csv')
-    team_map = dict(zip(nfl_teams_df['team_name'], nfl_teams_df['team_id']))
 
-    
-    
-    #feature_df = data.get_all_historic_data([2020,2021,2022,2023,2024,2025], team_map)
-    #feature_df = feature_df[(feature_df['season'] < prediction_year) | ((feature_df['season'] == prediction_year) & (feature_df['week'] < prediction_week))]
-
-    feature_df = transform_features(feature_df)
-    
-   
-    future_odds_df = data.transform_future_odds(future_odds_raw, team_map)
-    print(future_odds_df)
-    print("Data loading complete.")
-
-    # --- 3. Run Prediction ---
-    # In a real app, you would get the year/week from the API Gateway event
-   
-    print(f"Generating predictions for {prediction_year}, Week {prediction_week}...")
-    
-    final_predictions_df = predict_touchdown_scorers(feature_df, models,scalers, opponent_le, prediction_year, prediction_week, future_odds_df, td_odds_df)
-    #save predictions to csv with prediction week
-    final_predictions_df.to_csv(f'data/predictions_week_{prediction_week}.csv', index=False)  # Save predictions to a CSV file for review
-    print(final_predictions_df.head(10))
-        
-#         print("Prediction complete. Returning results.")
-#         return {
-#             'statusCode': 200,
-#             'headers': {
-#                 'Access-Control-Allow-Origin': '*', # Allows any website to call this API
-#                 'Access-Control-Allow-Headers': 'Content-Type',
-#                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-#             },
-#             'body': json.dumps(predictions_json)
-#         }
-
-#     except Exception as e:
-#         print(f"ERROR: {e}")
-#         return {
-#             'statusCode': 500,
-#             'headers': {
-#                 'Access-Control-Allow-Origin': '*',
-#                 'Access-Control-Allow-Headers': 'Content-Type',
-#                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-#             },
-#             'body': json.dumps({'error': str(e)})
-#         }
-# }
