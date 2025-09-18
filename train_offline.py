@@ -8,26 +8,21 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+ 
 from sklearn.linear_model import LogisticRegression
-from sklearn.inspection import permutation_importance
 import lightgbm as lgb
 from sklearn.base import clone
-import nfl_td_lambda.data_collection as data
+from sklearn.metrics import brier_score_loss, log_loss
+import data_collection as data
 import joblib
-import boto3
-from io import BytesIO
 import os
 import sys
 
 
 
 ### CONSTANTS ###
-S3_BUCKET_NAME = "nfl-touchdown-model-data"
 
 # -- Position-Specific Feature Lists --
-
-CATEGORICAL_FEATURES = ['opponent_encoded']
 
 RB_FEATURES = [
     'avg_offense_snap_share',
@@ -90,7 +85,7 @@ WR_TE_FEATURES = [
     # avg_wopr is a composite of target share and air yards share. It's highly correlated with
     # avg_percent_share_of_intended_air_yards. Test them against each other.
     'avg_wopr',
-    'target_share', # Consider testing this uncommented. It's a fundamental metric and might offer value alongside wopr.
+    'avg_target_share', # Consider testing this uncommented. It's a fundamental metric and might offer value alongside wopr.
 
     # --- Efficiency & Route-Running Metrics ---
     'avg_receiving_epa', # Advanced efficiency metric.
@@ -163,7 +158,12 @@ LGBM_PARAM_DIST = {
     'num_leaves': [20, 31, 40, 50],
     'max_depth': [-1, 10, 20],
     'reg_alpha': [0, 0.1, 0.5],
-    'reg_lambda': [0, 0.1, 0.5]
+    'reg_lambda': [0, 0.1, 0.5],
+    # Expanded search space for better generalization on imbalanced data
+    'min_child_samples': [20, 50, 100, 200],
+    'subsample': [0.6, 0.8, 1.0],
+    'subsample_freq': [1],
+    'colsample_bytree': [0.6, 0.8, 1.0]
 }
 
 # --- 3. Feature Engineering ---
@@ -192,7 +192,8 @@ def feature_engineering(df):
 
     # df.fillna(0, inplace=True)
 
-    # df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
+    # Ensure strict chronological ordering per player before lag/EWM to avoid leakage
+    df.sort_values(by=['player_id', 'season', 'week'], inplace=True, ignore_index=True)
     
     
  
@@ -205,15 +206,20 @@ def feature_engineering(df):
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
     
     for stat in player_stats:
-        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(span=5, min_periods=1).mean())
+        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
    
     pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
 
-    opponent_stats_df = df[['season', 'week', 'opponent_team'] + pos_defense_cols].drop_duplicates()
-    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
+    opponent_stats_df = (
+        df[['season', 'week', 'opponent_team'] + pos_defense_cols]
+          .groupby(['season', 'week', 'opponent_team'], as_index=False)[pos_defense_cols]
+          .mean()
+    )
+    # Ensure chronological order within each opponent for lag/EWM
+    opponent_stats_df.sort_values(by=['opponent_team', 'season', 'week'], inplace=True)
     
     for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(span=5, min_periods=1).mean())
+         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
 
 
     df.drop(columns=pos_defense_cols, inplace=True)
@@ -231,13 +237,190 @@ def feature_engineering(df):
         [df['avg_redzone_target_share'] * df['passing_tds_allowed_to_RB'], df['avg_redzone_target_share'] * df['passing_tds_allowed_to_WR'], df['avg_redzone_target_share'] * df['passing_tds_allowed_to_TE']],
         default=0)
     df.fillna(0, inplace=True)
-    df['position_encoded'] = LabelEncoder().fit_transform(df['position'])
-    df['opponent_encoded'] = LabelEncoder().fit_transform(df['opponent_team'])
 
     return df
     
 
 
+
+# --- Week-Grouped Expanding Time-Series CV Utilities ---
+def _get_ordered_unique_weeks(df_like: pd.DataFrame):
+    """Return a sorted list of unique (season, week) tuples present in df_like."""
+    unique_weeks = (
+        df_like[['season', 'week']]
+        .drop_duplicates()
+        .sort_values(by=['season', 'week'])
+    )
+    return list(unique_weeks.itertuples(index=False, name=None))
+
+
+def _map_week_to_row_positions(df_like: pd.DataFrame):
+    """Map each (season, week) tuple to the row positions (0..N-1) belonging to that week."""
+    df_reset = df_like.reset_index(drop=True)
+    week_to_positions = {}
+    for pos, (season, week) in enumerate(zip(df_reset['season'].values, df_reset['week'].values)):
+        week_key = (int(season), int(week))
+        if week_key not in week_to_positions:
+            week_to_positions[week_key] = []
+        week_to_positions[week_key].append(pos)
+    return week_to_positions
+
+
+def build_week_splits_from_df(
+    df_like: pd.DataFrame,
+    n_splits: int = 5,
+    test_weeks: int = 1,
+    embargo_weeks: int = 0,
+    min_train_weeks: int = 8,
+):
+    """
+    Build week-grouped expanding CV splits over df_like rows (assumes columns 'season' and 'week').
+
+    - Keeps entire (season, week) blocks together in either train or test.
+    - Train grows from the start; test is the next contiguous block of size `test_weeks`.
+    - Optional `embargo_weeks` gap between the end of train and start of test.
+    - Ensures at least `min_train_weeks` weeks in train.
+
+    Returns a list of (train_idx, test_idx) tuples where indices are row positions (0..N-1).
+    """
+    df_reset = df_like[['season', 'week']].reset_index(drop=True).copy()
+    week_to_positions = _map_week_to_row_positions(df_reset)
+    ordered_weeks = _get_ordered_unique_weeks(df_reset)
+
+    num_weeks = len(ordered_weeks)
+    if num_weeks < (min_train_weeks + test_weeks):
+        raise ValueError("Not enough weeks to construct the requested CV splits.")
+
+    first_valid_test_start = min_train_weeks + embargo_weeks
+    last_valid_test_start = num_weeks - test_weeks
+    if first_valid_test_start > last_valid_test_start:
+        raise ValueError("Embargo/min_train/test_weeks settings leave no valid test window.")
+
+    candidate_test_starts = list(range(first_valid_test_start, last_valid_test_start + 1))
+    if n_splits > len(candidate_test_starts):
+        n_splits = len(candidate_test_starts)
+    if n_splits < 1:
+        raise ValueError("n_splits must be at least 1.")
+
+    if n_splits == len(candidate_test_starts):
+        selected_indices = list(range(len(candidate_test_starts)))
+    else:
+        selected_indices = sorted(set(np.linspace(0, len(candidate_test_starts) - 1, num=n_splits).round().astype(int).tolist()))
+        while len(selected_indices) > n_splits:
+            selected_indices.pop(-1)
+        while len(selected_indices) < n_splits:
+            selected_indices.append(selected_indices[-1])
+
+    splits = []
+    for idx in selected_indices:
+        test_start_week_idx = candidate_test_starts[idx]
+        train_end_week_idx_exclusive = test_start_week_idx - embargo_weeks
+        test_end_week_idx_exclusive = test_start_week_idx + test_weeks
+
+        train_weeks = ordered_weeks[:train_end_week_idx_exclusive]
+        test_weeks_block = ordered_weeks[test_start_week_idx:test_end_week_idx_exclusive]
+
+        train_positions = []
+        for wk in train_weeks:
+            train_positions.extend(week_to_positions[wk])
+
+        test_positions = []
+        for wk in test_weeks_block:
+            test_positions.extend(week_to_positions[wk])
+
+        splits.append((np.array(train_positions, dtype=int), np.array(test_positions, dtype=int)))
+
+    return splits
+
+
+def print_week_split_diagnostics(df_like: pd.DataFrame, splits):
+    """Print summary of week boundaries for each split to visually verify no leakage."""
+    df_reset = df_like[['season', 'week']].reset_index(drop=True).copy()
+
+    def idx_to_week_bounds(idxs: np.ndarray):
+        if idxs.size == 0:
+            return None, None
+        weeks_present = df_reset.loc[idxs, ['season', 'week']].drop_duplicates().apply(tuple, axis=1).tolist()
+        weeks_present_sorted = sorted(weeks_present)
+        return weeks_present_sorted[0], weeks_present_sorted[-1]
+
+    print("\nCV fold diagnostics (train_end_week -> test_range):")
+    for i, (tr, te) in enumerate(splits, start=1):
+        _, train_end = idx_to_week_bounds(tr)
+        test_start, test_end = idx_to_week_bounds(te)
+        print(f"  Fold {i}: train_end={train_end}  |  test={test_start}..{test_end}")
+
+
+def build_week_splits_covering_all_weeks(
+    df_like: pd.DataFrame,
+    test_weeks: int = 1,
+    embargo_weeks: int = 0,
+    min_train_weeks: int = 8,
+):
+    """
+    Build week-grouped expanding CV splits that COVER ALL valid test weeks.
+
+    Returns a list of (train_idx, test_idx) per contiguous test window so that
+    every week from the first valid test start to the last possible test end
+    appears in exactly one test fold (given test_weeks windowing).
+    """
+    df_reset = df_like[['season', 'week']].reset_index(drop=True).copy()
+    week_to_positions = _map_week_to_row_positions(df_reset)
+    ordered_weeks = _get_ordered_unique_weeks(df_reset)
+
+    num_weeks = len(ordered_weeks)
+    if num_weeks < (min_train_weeks + test_weeks):
+        raise ValueError("Not enough weeks to construct the requested CV splits.")
+
+    first_valid_test_start = min_train_weeks + embargo_weeks
+    last_valid_test_start = num_weeks - test_weeks
+    if first_valid_test_start > last_valid_test_start:
+        raise ValueError("Embargo/min_train/test_weeks settings leave no valid test window.")
+
+    splits = []
+    for test_start_week_idx in range(first_valid_test_start, last_valid_test_start + 1):
+        train_end_week_idx_exclusive = test_start_week_idx - embargo_weeks
+        test_end_week_idx_exclusive = test_start_week_idx + test_weeks
+
+        train_weeks = ordered_weeks[:train_end_week_idx_exclusive]
+        test_weeks_block = ordered_weeks[test_start_week_idx:test_end_week_idx_exclusive]
+
+        train_positions = []
+        for wk in train_weeks:
+            train_positions.extend(week_to_positions[wk])
+
+        test_positions = []
+        for wk in test_weeks_block:
+            test_positions.extend(week_to_positions[wk])
+
+        splits.append((np.array(train_positions, dtype=int), np.array(test_positions, dtype=int)))
+
+    return splits
+
+
+def assert_week_splits_valid(df_like: pd.DataFrame, splits):
+    """Raise AssertionError if any split leaks: overlapping weeks or train not strictly before test."""
+    df_reset = df_like[['season', 'week']].reset_index(drop=True).copy()
+
+    def weeks_of(idxs: np.ndarray):
+        if idxs.size == 0:
+            return []
+        return df_reset.loc[idxs, ['season', 'week']].drop_duplicates().apply(tuple, axis=1).tolist()
+
+    def week_key(w):
+        # (season, week) -> comparable key
+        return (int(w[0]), int(w[1]))
+
+    for i, (tr, te) in enumerate(splits, start=1):
+        train_weeks = weeks_of(tr)
+        test_weeks = weeks_of(te)
+        # No overlap
+        assert set(train_weeks).isdisjoint(set(test_weeks)), f"Overlap in fold {i}: {set(train_weeks) & set(test_weeks)}"
+        if train_weeks and test_weeks:
+            max_train = max(train_weeks, key=week_key)
+            min_test = min(test_weeks, key=week_key)
+            # Strictly earlier
+            assert week_key(max_train) < week_key(min_test), f"Temporal order violated in fold {i}: train_end {max_train} !< test_start {min_test}"
 
 # --- 4. Position-Specific Model Training ---
 
@@ -245,7 +428,7 @@ def feature_engineering(df):
 ###
 ### NEW: MANUAL TIME-SERIES STACKING IMPLEMENTATION
 ###
-def train_stacked_model_timeseries(X, y, base_estimators, meta_estimator, n_splits=5):
+def train_stacked_model_timeseries(X, y, base_estimators, meta_estimator, n_splits=5, cv_splits=None):
     """
     Trains a stacked model using time-series cross-validation to generate meta-features.
 
@@ -258,13 +441,16 @@ def train_stacked_model_timeseries(X, y, base_estimators, meta_estimator, n_spli
     # Initialize an array for meta-features, with one column per base estimator
     meta_features = np.full((len(X), len(base_estimators)), np.nan)
     
-    # Use TimeSeriesSplit to respect chronological order
-    tscv = TimeSeriesSplit(n_splits=n_splits)
+    # Use provided week-grouped CV splits to respect chronological order
+    if cv_splits is None:
+        tscv = TimeSeriesSplit(n_splits=n_splits)
+        split_iter = tscv.split(X)
+    else:
+        split_iter = cv_splits
     
-    first_test_fold_start = 0 # To find where our predictions start
-    for i, (train_index, test_index) in enumerate(tscv.split(X)):
-        if i == 0:
-            first_test_fold_start = test_index[0]
+    # Track which rows received OOF predictions
+    has_prediction_mask = np.zeros(len(X), dtype=bool)
+    for i, (train_index, test_index) in enumerate(split_iter):
             
         # For each base model, fit on past data and predict on future data
         for j, estimator in enumerate(base_estimators):
@@ -273,10 +459,15 @@ def train_stacked_model_timeseries(X, y, base_estimators, meta_estimator, n_spli
             model.fit(X.iloc[train_index], y.iloc[train_index])
             predictions = model.predict_proba(X.iloc[test_index])[:, 1]
             meta_features[test_index, j] = predictions
+        has_prediction_mask[test_index] = True
 
 
-    # Trim the data to only include rows for which we have out-of-fold predictions
-    valid_indices = np.arange(first_test_fold_start, len(X))
+    # Keep only rows where all base models produced an OOF prediction (no NaNs)
+    row_has_all_models = ~np.any(np.isnan(meta_features), axis=1)
+    valid_mask = has_prediction_mask & row_has_all_models
+    valid_indices = np.where(valid_mask)[0]
+    if valid_indices.size == 0:
+        raise ValueError("No valid OOF meta-features were generated. Check CV splits.")
     meta_features_for_training = meta_features[valid_indices]
     y_for_training = y.iloc[valid_indices]
 
@@ -307,26 +498,27 @@ def tune_and_train_specialist_model(df_position, features, rf_param_dist, lgbm_p
     print("\n" + "="*60 + f"\nTUNING AND TRAINING FOR: {model_type} Model\n" + "="*60)
 
 
+    # Ensure global chronological order across players for proper time-based splits
+    df_position = df_position.sort_values(['season', 'week', 'player_id']).copy()
+
     # --- 1. Split data for hyperparameter tuning ---
     train_df = df_position[df_position['season'] < validation_year]
+    train_df = train_df.sort_values(['season', 'week', 'player_id']).copy()
     X_train = train_df[features]
     y_train = train_df['scored_touchdown']
 
-    # --- NEW: Feature Scaling ---
-    numerical_features = [f for f in features if f not in CATEGORICAL_FEATURES]
-    scaler = StandardScaler()
-    
-    # Fit the scaler ONLY on the training data
-    X_train.loc[:, numerical_features] = scaler.fit_transform(X_train[numerical_features])
-    print(f"Scaler fitted for {model_type} model.")
+    # No feature scaling for tree-based base models
 
-    tscv = TimeSeriesSplit(n_splits=5)
+    # Build week-grouped CV splits for tuning on training data only
+    cv_splits = build_week_splits_from_df(train_df, n_splits=5, test_weeks=1, embargo_weeks=0, min_train_weeks=8)
+    print_week_split_diagnostics(train_df, cv_splits)
+    assert_week_splits_valid(train_df, cv_splits)
 
 
     # --- 2. Tune RandomForest ---
     print(f"\nTuning RandomForest for {model_type}s...")
     rf = RandomForestClassifier(random_state=42, class_weight='balanced')
-    rf_search = RandomizedSearchCV(estimator=rf, param_distributions=rf_param_dist, n_iter=25, cv=tscv, scoring='average_precision', n_jobs=-1, random_state=42)
+    rf_search = RandomizedSearchCV(estimator=rf, param_distributions=rf_param_dist, n_iter=25, cv=cv_splits, scoring='average_precision', n_jobs=-1, random_state=42)
     rf_search.fit(X_train, y_train)
     best_rf_params = rf_search.best_params_
     print(f"Best RF Params: {best_rf_params}")
@@ -335,7 +527,7 @@ def tune_and_train_specialist_model(df_position, features, rf_param_dist, lgbm_p
     # --- 3. Tune LightGBM ---
     print(f"\nTuning LightGBM for {model_type}s...")
     lgbm = lgb.LGBMClassifier(objective='binary', random_state=42, is_unbalance=True, verbosity=-1)
-    lgbm_search = RandomizedSearchCV(estimator=lgbm, param_distributions=lgbm_param_dist, n_iter=25, cv=tscv, scoring='average_precision', n_jobs=-1, random_state=42)
+    lgbm_search = RandomizedSearchCV(estimator=lgbm, param_distributions=lgbm_param_dist, n_iter=25, cv=cv_splits, scoring='average_precision', n_jobs=-1, random_state=42)
     lgbm_search.fit(X_train, y_train)
     best_lgbm_params = lgbm_search.best_params_
     print(f"Best LGBM Params: {best_lgbm_params}")
@@ -347,13 +539,16 @@ def tune_and_train_specialist_model(df_position, features, rf_param_dist, lgbm_p
         RandomForestClassifier(random_state=42, class_weight='balanced', **best_rf_params),
         lgb.LGBMClassifier(objective='binary', random_state=42, is_unbalance=True, verbosity=-1, **best_lgbm_params)
     ]
-    meta_estimator = LogisticRegression(class_weight='balanced')
+    meta_estimator = LogisticRegression(class_weight='balanced', penalty='l2', C=0.5)
     
     # This trains the models needed for evaluation on the validation set
-    base_models, meta_model = train_stacked_model_timeseries(X_train, y_train, base_estimators, meta_estimator)
+    # Use denser week-coverage for OOF stacking to maximize meta-model training data
+    oof_splits = build_week_splits_covering_all_weeks(train_df, test_weeks=1, embargo_weeks=0, min_train_weeks=8)
+    assert_week_splits_valid(train_df, oof_splits)
+    base_models, meta_model = train_stacked_model_timeseries(X_train, y_train, base_estimators, meta_estimator, n_splits=5, cv_splits=oof_splits)
         
     print("Final model training complete.")
-    return base_models, meta_model, best_rf_params, best_lgbm_params, scaler
+    return base_models, meta_model, best_rf_params, best_lgbm_params
 
 
 
@@ -370,6 +565,13 @@ def predict_stacked_proba(X, base_models, meta_model):
     # Use the meta-model to make the final prediction
     final_predictions = meta_model.predict_proba(meta_features)[:, 1]
     return final_predictions
+
+
+def fit_platt_calibrator(y_true: pd.Series, y_proba: np.ndarray) -> LogisticRegression:
+    """Fits a simple Platt (logistic) calibrator on validation probabilities."""
+    calibrator = LogisticRegression(penalty='l2', C=1.0)
+    calibrator.fit(y_proba.reshape(-1, 1), y_true.values)
+    return calibrator
 
 
 def evaluate_model_at_k(predictions_df: pd.DataFrame, k: int = 25):
@@ -392,6 +594,53 @@ def evaluate_model_at_k(predictions_df: pd.DataFrame, k: int = 25):
         weekly_results.append({'week': week, 'precision_at_k': precision_at_k, 'recall_at_k': recall_at_k, 'successful_picks': hits})
         
     return pd.DataFrame(weekly_results)
+
+
+def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 10):
+    """Compute ECE (Expected Calibration Error) with equal-width bins in [0,1]."""
+    y_true = np.asarray(y_true).astype(int)
+    y_prob = np.asarray(y_prob)
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    bin_ids = np.digitize(y_prob, bins) - 1
+    ece = 0.0
+    calib_table = []
+    for b in range(n_bins):
+        in_bin = bin_ids == b
+        if not np.any(in_bin):
+            calib_table.append({'bin': b, 'count': 0, 'avg_pred': np.nan, 'emp_rate': np.nan, 'abs_gap': np.nan})
+            continue
+        avg_pred = y_prob[in_bin].mean()
+        emp_rate = y_true[in_bin].mean()
+        weight = in_bin.mean()
+        ece += weight * abs(emp_rate - avg_pred)
+        calib_table.append({'bin': b, 'count': int(in_bin.sum()), 'avg_pred': avg_pred, 'emp_rate': emp_rate, 'abs_gap': abs(emp_rate - avg_pred)})
+    calib_df = pd.DataFrame(calib_table)
+    return ece, calib_df
+
+
+def evaluate_probability_quality(y_true: pd.Series, y_prob: np.ndarray, label: str = ""):
+    """Compute Brier score, log loss, ECE and return a dict plus calibration table."""
+    metrics = {}
+    try:
+        metrics['brier'] = float(brier_score_loss(y_true, y_prob))
+    except Exception:
+        metrics['brier'] = np.nan
+    try:
+        # add a small epsilon clamp to avoid log(0)
+        eps = 1e-15
+        metrics['log_loss'] = float(log_loss(y_true, np.clip(y_prob, eps, 1 - eps)))
+    except Exception:
+        metrics['log_loss'] = np.nan
+    ece, calib_df = expected_calibration_error(y_true.values, y_prob, n_bins=10)
+    metrics['ece'] = float(ece)
+    if label:
+        print(f"\n--- Probability Quality ({label}) ---")
+    else:
+        print("\n--- Probability Quality ---")
+    print({k: round(v, 4) if v == v else v for k, v in metrics.items()})
+    print("Calibration table (first 10 bins):")
+    print(calib_df.round(3))
+    return metrics, calib_df
 
 
 def evaluate_model_at_50_threshold(predictions_df: pd.DataFrame):
@@ -454,7 +703,20 @@ def evaluate_model_at_50_threshold(predictions_df: pd.DataFrame):
     return results_summary
 
 
-def evaluate_specialist_model(base_models, meta_model,scaler, model_name, validation_df, features, k=25):
+def precision_recall_at_k_sweep(predictions_df: pd.DataFrame, k_values):
+    """Return a dataframe with precision/recall@k for a list of k's (weekly averaged)."""
+    rows = []
+    for k in k_values:
+        wk = evaluate_model_at_k(predictions_df, k=k)
+        avg = wk.mean()
+        rows.append({'k': k, 'precision_at_k': avg['precision_at_k'], 'recall_at_k': avg['recall_at_k'], 'successful_picks': avg['successful_picks']})
+    sweep_df = pd.DataFrame(rows)
+    print("\n--- Precision/Recall@K Sweep ---")
+    print(sweep_df.round(3))
+    return sweep_df
+
+
+def evaluate_specialist_model(base_models, meta_model, model_name, validation_df, features, k=25):
     """Calculates performance metrics for a manually stacked model."""
     print("\n" + "="*60 + f"\nEVALUATION FOR: {model_name}\n" + "="*60)
     if validation_df.empty:
@@ -463,13 +725,8 @@ def evaluate_specialist_model(base_models, meta_model,scaler, model_name, valida
 
     # Prepare X_val from the validation dataframe
     X_val = validation_df[features].copy() # Use .copy() to avoid SettingWithCopyWarning
-    y_val = validation_df['scored_touchdown']
 
-    # --- THIS IS THE FIX ---
-    # Scale X_val using the scaler that was FIT ON THE TRAINING DATA
-    numerical_features = [f for f in features if f not in CATEGORICAL_FEATURES]
-    X_val.loc[:, numerical_features] = scaler.transform(X_val[numerical_features])
-    # -----------------------
+    # No scaling required for tree-based base models
 
     # --- 1. Performance Metrics (Precision@k) ---
     print(f"\n--- Weekly Performance @ K={k} ---")
@@ -499,6 +756,9 @@ def evaluate_specialist_model(base_models, meta_model,scaler, model_name, valida
     }).sort_values(by='Coefficient (Weight)', ascending=False)
     print(model_importance_df)
 
+    # --- 3. Probability Quality ---
+    evaluate_probability_quality(validation_df['scored_touchdown'], y_pred_proba, label=f"{model_name}")
+
 
 ###
 ### UPDATED: RETRAINING FUNCTION FOR MANUAL STACKING
@@ -510,12 +770,13 @@ def train_model_on_all_data(df_position, features, best_rf_params, best_lgbm_par
     print(f"\nRetraining final {model_type} model on all data (2020-2024)...")
 
 
+    # Ensure global chronological order across players before final training
+    df_position = df_position.sort_values(['season', 'week', 'player_id']).copy()
+
     X_full = df_position[features]
     y_full = df_position['scored_touchdown']
 
-    numerical_features = [f for f in features if f not in CATEGORICAL_FEATURES]
-    scaler = StandardScaler()
-    X_full.loc[:, numerical_features] = scaler.fit_transform(X_full[numerical_features])
+    # No feature scaling for tree-based base models
     
 
 
@@ -523,7 +784,7 @@ def train_model_on_all_data(df_position, features, best_rf_params, best_lgbm_par
         RandomForestClassifier(random_state=42, class_weight='balanced', **best_rf_params),
         lgb.LGBMClassifier(objective='binary', random_state=42, is_unbalance=True, verbosity=-1, **best_lgbm_params)
     ]
-    meta_estimator = LogisticRegression()
+    meta_estimator = LogisticRegression(class_weight='balanced', penalty='l2', C=0.5)
 
 
     # Use the same robust training logic on the full dataset
@@ -531,44 +792,29 @@ def train_model_on_all_data(df_position, features, best_rf_params, best_lgbm_par
 
 
     print(f"{model_type} retraining complete.")
-    return final_base_models, final_meta_model, scaler
+    return final_base_models, final_meta_model
 
 
 
-# --- S3 Upload Helper Function ---
-def write_joblib_to_s3(python_object, bucket_name, s3_key):
+ 
+
+
+# --- Local File Saving Helper Functions ---
+def save_joblib_locally(python_object, file_path):
     """
-    Serializes a Python object with joblib and uploads it to an S3 bucket.
+    Serializes a Python object with joblib and saves it locally.
     """
-    s3_client = boto3.client('s3')
-    print(f"Uploading model artifact to 's3://{bucket_name}/{s3_key}'...")
+    print(f"Saving model artifact to '{file_path}'...")
     try:
-        with BytesIO() as buffer:
-            joblib.dump(python_object, buffer)
-            buffer.seek(0)
-            s3_client.upload_fileobj(buffer, bucket_name, s3_key)
-        print("Upload successful.")
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        joblib.dump(python_object, file_path)
+        print("Save successful.")
         return True
     except Exception as e:
-        print(f"An error occurred during S3 upload: {e}")
+        print(f"An error occurred during local save: {e}")
         return False
     
-def upload_csv_to_s3(local_file_path, bucket_name, s3_key):
-    """
-    Uploads a local CSV file to an S3 bucket.
-    """
-    s3_client = boto3.client('s3')
-    print(f"Uploading data file to 's3://{bucket_name}/{s3_key}'...")
-    try:
-        s3_client.upload_file(local_file_path, bucket_name, s3_key)
-        print("Upload successful.")
-        return True
-    except FileNotFoundError:
-        print(f"Error: The file '{local_file_path}' was not found in the current directory.")
-        return False
-    except Exception as e:
-        print(f"An error occurred during S3 data upload: {e}")
-        return False
 
 
 if __name__ == '__main__':
@@ -628,6 +874,8 @@ if __name__ == '__main__':
     # -- Feature Engineering --
     print("Engineering features...")
     nfl_df = data.get_all_historic_data(all_years_to_load, team_map)
+    nfl_df = nfl_df[nfl_df['week'] <= 18]
+    #nfl_df = nfl_df[nfl_df['season'] < 2025]
     nfl_df.to_csv("raw_nfl_data.csv", index=False)
     feature_df = feature_engineering(nfl_df)
     #feature_df = feature_engineering(nfl_df, redzone_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df)
@@ -645,9 +893,9 @@ if __name__ == '__main__':
 
     # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
     # The function now returns the trained base/meta models and the best params
-    rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params, rb_scaler = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params, wr_te_scaler = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params, qb_scaler = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
 
 
     # --- MODEL EVALUATION ON 2024 SEASON ---
@@ -657,10 +905,15 @@ if __name__ == '__main__':
     val_df_wr_te = validation_df[validation_df['position'].isin(['WR', 'TE'])].copy()
     val_df_qb = validation_df[validation_df['position'] == 'QB'].copy()
 
-    # Pass the scaler object during the evaluation call
-    evaluate_specialist_model(rb_models, rb_meta_model, rb_scaler, "RB Model", val_df_rb, RB_FEATURES, k=15)
-    evaluate_specialist_model(wr_te_models, wr_te_meta_model, wr_te_scaler, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES)
-    evaluate_specialist_model(qb_models, qb_meta_model, qb_scaler, "QB Model", val_df_qb, QB_FEATURES,k=5)
+    # Evaluate and collect validation probabilities for calibration
+    print("\nCollecting validation probabilities for calibration...")
+    rb_val_proba = predict_stacked_proba(val_df_rb[RB_FEATURES], rb_models, rb_meta_model)
+    wr_te_val_proba = predict_stacked_proba(val_df_wr_te[WR_TE_FEATURES], wr_te_models, wr_te_meta_model)
+    qb_val_proba = predict_stacked_proba(val_df_qb[QB_FEATURES], qb_models, qb_meta_model)
+
+    evaluate_specialist_model(rb_models, rb_meta_model, "RB Model", val_df_rb, RB_FEATURES, k=15)
+    evaluate_specialist_model(wr_te_models, wr_te_meta_model, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES)
+    evaluate_specialist_model(qb_models, qb_meta_model, "QB Model", val_df_qb, QB_FEATURES, k=5)
 
     
 
@@ -687,50 +940,51 @@ if __name__ == '__main__':
     # Now, evaluate the combined results
     # This will give a true measure of performance across all positions
     unified_weekly_performance = evaluate_model_at_k(combined_results_df, k=16)
-    print("\n--- Weekly Performance @ K=25 (All Positions) ---")
+    print("\n--- Weekly Performance @ K=16 (All Positions) ---")
     print(unified_weekly_performance)
 
     average_performance = unified_weekly_performance.mean()
     print("\n--- Average Season Performance (All Positions) ---")
-    print(f"Average Precision@25: {average_performance['precision_at_k']:.3f}")
-    print(f"Average Recall@25:    {average_performance['recall_at_k']:.3f}")
+    print(f"Average Precision@16: {average_performance['precision_at_k']:.3f}")
+    print(f"Average Recall@16:    {average_performance['recall_at_k']:.3f}")
     print(f"Average Successful Picks Per Week: {average_performance['successful_picks']:.1f}")
+
+    # Probability quality for unified predictions
+    evaluate_probability_quality(combined_results_df['scored_touchdown'], combined_results_df['predicted_prob'].values, label="Unified (All Positions)")
 
 
     #evaluate_model_at_50_threshold(combined_results_df)
     
   
    
-    # --- Phase 2: Retrain Final Models on All Data (2020-2024) ---
+    # --- Phase 2: Fit Platt calibrators on 2024 validation and retrain final models ---
     print("\n" + "="*60 + "\nRETRAINING FINAL MODELS ON ALL HISTORICAL DATA FOR PREDICTION\n" + "="*60)
-    rb_base_final, rb_meta_final, rb_scaler_final = train_model_on_all_data(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
-    wr_te_base_final, wr_te_meta_final, wr_te_scaler_final = train_model_on_all_data(df_wr_te, WR_TE_FEATURES, wr_te_rf_params, wr_te_lgbm_params)
-    qb_base_final, qb_meta_final, qb_scaler_final = train_model_on_all_data(df_qb, QB_FEATURES, qb_rf_params, qb_lgbm_params)
+    rb_base_final, rb_meta_final = train_model_on_all_data(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
+    wr_te_base_final, wr_te_meta_final = train_model_on_all_data(df_wr_te, WR_TE_FEATURES, wr_te_rf_params, wr_te_lgbm_params)
+    qb_base_final, qb_meta_final = train_model_on_all_data(df_qb, QB_FEATURES, qb_rf_params, qb_lgbm_params)
 
-    print("\n" + "="*60 + "\nUPLOADING MODEL ARTIFACTS TO S3\n" + "="*60)
+    print("\n" + "="*60 + "\nFITTING CALIBRATORS ON 2024 VALIDATION\n" + "="*60)
+    # Fit calibrators directly on validation probabilities as before
+    rb_calibrator = fit_platt_calibrator(val_df_rb['scored_touchdown'], rb_val_proba)
+    wr_te_calibrator = fit_platt_calibrator(val_df_wr_te['scored_touchdown'], wr_te_val_proba)
+    qb_calibrator = fit_platt_calibrator(val_df_qb['scored_touchdown'], qb_val_proba)
+
+    print("\n" + "="*60 + "\nSAVING MODEL ARTIFACTS LOCALLY\n" + "="*60)
     # Save RB models
-    write_joblib_to_s3(rb_base_final, S3_BUCKET_NAME, 'models/rb_base_final.pkl')
-    write_joblib_to_s3(rb_meta_final, S3_BUCKET_NAME, 'models/rb_meta_final.pkl')
+    save_joblib_locally(rb_base_final, 'models/rb_base_final.pkl')
+    save_joblib_locally(rb_meta_final, 'models/rb_meta_final.pkl')
     # Save WR/TE models
-    write_joblib_to_s3(wr_te_base_final, S3_BUCKET_NAME, 'models/wr_te_base_final.pkl')
-    write_joblib_to_s3(wr_te_meta_final, S3_BUCKET_NAME, 'models/wr_te_meta_final.pkl')
+    save_joblib_locally(wr_te_base_final, 'models/wr_te_base_final.pkl')
+    save_joblib_locally(wr_te_meta_final, 'models/wr_te_meta_final.pkl')
     # Save QB models
-    write_joblib_to_s3(qb_base_final, S3_BUCKET_NAME, 'models/qb_base_final.pkl')
-    write_joblib_to_s3(qb_meta_final, S3_BUCKET_NAME, 'models/qb_meta_final.pkl')
-    # Save the crucial opponent label encoder
-    opponent_le = LabelEncoder().fit(feature_df['opponent_team'].unique())
-    write_joblib_to_s3(opponent_le, S3_BUCKET_NAME, 'models/opponent_encoder.pkl')
+    save_joblib_locally(qb_base_final, 'models/qb_base_final.pkl')
+    save_joblib_locally(qb_meta_final, 'models/qb_meta_final.pkl')
+    # Save calibrators
+    save_joblib_locally(rb_calibrator, 'models/rb_calibrator.pkl')
+    save_joblib_locally(wr_te_calibrator, 'models/wr_te_calibrator.pkl')
+    save_joblib_locally(qb_calibrator, 'models/qb_calibrator.pkl')
 
-    write_joblib_to_s3(rb_scaler_final, S3_BUCKET_NAME, 'models/rb_scaler.pkl')
-    write_joblib_to_s3(wr_te_scaler_final, S3_BUCKET_NAME, 'models/wr_te_scaler.pkl')
-    write_joblib_to_s3(qb_scaler_final, S3_BUCKET_NAME, 'models/qb_scaler.pkl')
-    
-    print("\n" + "="*60 + "\nUPLOADING DATA FILES TO S3\n" + "="*60)
-    # List of data files required by the prediction app
-    required_data_files = ['nfl_teams.csv', 'data/week_2_lines.csv', 'data/week_2_td_odds.csv', 'feature_df.csv', 'raw_nfl_data.csv']
-    for file_name in required_data_files:
-        s3_key = f"data/{file_name}"
-        upload_csv_to_s3(file_name, S3_BUCKET_NAME, s3_key)
+    # No scaler artifacts to save
 
     print("\n" + "="*60 + "\nOFFLINE TRAINING AND DEPLOYMENT COMPLETE.\n" + "="*60)
     

@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TD Scorers – Week 3</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js" defer></script>
+    <style>
+      :root {
+        --bg: #0b0c10;
+        --panel: #16181d;
+        --text: #e5e7eb;
+        --muted: #9aa0a6;
+        --accent: #3b82f6;
+        --accent-2: #16a34a;
+        --danger: #ef4444;
+        --table-border: #2a2f37;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        line-height: 1.4;
+      }
+      header {
+        padding: 16px;
+        border-bottom: 1px solid var(--table-border);
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0));
+      }
+      .header-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        text-align: center;
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: 200px 200px 200px 220px;
+        gap: 8px;
+        align-items: center;
+        justify-items: end;
+      }
+      .controls .spacer { height: 1px; }
+      label {
+        font-size: 12px;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 4px;
+      }
+      select, input[type="search"] {
+        width: 100%;
+        padding: 8px 10px;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--table-border);
+        border-radius: 6px;
+      }
+      .wrap {
+        padding: 12px 16px 24px;
+      }
+      .table-wrap {
+        background: var(--panel);
+        border: 1px solid var(--table-border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      thead th {
+        position: sticky;
+        top: 0;
+        background: #1b1e24;
+        z-index: 1;
+      }
+      th, td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--table-border);
+        text-align: left;
+        font-size: 14px;
+      }
+      tbody tr:nth-child(odd) { background: rgba(255,255,255,0.02); }
+      tbody tr:hover { background: rgba(59,130,246,0.12); }
+      .num { text-align: center; font-variant-numeric: tabular-nums; }
+      th.center, td.center { text-align: center; }
+      .edge-pos { color: #22c55e; font-weight: 600; }
+      .edge-neg { color: #ef4444; font-weight: 600; }
+      .odds-neg { color: #f59e0b; }
+      .odds-pos { color: #22c55e; }
+      .muted { color: var(--muted); }
+      .pill {
+        display: inline-block;
+        min-width: 42px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        text-align: center;
+        background: rgba(255,255,255,0.06);
+      }
+      .pos { background: rgba(59,130,246,0.15); color: #cfe1ff; }
+      .sortable { cursor: pointer; user-select: none; color: var(--muted); }
+      .sortable.active { color: var(--text); }
+      .sort-caret { margin-left: 6px; opacity: 0.8; }
+      .summary {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        font-size: 13px;
+        color: var(--muted);
+        border-top: 1px solid var(--table-border);
+        background: #111318;
+      }
+      .hidden { display: none; }
+      @media (max-width: 960px) {
+        .controls { grid-template-columns: 1fr 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-grid">
+        <h1>Anytime TD Scorer – Week 3</h1>
+        <div class="controls">
+          <div>
+            <label for="filter-position">Position</label>
+            <select id="filter-position" aria-label="Filter by position"></select>
+          </div>
+          <div>
+            <label for="filter-team">Team</label>
+            <select id="filter-team" aria-label="Filter by team"></select>
+          </div>
+          <div>
+            <label for="filter-opponent">Opponent</label>
+            <select id="filter-opponent" aria-label="Filter by opponent"></select>
+          </div>
+          <div>
+            <label for="filter-search">Search</label>
+            <input id="filter-search" type="search" placeholder="Search player/team/opponent" aria-label="Search" />
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="wrap">
+      <div class="table-wrap">
+        <table id="data-table" aria-describedby="table-summary">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Pos</th>
+              <th>Team</th>
+              <th>Opp</th>
+              <th class="sortable center" data-sort="prob" aria-sort="descending">Pred TD Prob <span class="sort-caret">▼</span></th>
+              <th class="sortable center" data-sort="price">Odds (Price) <span class="sort-caret"></span></th>
+              <th class="center">Market Impl. Prob</th>
+              <th class="sortable center" data-sort="edge">Model Edge <span class="sort-caret"></span></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div id="table-summary" class="summary"></div>
+      </div>
+      <div id="error" class="muted hidden" role="alert" style="margin-top:12px"></div>
+    </div>
+
+    <script>
+      // Wait for PapaParse to load
+      document.addEventListener('DOMContentLoaded', () => {
+        const csvUrl = 'data/predictions_week_3.csv';
+
+        const els = {
+          pos: document.getElementById('filter-position'),
+          team: document.getElementById('filter-team'),
+          opp: document.getElementById('filter-opponent'),
+          search: document.getElementById('filter-search'),
+          tbody: document.querySelector('#data-table tbody'),
+          thead: document.querySelector('#data-table thead'),
+          summary: document.getElementById('table-summary'),
+          err: document.getElementById('error')
+        };
+
+        const state = {
+          rows: [],          // full dataset
+          filtered: [],      // after filters
+          sortKey: 'prob',   // 'prob' | 'price' | 'edge'
+          sortDir: 'desc'    // 'asc' | 'desc'
+        };
+
+        function formatPercent(v) {
+          if (v == null || Number.isNaN(v)) return '';
+          return (v * 100).toFixed(1) + '%';
+        }
+
+        function formatEdge(v) {
+          if (v == null || Number.isNaN(v)) return '';
+          const sign = v > 0 ? '+' : '';
+          return sign + (v * 100).toFixed(1) + '%';
+        }
+
+        function edgeHtml(v) {
+          if (v == null || Number.isNaN(v)) return '';
+          const cls = v > 0 ? 'edge-pos' : (v < 0 ? 'edge-neg' : '');
+          const sign = v > 0 ? '+' : '';
+          return `<span class="${cls}">${sign}${(v * 100).toFixed(1)}%</span>`;
+        }
+
+        function formatOdds(v) {
+          if (v == null || Number.isNaN(v)) return '';
+          // Keep as integer-ish if possible
+          const s = Number.isInteger(v) ? String(v) : String(v.toFixed(0));
+          return s;
+        }
+
+        function oddsHtml(v) {
+          if (v == null || Number.isNaN(v)) return '';
+          const val = Number.isInteger(v) ? v : Math.round(v);
+          const cls = val < 0 ? 'odds-neg' : 'odds-pos';
+          const sign = val > 0 ? '+' : '';
+          return `<span class="${cls}">${sign}${val}</span>`;
+        }
+
+        function renderSummary() {
+          const total = state.rows.length;
+          const shown = state.filtered.length;
+          els.summary.textContent = `${shown.toLocaleString()} shown · ${total.toLocaleString()} total`;
+        }
+
+        function renderRows() {
+          const frag = document.createDocumentFragment();
+          state.filtered.forEach(r => {
+            const tr = document.createElement('tr');
+
+            const tdName = document.createElement('td');
+            tdName.textContent = r.player_display_name;
+            tr.appendChild(tdName);
+
+            const tdPos = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = 'pill pos';
+            badge.textContent = r.position || '';
+            tdPos.appendChild(badge);
+            tr.appendChild(tdPos);
+
+            const tdTeam = document.createElement('td');
+            tdTeam.textContent = r.team || '';
+            tr.appendChild(tdTeam);
+
+            const tdOpp = document.createElement('td');
+            tdOpp.textContent = r.opponent_team || '';
+            tr.appendChild(tdOpp);
+
+            const tdProb = document.createElement('td');
+            tdProb.className = 'num center';
+            tdProb.textContent = formatPercent(r.predicted_touchdown_probability);
+            tr.appendChild(tdProb);
+
+            const tdPrice = document.createElement('td');
+            tdPrice.className = 'num center';
+            tdPrice.innerHTML = oddsHtml(r.price);
+            tr.appendChild(tdPrice);
+
+            const tdMkt = document.createElement('td');
+            tdMkt.className = 'num center';
+            tdMkt.textContent = formatPercent(r.market_implied_prob);
+            tr.appendChild(tdMkt);
+
+            const tdEdge = document.createElement('td');
+            tdEdge.className = 'num center';
+            tdEdge.innerHTML = edgeHtml(r.model_edge);
+            tr.appendChild(tdEdge);
+
+            frag.appendChild(tr);
+          });
+          els.tbody.replaceChildren(frag);
+          renderSummary();
+        }
+
+        function applyFilters() {
+          const fPos = els.pos.value;
+          const fTeam = els.team.value;
+          const fOpp = els.opp.value;
+          const q = (els.search?.value || '').trim().toLowerCase();
+          state.filtered = state.rows.filter(r => {
+            const matchesFacets = (fPos === 'ALL' || r.position === fPos)
+              && (fTeam === 'ALL' || r.team === fTeam)
+              && (fOpp === 'ALL' || r.opponent_team === fOpp);
+            if (!q) return matchesFacets;
+            const hay = `${r.player_display_name} ${r.team} ${r.opponent_team}`.toLowerCase();
+            return matchesFacets && hay.includes(q);
+          });
+        }
+
+        function sortFiltered() {
+          const keyMap = {
+            prob: 'predicted_touchdown_probability',
+            price: 'price',
+            edge: 'model_edge'
+          };
+          const k = keyMap[state.sortKey];
+          const dir = state.sortDir === 'asc' ? 1 : -1;
+          state.filtered.sort((a, b) => {
+            const va = a[k];
+            const vb = b[k];
+            if (va == null && vb == null) return 0;
+            if (va == null) return 1;
+            if (vb == null) return -1;
+            return (va - vb) * dir;
+          });
+        }
+
+        function updateSortIndicators() {
+          document.querySelectorAll('th.sortable').forEach(th => {
+            const caret = th.querySelector('.sort-caret');
+            const active = th.dataset.sort === state.sortKey;
+            th.setAttribute('aria-sort', active ? (state.sortDir === 'asc' ? 'ascending' : 'descending') : 'none');
+            th.classList.toggle('active', active);
+            if (!caret) return;
+            caret.textContent = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
+          });
+        }
+
+        function onSortClick(e) {
+          const th = e.currentTarget;
+          const key = th.dataset.sort;
+          if (!key) return;
+          if (state.sortKey === key) {
+            state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            state.sortKey = key;
+            state.sortDir = key === 'price' ? 'asc' : 'desc'; // default sensible dir
+          }
+          sortFiltered();
+          updateSortIndicators();
+          renderRows();
+        }
+
+        function populateFilter(select, values, labelAll) {
+          const opts = ['ALL', ...Array.from(values).sort((a, b) => (a > b ? 1 : a < b ? -1 : 0))];
+          select.replaceChildren();
+          opts.forEach(v => {
+            const o = document.createElement('option');
+            o.value = v;
+            o.textContent = v === 'ALL' ? labelAll : v;
+            select.appendChild(o);
+          });
+        }
+
+        function initFilters(rows) {
+          const posSet = new Set();
+          const teamSet = new Set();
+          const oppSet = new Set();
+          rows.forEach(r => {
+            if (r.position) posSet.add(r.position);
+            if (r.team) teamSet.add(r.team);
+            if (r.opponent_team) oppSet.add(r.opponent_team);
+          });
+          populateFilter(els.pos, posSet, 'All positions');
+          populateFilter(els.team, teamSet, 'All teams');
+          populateFilter(els.opp, oppSet, 'All opponents');
+
+          [els.pos, els.team, els.opp].forEach(sel => sel.addEventListener('change', () => {
+            applyFilters();
+            sortFiltered();
+            renderRows();
+          }));
+
+          if (els.search) {
+            let t = null;
+            els.search.addEventListener('input', () => {
+              clearTimeout(t);
+              t = setTimeout(() => {
+                applyFilters();
+                sortFiltered();
+                renderRows();
+              }, 120);
+            });
+          }
+        }
+
+        function coerceNumber(v) {
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? n : null;
+        }
+
+        function normalizeRow(r) {
+          return {
+            player_display_name: r.player_display_name?.trim() || '',
+            position: r.position?.trim() || '',
+            team: r.team?.trim() || '',
+            opponent_team: r.opponent_team?.trim() || '',
+            predicted_touchdown_probability: coerceNumber(r.predicted_touchdown_probability),
+            price: coerceNumber(r.price),
+            market_implied_prob: coerceNumber(r.market_implied_prob),
+            model_edge: coerceNumber(r.model_edge)
+          };
+        }
+
+        function attachSortHandlers() {
+          document.querySelectorAll('th.sortable').forEach(th => th.addEventListener('click', onSortClick));
+          updateSortIndicators();
+        }
+
+        function load() {
+          Papa.parse(csvUrl, {
+            download: true,
+            header: true,
+            dynamicTyping: false,
+            skipEmptyLines: true,
+            complete: results => {
+              try {
+                const rows = results.data.map(normalizeRow)
+                  .filter(r => r.player_display_name);
+                state.rows = rows;
+                initFilters(rows);
+                applyFilters();
+                sortFiltered();
+                renderRows();
+                attachSortHandlers();
+              } catch (err) {
+                els.err.textContent = 'Failed to process data.';
+                els.err.classList.remove('hidden');
+                // eslint-disable-next-line no-console
+                console.error(err);
+              }
+            },
+            error: err => {
+              els.err.textContent = 'Failed to load CSV.';
+              els.err.classList.remove('hidden');
+              // eslint-disable-next-line no-console
+              console.error(err);
+            }
+          });
+        }
+
+        load();
+      });
+    </script>
+  </body>
+  </html>
+
+

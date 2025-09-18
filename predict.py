@@ -1,23 +1,18 @@
 import json
 import sys
-import boto3
 import pandas as pd
 import numpy as np
 import joblib
 import nfl_data_py as nfl
-from io import BytesIO, StringIO
-import nfl_td_lambda.data_collection as data # Assuming data_collection.py is in the same deployment package
+import data_collection as data # Assuming data_collection.py is in the same deployment package
 
 
 ### CONSTANTS ###
-S3_BUCKET_NAME = "nfl-touchdown-model-data"
 
 # Feature lists must match those used during training
 
 # Updated, Streamlined Feature Lists
 # These lists are curated to reduce multicollinearity and noise, focusing on the strongest predictors.
-
-CATEGORICAL_FEATURES = ['opponent_encoded']
 
 
 RB_FEATURES = [
@@ -81,7 +76,7 @@ WR_TE_FEATURES = [
     # avg_wopr is a composite of target share and air yards share. It's highly correlated with
     # avg_percent_share_of_intended_air_yards. Test them against each other.
     'avg_wopr',
-    'target_share', # Consider testing this uncommented. It's a fundamental metric and might offer value alongside wopr.
+    'avg_target_share', # Aligned with training (lagged EWM of target_share)
 
     # --- Efficiency & Route-Running Metrics ---
     'avg_receiving_epa', # Advanced efficiency metric.
@@ -137,24 +132,22 @@ QB_FEATURES = [
 
 
 
-### S3 HELPER FUNCTIONS ###
-def read_joblib_from_s3(s3_key):
-    """Loads a joblib file from S3."""
-    s3_client = boto3.client('s3')
-    with BytesIO() as buffer:
-        s3_client.download_fileobj(Bucket=S3_BUCKET_NAME, Key=s3_key, Fileobj=buffer)
-        buffer.seek(0)
-        return joblib.load(buffer)
+### LOCAL FILE LOADING FUNCTIONS ###
+def load_joblib_locally(file_path):
+    """Loads a joblib file from local filesystem."""
+    print(f"Loading model artifact from '{file_path}'...")
+    try:
+        return joblib.load(file_path)
+    except Exception as e:
+        print(f"Error loading {file_path}: {e}")
+        raise
 
-def read_csv_from_s3(s3_key):
-    """Loads a CSV file from S3 into a pandas DataFrame."""
-    s3_client = boto3.client('s3')
-    response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=s3_key)
-    csv_string = response['Body'].read().decode('utf-8')
-    return pd.read_csv(StringIO(csv_string))
 
 
 def transform_features(df):
+    # Ensure chronological order before EWM calculations
+    df = df.sort_values(['player_id', 'season', 'week']).copy()
+
     player_stats = ['carries', 'rushing_yards', 'receptions', 'receiving_yards', 'wopr', 'rushing_epa', 'receiving_epa', 'target_share',
                       'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_carry_share', 'redzone_target_share',
                       'endzone_targets', 'endzone_target_share', 'inside_5_carry_share', 'inside_5_target_share', 'offense_snap_share', 
@@ -162,16 +155,21 @@ def transform_features(df):
                       'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards', 
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
     
+    # In inference, EWMs need not be shifted as we only use historical rows (< target week)
     for stat in player_stats:
-        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(span=5, min_periods=1).mean())
+        df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(alpha=0.3, min_periods=1).mean())
 
     pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
 
-    opponent_stats_df = df[['season', 'week', 'opponent_team'] + pos_defense_cols].drop_duplicates()
-    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
+    opponent_stats_df = (
+        df[['season', 'week', 'opponent_team'] + pos_defense_cols]
+          .groupby(['season', 'week', 'opponent_team'], as_index=False)[pos_defense_cols]
+          .mean()
+          .sort_values(['opponent_team', 'season', 'week'])
+    )
     
     for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(span=5, min_periods=1).mean())
+         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(alpha = 0.3, min_periods=1).mean())
 
 
     df.drop(columns=pos_defense_cols, inplace=True)
@@ -200,12 +198,15 @@ def predict_stacked_proba(X, base_models, meta_model):
     final_predictions = meta_model.predict_proba(meta_features)[:, 1]
     return final_predictions
 
-def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, week, future_odds_df, td_odds_df):
+def predict_touchdown_scorers(feature_df, models, calibrators, year, week, future_odds_df, td_odds_df):
     """Predicts touchdown scorers using loaded, position-specific models."""
     print("Assembling features for prediction...")
 
     ### Filter feature-df to only include data up to the week before the prediction week
     feature_df = feature_df[(feature_df['season'] < year) | ((feature_df['season'] == year) & (feature_df['week'] < week))]
+    # Compute lagged EWMs on the filtered historical subset to avoid leakage
+    feature_df = transform_features(feature_df)
+    # transform_features now called inside predict_touchdown_scorers after filtering; avoid double transform
 
     # Get schedule and roster for the prediction week
     schedule = nfl.import_schedules([year])
@@ -240,7 +241,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     for f in all_features:
         if 'allowed_to' in f or f in ['rush_matchup_value', 'pass_matchup_value', 
                                       #'redzone_td_rate', 
-                                      'implied_total', 'opponent_encoded']:
+                                      'implied_total']:
             non_player_features.add(f)
     
     player_history_features = sorted(list(all_features - non_player_features))
@@ -248,6 +249,8 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     opponent_history_features = [f for f in all_features if 'allowed_to' in f]
     
     features_from_player_history = player_history_features #+ team_history_features
+    # Ensure chronological order so groupby().last() picks the most recent row per player
+    feature_df = feature_df.sort_values(['player_id', 'season', 'week']).copy()
     latest_player_data = feature_df.groupby('player_id')[features_from_player_history].last().reset_index()
 
     prediction_df = pd.merge(prediction_df, latest_player_data, on='player_id', how='left')
@@ -259,8 +262,8 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     
     # Get the latest opponent data for each team
     opponent_stats_df = feature_df[['season', 'week', 'opponent_team'] + opponent_history_features]
-    #opponent_stats_df = opponent_stats_df[(opponent_stats_df['opponent_team'] == "NO") & (opponent_stats_df['season'] == 2024) & (opponent_stats_df['week'] == 18)]
-    opponent_stats_df.sort_values(by=['season', 'week'], inplace=True)
+    # Ensure chronological order per opponent before selecting last
+    opponent_stats_df = opponent_stats_df.sort_values(by=['opponent_team', 'season', 'week']).copy()
   
    
 
@@ -282,11 +285,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     
     prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total']], on='team', how='left')
     
-    known_opponents = opponent_le.classes_
-    prediction_df['opponent_team'] = prediction_df['opponent_team'].apply(lambda x: x if x in known_opponents else 'UNKNOWN')
-    if 'UNKNOWN' not in opponent_le.classes_:
-        opponent_le.classes_ = np.append(opponent_le.classes_, 'UNKNOWN')
-    prediction_df['opponent_encoded'] = opponent_le.transform(prediction_df['opponent_team'])
+    # Opponent encoding removed; rely on engineered opponent-week features instead
 
     prediction_df['rush_matchup_value'] = np.select(
         [prediction_df['position'] == 'RB', prediction_df['position'] == 'QB'],
@@ -298,6 +297,7 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
         default=0)
     
     depth_chart_2025_data = data.get_2025_depth_chart_data()
+    depth_chart_2025_data = depth_chart_2025_data[depth_chart_2025_data['week'] == week]
     prediction_df.drop(columns=['depth_chart_rank'], inplace=True)  # Ensure no duplicate column
     #merge 2025 depth chart data on player_id and use depth_chart_rank from depth_chart_2025_data
     prediction_df = pd.merge(prediction_df, depth_chart_2025_data, on='player_id', how='left')
@@ -317,22 +317,22 @@ def predict_touchdown_scorers(feature_df, models, scalers, opponent_le, year, we
     pred_df_wr_te = prediction_df[prediction_df['position'].isin(['WR', 'TE'])].copy()
     pred_df_qb = prediction_df[prediction_df['position'] == 'QB'].copy()
 
-    #Scale each position's data with its specific scaler ---
-    if not pred_df_rb.empty:
-        numerical_features_rb = [f for f in RB_FEATURES if f not in CATEGORICAL_FEATURES]
-        pred_df_rb.loc[:, numerical_features_rb] = scalers['rb'].transform(pred_df_rb[numerical_features_rb])
-
-    if not pred_df_wr_te.empty:
-        numerical_features_wr_te = [f for f in WR_TE_FEATURES if f not in CATEGORICAL_FEATURES]
-        pred_df_wr_te.loc[:, numerical_features_wr_te] = scalers['wr_te'].transform(pred_df_wr_te[numerical_features_wr_te])
-
-    if not pred_df_qb.empty:
-        numerical_features_qb = [f for f in QB_FEATURES if f not in CATEGORICAL_FEATURES]
-        pred_df_qb.loc[:, numerical_features_qb] = scalers['qb'].transform(pred_df_qb[numerical_features_qb])
+    # No scaling required; tree-based models trained without scaling
 
     pred_df_rb['predicted_touchdown_probability'] = predict_stacked_proba(pred_df_rb[RB_FEATURES], models['rb_base'], models['rb_meta'])
     pred_df_wr_te['predicted_touchdown_probability'] = predict_stacked_proba(pred_df_wr_te[WR_TE_FEATURES], models['wr_te_base'], models['wr_te_meta'])
     pred_df_qb['predicted_touchdown_probability'] = predict_stacked_proba(pred_df_qb[QB_FEATURES], models['qb_base'], models['qb_meta'])
+
+    # Apply Platt calibration per position if calibrators are available
+    if not pred_df_rb.empty and 'rb' in calibrators and calibrators['rb'] is not None:
+        rb_raw = pred_df_rb['predicted_touchdown_probability'].values.reshape(-1, 1)
+        pred_df_rb['predicted_touchdown_probability'] = calibrators['rb'].predict_proba(rb_raw)[:, 1]
+    if not pred_df_wr_te.empty and 'wr_te' in calibrators and calibrators['wr_te'] is not None:
+        wrte_raw = pred_df_wr_te['predicted_touchdown_probability'].values.reshape(-1, 1)
+        pred_df_wr_te['predicted_touchdown_probability'] = calibrators['wr_te'].predict_proba(wrte_raw)[:, 1]
+    if not pred_df_qb.empty and 'qb' in calibrators and calibrators['qb'] is not None:
+        qb_raw = pred_df_qb['predicted_touchdown_probability'].values.reshape(-1, 1)
+        pred_df_qb['predicted_touchdown_probability'] = calibrators['qb'].predict_proba(qb_raw)[:, 1]
 
     # Combine results and find market edge
     final_predictions = pd.concat([pred_df_rb, pred_df_wr_te, pred_df_qb])
@@ -361,41 +361,36 @@ if __name__ == '__main__':
     """
     print("Lambda function initiated.")
     prediction_year = 2025
-    prediction_week = 2
+    prediction_week = 3
     
-    # --- 1. Load Models and Encoders from S3 ---
-    print("Loading model artifacts from S3...")
+    # --- 1. Load Models and Encoders from Local Files ---
+    print("Loading model artifacts from local files...")
     models = {
-        'rb_base': read_joblib_from_s3('models/rb_base_final.pkl'),
-        'rb_meta': read_joblib_from_s3('models/rb_meta_final.pkl'),
-        'wr_te_base': read_joblib_from_s3('models/wr_te_base_final.pkl'),
-        'wr_te_meta': read_joblib_from_s3('models/wr_te_meta_final.pkl'),
-        'qb_base': read_joblib_from_s3('models/qb_base_final.pkl'),
-        'qb_meta': read_joblib_from_s3('models/qb_meta_final.pkl')
+        'rb_base': load_joblib_locally('models/rb_base_final.pkl'),
+        'rb_meta': load_joblib_locally('models/rb_meta_final.pkl'),
+        'wr_te_base': load_joblib_locally('models/wr_te_base_final.pkl'),
+        'wr_te_meta': load_joblib_locally('models/wr_te_meta_final.pkl'),
+        'qb_base': load_joblib_locally('models/qb_base_final.pkl'),
+        'qb_meta': load_joblib_locally('models/qb_meta_final.pkl')
     }
-    # --- NEW: Load the scalers ---
-    scalers = {
-        'rb': read_joblib_from_s3('models/rb_scaler.pkl'),
-        'wr_te': read_joblib_from_s3('models/wr_te_scaler.pkl'),
-        'qb': read_joblib_from_s3('models/qb_scaler.pkl')
+    calibrators = {
+        'rb': load_joblib_locally('models/rb_calibrator.pkl'),
+        'wr_te': load_joblib_locally('models/wr_te_calibrator.pkl'),
+        'qb': load_joblib_locally('models/qb_calibrator.pkl')
     }
-    opponent_le = read_joblib_from_s3('models/opponent_encoder.pkl')
+    # No scalers or opponent encoders
     print("Model loading complete.")
 
-    # --- 2. Load Data Files from S3 ---
-    print("Loading data files from S3...")
-    nfl_teams_df = read_csv_from_s3('data/nfl_teams.csv')
-    future_odds_raw = read_csv_from_s3('data/data/week_2_lines.csv')
-    td_odds_df = read_csv_from_s3('data/data/week_2_td_odds.csv')
-    feature_df = read_csv_from_s3('data/raw_nfl_data.csv')
+    # --- 2. Load Data Files from Local Files ---
+    print("Loading data files from local files...")
+    nfl_teams_df = pd.read_csv('nfl_teams.csv')
+    future_odds_raw = pd.read_csv(f'data/week_{prediction_week}_lines.csv')
+    td_odds_df = pd.read_csv(f'data/week_{prediction_week}_td_odds.csv')
+    feature_df = pd.read_csv('raw_nfl_data.csv')
     team_map = dict(zip(nfl_teams_df['team_name'], nfl_teams_df['team_id']))
 
     
-    
-    #feature_df = data.get_all_historic_data([2020,2021,2022,2023,2024,2025], team_map)
-    #feature_df = feature_df[(feature_df['season'] < prediction_year) | ((feature_df['season'] == prediction_year) & (feature_df['week'] < prediction_week))]
-
-    feature_df = transform_features(feature_df)
+    #feature_df = transform_features(feature_df)
     
    
     future_odds_df = data.transform_future_odds(future_odds_raw, team_map)
@@ -407,31 +402,8 @@ if __name__ == '__main__':
    
     print(f"Generating predictions for {prediction_year}, Week {prediction_week}...")
     
-    final_predictions_df = predict_touchdown_scorers(feature_df, models,scalers, opponent_le, prediction_year, prediction_week, future_odds_df, td_odds_df)
+    final_predictions_df = predict_touchdown_scorers(feature_df, models, calibrators, prediction_year, prediction_week, future_odds_df, td_odds_df)
     #save predictions to csv with prediction week
     final_predictions_df.to_csv(f'data/predictions_week_{prediction_week}.csv', index=False)  # Save predictions to a CSV file for review
     print(final_predictions_df.head(10))
-        
-#         print("Prediction complete. Returning results.")
-#         return {
-#             'statusCode': 200,
-#             'headers': {
-#                 'Access-Control-Allow-Origin': '*', # Allows any website to call this API
-#                 'Access-Control-Allow-Headers': 'Content-Type',
-#                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-#             },
-#             'body': json.dumps(predictions_json)
-#         }
-
-#     except Exception as e:
-#         print(f"ERROR: {e}")
-#         return {
-#             'statusCode': 500,
-#             'headers': {
-#                 'Access-Control-Allow-Origin': '*',
-#                 'Access-Control-Allow-Headers': 'Content-Type',
-#                 'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
-#             },
-#             'body': json.dumps({'error': str(e)})
-#         }
-# }
+   
