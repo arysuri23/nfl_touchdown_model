@@ -1,0 +1,47 @@
+{
+  "rf_params": {
+    "n_estimators": 100,
+    "min_samples_split": 10,
+    "min_samples_leaf": 2,
+    "max_features": "log2",
+    "max_depth": 5
+  },
+  "lgbm_params": {
+    "subsample_freq": 1,
+    "subsample": 1.0,
+    "reg_lambda": 0,
+    "reg_alpha": 0.1,
+    "num_leaves": 40,
+    "n_estimators": 100,
+    "min_child_samples": 50,
+    "max_depth": 10,
+    "learning_rate": 0.01,
+    "colsample_bytree": 0.6
+  },
+  "feature_names": [
+    "avg_offense_snap_share",
+    "avg_wopr",
+    "avg_target_share",
+    "avg_receiving_epa",
+    "avg_racr",
+    "avg_avg_separation",
+    "avg_percent_share_of_intended_air_yards",
+    "avg_catch_percentage",
+    "avg_avg_expected_yac",
+    "avg_avg_yac_above_expectation",
+    "avg_redzone_target_share",
+    "avg_endzone_targets",
+    "avg_endzone_target_share",
+    "avg_inside_5_target_share",
+    "pass_matchup_value",
+    "passing_tds_allowed_to_WR",
+    "passing_tds_allowed_to_TE",
+    "implied_total",
+    "depth_chart_rank",
+    "avg_scored_touchdown",
+    "avg_receptions",
+    "avg_receiving_yards",
+    "avg_receiving_air_yards",
+    "avg_avg_intended_air_yards"
+  ]
+}

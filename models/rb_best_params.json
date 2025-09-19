@@ -1,0 +1,45 @@
+{
+  "rf_params": {
+    "n_estimators": 100,
+    "min_samples_split": 10,
+    "min_samples_leaf": 1,
+    "max_features": "sqrt",
+    "max_depth": null
+  },
+  "lgbm_params": {
+    "subsample_freq": 1,
+    "subsample": 1.0,
+    "reg_lambda": 0,
+    "reg_alpha": 0.1,
+    "num_leaves": 40,
+    "n_estimators": 100,
+    "min_child_samples": 50,
+    "max_depth": 10,
+    "learning_rate": 0.01,
+    "colsample_bytree": 0.6
+  },
+  "feature_names": [
+    "avg_offense_snap_share",
+    "avg_wopr",
+    "avg_rushing_epa",
+    "avg_receiving_epa",
+    "avg_racr",
+    "avg_rush_yards_over_expected_per_att",
+    "avg_rush_pct_over_expected",
+    "avg_avg_time_to_los",
+    "avg_percent_attempts_gte_eight_defenders",
+    "avg_redzone_carry_share",
+    "avg_redzone_target_share",
+    "avg_endzone_targets",
+    "avg_endzone_target_share",
+    "avg_inside_5_carry_share",
+    "avg_inside_5_target_share",
+    "rush_matchup_value",
+    "pass_matchup_value",
+    "rushing_tds_allowed_to_RB",
+    "passing_tds_allowed_to_RB",
+    "implied_total",
+    "depth_chart_rank",
+    "avg_scored_touchdown"
+  ]
+}

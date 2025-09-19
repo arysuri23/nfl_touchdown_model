@@ -17,6 +17,7 @@ import data_collection as data
 import joblib
 import os
 import sys
+import json
 
 
 
@@ -133,7 +134,8 @@ QB_FEATURES = [
     'avg_offense_snap_share',
     #'team_continuity',
     'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
-    'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
+    'avg_scored_touchdown', 
+    'avg_redzone_carry_share', 'avg_inside_5_carry_share',
     'rush_matchup_value', 
     #'redzone_td_rate', 
     'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
@@ -422,6 +424,26 @@ def assert_week_splits_valid(df_like: pd.DataFrame, splits):
             # Strictly earlier
             assert week_key(max_train) < week_key(min_test), f"Temporal order violated in fold {i}: train_end {max_train} !< test_start {min_test}"
 
+
+# --- Hyperparameter Persistence Helpers ---
+def save_best_params(key: str, rf_params: dict, lgbm_params: dict, feature_names: list):
+    """Save tuned params and feature names to models/{key}_best_params.json."""
+    os.makedirs('models', exist_ok=True)
+    payload = {
+        'rf_params': rf_params,
+        'lgbm_params': lgbm_params,
+        'feature_names': list(feature_names),
+    }
+    with open(f'models/{key}_best_params.json', 'w') as f:
+        json.dump(payload, f, indent=2)
+
+
+def load_best_params(key: str):
+    """Load tuned params and feature names from models/{key}_best_params.json."""
+    with open(f'models/{key}_best_params.json', 'r') as f:
+        data = json.load(f)
+    return data['rf_params'], data['lgbm_params'], data['feature_names']
+
 # --- 4. Position-Specific Model Training ---
 
 
@@ -547,6 +569,18 @@ def tune_and_train_specialist_model(df_position, features, rf_param_dist, lgbm_p
     assert_week_splits_valid(train_df, oof_splits)
     base_models, meta_model = train_stacked_model_timeseries(X_train, y_train, base_estimators, meta_estimator, n_splits=5, cv_splits=oof_splits)
         
+    # Persist tuned params and features per position key
+    key = 'rb'
+    if model_type == 'WR/TE':
+        key = 'wr_te'
+    elif model_type == 'QB':
+        key = 'qb'
+    try:
+        save_best_params(key, best_rf_params, best_lgbm_params, features)
+        print(f"Saved best hyperparameters to models/{key}_best_params.json")
+    except Exception as e:
+        print(f"Warning: could not save best params for {model_type}: {e}")
+
     print("Final model training complete.")
     return base_models, meta_model, best_rf_params, best_lgbm_params
 
@@ -875,7 +909,7 @@ if __name__ == '__main__':
     print("Engineering features...")
     nfl_df = data.get_all_historic_data(all_years_to_load, team_map)
     nfl_df = nfl_df[nfl_df['week'] <= 18]
-    #nfl_df = nfl_df[nfl_df['season'] < 2025]
+    nfl_df = nfl_df[nfl_df['season'] < 2025]
     nfl_df.to_csv("raw_nfl_data.csv", index=False)
     feature_df = feature_engineering(nfl_df)
     #feature_df = feature_engineering(nfl_df, redzone_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df)
@@ -891,11 +925,41 @@ if __name__ == '__main__':
     df_qb = feature_df[feature_df['position'] == 'QB'].copy()
 
 
-    # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
-    # The function now returns the trained base/meta models and the best params
-    rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    # Toggle: reuse saved best params (weekly retrains) vs. re-tune
+    USE_SAVED_PARAMS = True
+
+    if not USE_SAVED_PARAMS:
+        # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
+        # The function now returns the trained base/meta models and the best params
+        rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+        wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+        qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    else:
+        print("\n" + "="*60 + "\nLOADING SAVED BEST HYPERPARAMETERS\n" + "="*60)
+        rb_rf_params, rb_lgbm_params, _ = load_best_params('rb')
+        wr_te_rf_params, wr_te_lgbm_params, _ = load_best_params('wr_te')
+        qb_rf_params, qb_lgbm_params, _ = load_best_params('qb')
+
+        # Train models for validation using loaded params (no re-tuning)
+        validation_year = 2024
+
+        def train_for_validation(df_pos, features, rf_params, lgbm_params):
+            df_pos = df_pos.sort_values(['season', 'week', 'player_id']).copy()
+            train_df = df_pos[df_pos['season'] < validation_year].sort_values(['season', 'week', 'player_id']).copy()
+            X_train = train_df[features]
+            y_train = train_df['scored_touchdown']
+            base_estimators = [
+                RandomForestClassifier(random_state=42, class_weight='balanced', **rf_params),
+                lgb.LGBMClassifier(objective='binary', random_state=42, is_unbalance=True, verbosity=-1, **lgbm_params)
+            ]
+            meta_estimator = LogisticRegression(class_weight='balanced', penalty='l2', C=0.5)
+            oof_splits = build_week_splits_covering_all_weeks(train_df, test_weeks=1, embargo_weeks=0, min_train_weeks=8)
+            assert_week_splits_valid(train_df, oof_splits)
+            return train_stacked_model_timeseries(X_train, y_train, base_estimators, meta_estimator, cv_splits=oof_splits)
+
+        rb_models, rb_meta_model = train_for_validation(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
+        wr_te_models, wr_te_meta_model = train_for_validation(df_wr_te, WR_TE_FEATURES, wr_te_rf_params, wr_te_lgbm_params)
+        qb_models, qb_meta_model = train_for_validation(df_qb, QB_FEATURES, qb_rf_params, qb_lgbm_params)
 
 
     # --- MODEL EVALUATION ON 2024 SEASON ---

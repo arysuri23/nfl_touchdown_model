@@ -279,8 +279,6 @@ def predict_touchdown_scorers(feature_df, models, calibrators, year, week, futur
 
     prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
 
-    print(prediction_df.team.unique())
-    print(future_odds_df.team.unique())
     
     
     prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total']], on='team', how='left')
@@ -361,7 +359,7 @@ if __name__ == '__main__':
     """
     print("Lambda function initiated.")
     prediction_year = 2025
-    prediction_week = 3
+    prediction_week = 1
     
     # --- 1. Load Models and Encoders from Local Files ---
     print("Loading model artifacts from local files...")
