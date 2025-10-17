@@ -400,7 +400,7 @@ if __name__ == '__main__':
     """
     print("Lambda function initiated.")
     prediction_year = 2025
-    prediction_week = 5
+    prediction_week = 6
     
     # --- 1. Load Models and Encoders from Local Files ---
     print("Loading model artifacts from local files...")

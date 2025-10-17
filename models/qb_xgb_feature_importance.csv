@@ -1,0 +1,14 @@
+feature,importance,importance_pct
+avg_carries,0.1612466,16.12466
+avg_rushing_yards,0.10968712,10.968712
+depth_chart_rank,0.102295764,10.229576
+avg_scored_touchdown,0.08307456,8.307456
+avg_redzone_carry_share,0.07171139,7.1711392
+avg_inside_5_carry_share,0.063782156,6.378216
+avg_explosive_rushing_plays,0.06340555,6.340555
+avg_rushing_epa,0.06303129,6.303129
+rush_matchup_value,0.061732482,6.1732483
+implied_total,0.057026744,5.7026744
+avg_offense_snap_share,0.054660484,5.4660482
+rushing_tds_allowed_to_QB,0.05458674,5.458674
+spread_line,0.053759106,5.3759108

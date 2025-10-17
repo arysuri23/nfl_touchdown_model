@@ -1092,7 +1092,7 @@ if __name__ == '__main__':
     # -- Configuration --
     all_years_to_load = range(2020, 2026) ### TODO: change to 2026
     CURRENT_SEASON = 2025
-    CURRENT_WEEK = 5
+    CURRENT_WEEK = 6
 
     
 
@@ -1147,6 +1147,7 @@ if __name__ == '__main__':
     # -- Feature Engineering --
     print("Engineering features...")
     nfl_df = data.get_all_historic_data(all_years_to_load, team_map)
+    #nfl_df = pd.read_csv("raw_nfl_data.csv")
     nfl_df = nfl_df[nfl_df['week'] <= 18]
     nfl_df = nfl_df[(nfl_df['season'] < CURRENT_SEASON) | ((nfl_df['season'] == CURRENT_SEASON) & (nfl_df['week'] < CURRENT_WEEK))]
 
