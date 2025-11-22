@@ -17,10 +17,11 @@ WR_TE_FEATURES = [
     'avg_target_share',
     'avg_receiving_epa',
     'avg_racr',
-    'avg_endzone_targets',
-    'avg_endzone_target_share',
-    'redzone_td_rate',
-    'passing_tds_allowed_to_WR',
+    'avg_endzone_targets', 
+    'avg_endzone_target_share',  
+    #'avg_redzone_target_share',
+    'redzone_td_rate',  
+    'passing_tds_allowed_to_WR', 
     'passing_tds_allowed_to_TE',
     'implied_total',
     'spread_line',
@@ -30,13 +31,13 @@ WR_TE_FEATURES = [
     'avg_receptions',
     'avg_receiving_yards',
     'avg_receiving_air_yards',
-    'avg_receiving_yards_allowed',
-    'avg_receiving_epa_allowed',
-    'avg_receiving_air_yards_allowed',
+    'avg_receiving_yards_allowed',  
+    'avg_receiving_epa_allowed',  
+    'avg_receiving_air_yards_allowed',  
     'avg_explosive_receiving_plays',
-    'avg_explosive_receiving_plays_allowed'
-    #'avg_rec_touchdown_exp', 
-    #'avg_rec_touchdown_exp_team'
+    'avg_explosive_receiving_plays_allowed',
+    'avg_rec_touchdown_exp', 
+    'avg_rec_touchdown_exp_team'
 ]
 
 
@@ -57,7 +58,7 @@ def transform_features(df):
 
     player_stats = ['receptions', 'receiving_yards', 'wopr', 'receiving_epa', 'target_share',
                       'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_target_share', 'total_tds',
-                      'endzone_targets', 'endzone_target_share', 'inside_5_target_share', 'offense_snap_share',
+                      'endzone_targets', 'endzone_target_share', 'inside_5_target_share', 'inside_10_targets', 'offense_snap_share',
                       'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards',
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation', 'explosive_receiving_plays', 'rec_touchdown_exp', 'rec_touchdown_exp_team']
     
@@ -215,7 +216,7 @@ if __name__ == '__main__':
     print("="*60)
     
     prediction_year = 2025
-    prediction_week = 11 # Update this for each week
+    prediction_week = 12 # Update this for each week
     
     # --- 1. Load WR/TE Model ---
     print("\nLoading WR/TE model artifacts from local files...")
@@ -240,13 +241,14 @@ if __name__ == '__main__':
     final_predictions_df = predict_touchdown_scorers(feature_df, wr_te_model, wr_te_calibrator, prediction_year, prediction_week, future_odds_df, td_odds_df)
     
     # Save predictions to csv
-    #final_predictions_df.to_csv(f'predictions/predictions_week_{prediction_week}_new_features.csv', index=False)
+    final_predictions_df.to_csv(f'predictions/predictions_week_{prediction_week}_new_features.csv', index=False)
     
     print(f"\n{'='*60}")
     print(f"TOP 20 WR/TE TD PREDICTIONS - WEEK {prediction_week}")
     print("="*60)
     print(final_predictions_df[['player_display_name', 'team', 'position', 'predicted_touchdown_probability', 'model_edge']].head(20).to_string(index=False))
-    
+    #predictions = final_predictions_df[final_predictions_df['price'] <= 400]
+    #print(predictions[['player_display_name', 'team', 'position', 'predicted_touchdown_probability', 'model_edge']].sort_values(by='model_edge', ascending=False).head(20).to_string(index=False))
     print(f"\n✓ Predictions saved to predictions/predictions_week_{prediction_week}.csv")
     print("\n🎯 Use these predictions for your analysis!")
 

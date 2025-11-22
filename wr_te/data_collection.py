@@ -176,6 +176,18 @@ def get_goal_line_data(pbp):
         'player_id', 'season', 'week', 'inside_5_target_share'
     ]).to_pandas()
 
+def get_green_zone_data(pbp):
+    """Calculates raw targets inside the 10-yard line (Green Zone)."""
+    green_zone_df = pbp.filter(pl.col('yardline_100') <= 10)
+    
+    player_gz_targets = green_zone_df.group_by(['receiver_player_id', 'posteam', 'season', 'week']).agg([
+        pl.col('pass_attempt').sum().alias('inside_10_targets')
+    ]).rename({'receiver_player_id': 'player_id'})
+    
+    return player_gz_targets.select([
+        'player_id', 'season', 'week', 'inside_10_targets'
+    ]).to_pandas()
+
 def get_endzone_target_data(pbp):
     """Calculates each player's end zone targets and share of team targets."""
     pass_plays = pbp.filter(
@@ -349,7 +361,8 @@ def get_opponent_positional_data(pbp, rosters):
     positional_defense_df = positional_defense_df.rename({'defteam': 'opponent_team'})
 
     #Drop 'passing_tds_allowed_to_RB', 'passing_tds_allowed_to_OL', 'passing_tds_allowed_to_QB', 'passing_tds_allowed_to_DL',
-    positional_defense_df = positional_defense_df.drop(['passing_tds_allowed_to_RB', 'passing_tds_allowed_to_OL', 'passing_tds_allowed_to_QB', 'passing_tds_allowed_to_DL'])
+    cols_to_drop = ['passing_tds_allowed_to_RB', 'passing_tds_allowed_to_OL', 'passing_tds_allowed_to_QB', 'passing_tds_allowed_to_DL']
+    positional_defense_df = positional_defense_df.drop([c for c in cols_to_drop if c in positional_defense_df.columns])
     return positional_defense_df.to_pandas()
 
 def get_opponent_defensive_data(years):
@@ -632,7 +645,10 @@ def get_game_data(years):
     # Create two rows per game: one for home team, one for away team
     # Include game context fields for both
     home_games = game_df_pd[['season', 'week', 'game_id', 'home_team']].rename(columns={'home_team': 'team'})
+    home_games['is_home'] = 1
+    
     away_games = game_df_pd[['season', 'week', 'game_id', 'away_team']].rename(columns={'away_team': 'team'})
+    away_games['is_home'] = 0
     
     # Combine home and away games
     all_games = pd.concat([home_games, away_games], ignore_index=True)
@@ -686,6 +702,9 @@ def get_all_historic_data(years, team_map):
     goal_line_df = get_goal_line_data(pbp)
     goal_line_df = goal_line_df[goal_line_df['week'] <= 18]
 
+    green_zone_df = get_green_zone_data(pbp)
+    green_zone_df = green_zone_df[green_zone_df['week'] <= 18]
+
     explosive_receiving_df = get_explosive_receiving_data(pbp)
     explosive_receiving_df = explosive_receiving_df[explosive_receiving_df['week'] <= 18]
 
@@ -734,6 +753,7 @@ def get_all_historic_data(years, team_map):
     nfl_df = pd.merge(nfl_df, ez_target_df, on=['player_id', 'season', 'week'], how='left')
     nfl_df = pd.merge(nfl_df, odds_df, on=['team', 'season', 'week'], how='left')
     nfl_df = pd.merge(nfl_df, goal_line_df, on=['player_id', 'week', 'season'], how='left')
+    nfl_df = pd.merge(nfl_df, green_zone_df, on=['player_id', 'week', 'season'], how='left')
     nfl_df = pd.merge(nfl_df, ff_opportunity_df, on=['player_id', 'season', 'week'], how='left')
     nfl_df = pd.merge(nfl_df, explosive_receiving_df, on=['player_id', 'season', 'week'], how='left')
    # nfl_df = pd.merge(nfl_df, explosive_rushing_df, on=['player_id', 'season', 'week'], how='left')

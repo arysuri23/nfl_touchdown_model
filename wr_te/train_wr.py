@@ -47,9 +47,9 @@ WR_TE_FEATURES = [
     'avg_receiving_epa_allowed',  
     'avg_receiving_air_yards_allowed',  
     'avg_explosive_receiving_plays',
-    'avg_explosive_receiving_plays_allowed'
-    #'avg_rec_touchdown_exp', 
-    #'avg_rec_touchdown_exp_team'
+    'avg_explosive_receiving_plays_allowed',
+    'avg_rec_touchdown_exp', 
+    'avg_rec_touchdown_exp_team'
 ]
 
 
@@ -72,7 +72,7 @@ def feature_engineering(df):
     
     player_stats = ['receptions', 'receiving_yards', 'wopr','receiving_epa', 'target_share',
                       'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_target_share', 'total_tds',
-                      'endzone_targets', 'endzone_target_share', 'inside_5_target_share', 'offense_snap_share',
+                      'endzone_targets', 'endzone_target_share', 'inside_5_target_share', 'inside_10_targets', 'offense_snap_share',
                       'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards',
                     'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation', 'explosive_receiving_plays', 'rec_touchdown_exp', 'rec_touchdown_exp_team']
     
@@ -101,7 +101,13 @@ def feature_engineering(df):
 
     # Team-level stats
     df['redzone_td_rate'] = df.groupby('team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
+    df['redzone_td_rate'] = df.groupby('team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
     df['pass_rate'] = df.groupby('team')['pass_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
+    
+    # is_home is already a binary/static feature per game, no need to lag/smooth it for the player
+    # But we need to ensure it exists. It comes from get_game_data -> merged in data_collection.
+    if 'is_home' not in df.columns:
+        df['is_home'] = 0 # Fallback
    
     df['pass_matchup_value'] = np.select(
         [df['position'] == 'WR', df['position'] == 'TE'],
@@ -353,7 +359,7 @@ def main():
     print("="*60)
     
     CURRENT_SEASON = 2025
-    CURRENT_WEEK = 11  # Updated: we have data through week 9
+    CURRENT_WEEK = 12  # Updated: we have data through week 9
     # Configuration
     USE_SAVED_PARAMS = False  # Re-tune hyperparameters with new data
 
