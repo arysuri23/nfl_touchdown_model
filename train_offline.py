@@ -3,7 +3,8 @@
 
 
 # --- 1. Importing Libraries ---
-import nfl_data_py as nfl
+#import nfl_data_py as nfl
+import nflreadpy as nfl
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
@@ -17,6 +18,7 @@ import data_collection as data
 import joblib
 import os
 import sys
+import json
 
 
 
@@ -41,33 +43,52 @@ RB_FEATURES = [
     
     # These Next Gen Stats measure rushing efficiency and style. They might be correlated with avg_rushing_epa.
     # Consider testing the model with avg_rushing_epa vs. this block of features.
-    'avg_rush_yards_over_expected_per_att', # Correlated with avg_rushing_epa.
-    'avg_rush_pct_over_expected',
-    'avg_avg_time_to_los',
-    'avg_percent_attempts_gte_eight_defenders', # Measures ability against stacked boxes.
+    #'avg_rush_yards_over_expected_per_att', # Correlated with avg_rushing_epa.
+    #'avg_rush_pct_over_expected',
+    #'avg_avg_time_to_los',
+    #'avg_percent_attempts_gte_eight_defenders', # Measures ability against stacked boxes.
 
     # --- High-Value Touches ---
     # These features are crucial but can be correlated. For example, a high redzone carry share
     # often leads to a high inside_5 carry share. The model should handle this, but it's worth noting.
     'avg_redzone_carry_share',
     'avg_redzone_target_share',
-    'avg_endzone_targets',
-    'avg_endzone_target_share',
+    #'avg_endzone_targets',  # 1.2% importance - lowest RB feature, removed
+    #'avg_endzone_target_share',
     'avg_inside_5_carry_share',
-    'avg_inside_5_target_share',
+    #'avg_inside_5_target_share',
 
     # --- Contextual & Matchup Features ---
     'rush_matchup_value',
-    'pass_matchup_value',
-    #'redzone_td_rate', # Team-level efficiency in the red zone.
+    #'pass_matchup_value',  # 2.5% importance - low value for RBs, removed
+    #'pass_rate',
+    #'rush_rate',
+    'redzone_td_rate', # Team-level efficiency in the red zone.
+
     'rushing_tds_allowed_to_RB', # Opponent tendency.
     'passing_tds_allowed_to_RB', # Opponent tendency.
     'implied_total', # Game script proxy.
+    'spread_line',
     'depth_chart_rank',
+
+    
+    # --- Game Context Features ---
+    # Removed: All schedule features had <0.05% importance (is_home_game, is_thursday, is_dome, is_grass, is_cold, is_windy)
+    # Their effects are already captured by implied_total and spread_line
 
     # --- Target Variable Lag ---
     # This is a lagged version of the target. Highly predictive, but ensure no data leakage.
     'avg_scored_touchdown',
+    'avg_rushing_yards_allowed',
+    'avg_receiving_yards_allowed',
+    'avg_rushing_epa_allowed',
+    'avg_receiving_epa_allowed',
+    'avg_receiving_air_yards_allowed',
+    'avg_explosive_rushing_plays',
+    'avg_explosive_receiving_plays',
+
+    'avg_explosive_rushing_plays_allowed',
+    'avg_explosive_receiving_plays_allowed',
 
     # --- Commented Out: Base Volume Stats ---
     # These are likely redundant given the advanced metrics above (e.g., avg_wopr, avg_rushing_epa).
@@ -94,50 +115,72 @@ WR_TE_FEATURES = [
     # avg_avg_cushion and avg_avg_separation both measure a receiver's ability to get open.
     # They are likely correlated. Test with one or both.
     #'avg_avg_cushion',
-    'avg_avg_separation',
+    #'avg_avg_separation',  # 1.7% importance - NGS metric, minimal value, removed
 
     # These metrics describe how a player is used and how well they perform on their targets.
     # They are generally complementary.
-    'avg_percent_share_of_intended_air_yards', # Correlated with avg_wopr.
-    'avg_catch_percentage',
-    'avg_avg_expected_yac',
-    'avg_avg_yac_above_expectation',
+    #'avg_percent_share_of_intended_air_yards', # Correlated with avg_wopr.
+    #'avg_catch_percentage',
+   #'avg_avg_expected_yac',
+    #'avg_avg_yac_above_expectation',
 
     # --- High-Value Touches ---
     # Crucial for touchdown prediction.
-    'avg_redzone_target_share',
+    #'avg_redzone_target_share',  # 1.0% importance - surprisingly useless for WR/TE, removed
     'avg_endzone_targets',
     'avg_endzone_target_share',
-    'avg_inside_5_target_share',
+    #'avg_inside_5_target_share',
 
     # --- Contextual & Matchup Features ---
-    'pass_matchup_value',
-    #'redzone_td_rate', # Team-level efficiency.
+    #'pass_matchup_value',  # 0.64% importance - LOWEST feature, engineered feature fails, removed
+   
+    'redzone_td_rate', # Team-level efficiency.
+    #'pass_rate',
+    #'rush_rate',
+
     'passing_tds_allowed_to_WR', # Opponent tendency.
     'passing_tds_allowed_to_TE', # Opponent tendency.
     'implied_total', # Game script proxy.
+    'spread_line',
     'depth_chart_rank',
+    # --- Game Context Features ---
+    # Removed: All schedule features had <0.06% importance (is_home_game, is_thursday, is_primetime, is_dome, is_grass, is_cold, is_windy)
+    # Their effects are already captured by implied_total and spread_line
 
     # --- Target Variable Lag ---
     # Highly predictive, but ensure no data leakage.
     'avg_scored_touchdown',
 
-    # --- Commented Out: Base Volume & Air Yard Stats ---
-    # Mostly captured by more advanced metrics.
-    'avg_receptions',
-    'avg_receiving_yards',
-    'avg_receiving_air_yards', # Raw air yards; avg_percent_share_of_intended_air_yards is often more predictive.
-    'avg_avg_intended_air_yards', # Player's aDOT; consider testing this uncommented. It shows role (deep threat vs. possession).
+
+    # --- Volume & Air Yard Stats ---
+    # IMPORTANT: These volume stats are TOP 5 features! Don't remove them!
+    'avg_receptions',  # 8.5% importance - 4th most important!
+    'avg_receiving_yards',  # 8.6% importance - 3rd most important!
+    'avg_receiving_air_yards',  # 6.1% importance - 6th most important!
+    #'avg_avg_intended_air_yards',  # 1.5% importance - minimal value, removed
+
+    'avg_receiving_yards_allowed',
+    'avg_receiving_epa_allowed',
+    'avg_receiving_air_yards_allowed',
+
+    'avg_explosive_receiving_plays',
+    'avg_explosive_receiving_plays_allowed',
 ]
 QB_FEATURES = [
     'avg_offense_snap_share',
     #'team_continuity',
     'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
-    'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
+    'avg_scored_touchdown', 
+    'avg_redzone_carry_share', 'avg_inside_5_carry_share',
     'rush_matchup_value', 
     #'redzone_td_rate', 
-    'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
-    'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',]
+    'rushing_tds_allowed_to_QB', 'implied_total', 'spread_line', 'depth_chart_rank',
+    #'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',
+    'avg_explosive_rushing_plays',
+    # --- Game Context Features ---
+    #'is_home_game',    # 1.23% importance - keeping this one for QB as it has marginal value
+    # Removed: is_thursday (0.39%), is_dome (1.04%), is_grass (0.98%) - low importance
+    ]
 
 
 
@@ -203,12 +246,12 @@ def feature_engineering(df):
                       'endzone_targets', 'endzone_target_share', 'inside_5_carry_share', 'inside_5_target_share', 'offense_snap_share', 
                       'rush_yards_over_expected_per_att', 'rush_pct_over_expected', 'avg_time_to_los', 'percent_attempts_gte_eight_defenders',
                       'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards', 
-                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
+                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation', 'explosive_rushing_plays', 'explosive_receiving_plays']
     
     for stat in player_stats:
         df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
    
-    pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
+    pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col] + ['rushing_yards_allowed', 'receiving_yards_allowed', 'rushing_epa_allowed', 'receiving_epa_allowed', 'receiving_air_yards_allowed', 'explosive_rushing_plays_allowed', 'explosive_receiving_plays_allowed']
 
     opponent_stats_df = (
         df[['season', 'week', 'opponent_team'] + pos_defense_cols]
@@ -221,13 +264,22 @@ def feature_engineering(df):
     for col in pos_defense_cols:
          opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
 
+    # Rename columns to add 'avg_' prefix for defensive stats (excluding tds_allowed_to columns which already have it)
+    rename_dict = {col: f'avg_{col}' for col in pos_defense_cols if 'tds_allowed_to' not in col}
+    opponent_stats_df.rename(columns=rename_dict, inplace=True)
 
     df.drop(columns=pos_defense_cols, inplace=True)
     df = pd.merge(df, opponent_stats_df, on=['season', 'week', 'opponent_team'], how='left')
 
 
+    # Team-level stats
+    df['redzone_td_rate'] = df.groupby('team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
+    df['pass_rate'] = df.groupby('team')['pass_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
+    df['rush_rate'] = df.groupby('team')['rush_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
     
-   # df['redzone_td_rate'] = df.groupby('recent_team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(span=4, min_periods=1).mean())
+    # Game context features from schedule data
+    # 1. Home game indicator
+    
     df['rush_matchup_value'] = np.select(
         [df['position'] == 'RB', df['position'] == 'QB'],
         [df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_RB'], df['avg_redzone_carry_share'] * df['rushing_tds_allowed_to_QB']],
@@ -422,6 +474,26 @@ def assert_week_splits_valid(df_like: pd.DataFrame, splits):
             # Strictly earlier
             assert week_key(max_train) < week_key(min_test), f"Temporal order violated in fold {i}: train_end {max_train} !< test_start {min_test}"
 
+
+# --- Hyperparameter Persistence Helpers ---
+def save_best_params(key: str, rf_params: dict, lgbm_params: dict, feature_names: list):
+    """Save tuned params and feature names to models/{key}_best_params.json."""
+    os.makedirs('models', exist_ok=True)
+    payload = {
+        'rf_params': rf_params,
+        'lgbm_params': lgbm_params,
+        'feature_names': list(feature_names),
+    }
+    with open(f'models/{key}_best_params.json', 'w') as f:
+        json.dump(payload, f, indent=2)
+
+
+def load_best_params(key: str):
+    """Load tuned params and feature names from models/{key}_best_params.json."""
+    with open(f'models/{key}_best_params.json', 'r') as f:
+        data = json.load(f)
+    return data['rf_params'], data['lgbm_params'], data['feature_names']
+
 # --- 4. Position-Specific Model Training ---
 
 
@@ -547,6 +619,18 @@ def tune_and_train_specialist_model(df_position, features, rf_param_dist, lgbm_p
     assert_week_splits_valid(train_df, oof_splits)
     base_models, meta_model = train_stacked_model_timeseries(X_train, y_train, base_estimators, meta_estimator, n_splits=5, cv_splits=oof_splits)
         
+    # Persist tuned params and features per position key
+    key = 'rb'
+    if model_type == 'WR/TE':
+        key = 'wr_te'
+    elif model_type == 'QB':
+        key = 'qb'
+    try:
+        save_best_params(key, best_rf_params, best_lgbm_params, features)
+        print(f"Saved best hyperparameters to models/{key}_best_params.json")
+    except Exception as e:
+        print(f"Warning: could not save best params for {model_type}: {e}")
+
     print("Final model training complete.")
     return base_models, meta_model, best_rf_params, best_lgbm_params
 
@@ -716,6 +800,130 @@ def precision_recall_at_k_sweep(predictions_df: pd.DataFrame, k_values):
     return sweep_df
 
 
+# --- Calibration from Saved Weekly Predictions (in-season) ---
+def fit_calibrators_from_saved_predictions(preds_dir: str, feature_df: pd.DataFrame, season: int, weeks: list):
+    """Fit Platt calibrators per position using saved weekly prediction CSVs and realized outcomes.
+
+    Expects files like preds_dir/predictions_week_{w}.csv with columns including:
+      - 'player_display_name', 'position', and probability column named either
+        'predicted_touchdown_probability' or 'predicted_prob'.
+    Labels are pulled from feature_df filtered to the same season and weeks.
+    Returns (rb_calibrator, wr_te_calibrator, qb_calibrator), where any may be None if insufficient data.
+    """
+    frames = []
+    for w in weeks:
+        path = os.path.join(preds_dir, f'predictions_week_{w}.csv')
+        if not os.path.exists(path):
+            continue
+        try:
+            dfp = pd.read_csv(path)
+        except Exception:
+            continue
+        prob_col = None
+        if 'predicted_touchdown_probability' in dfp.columns:
+            prob_col = 'predicted_touchdown_probability'
+        elif 'predicted_prob' in dfp.columns:
+            prob_col = 'predicted_prob'
+        if prob_col is None:
+            continue
+        use_cols = [c for c in ['player_display_name', 'position', prob_col] if c in dfp.columns]
+        if len(use_cols) < 3:
+            continue
+        dfp = dfp[use_cols].copy()
+        dfp.rename(columns={prob_col: 'predicted_prob'}, inplace=True)
+        dfp['season'] = season
+        dfp['week'] = w
+        frames.append(dfp)
+
+    if not frames:
+        return None, None, None
+
+    preds_all = pd.concat(frames, ignore_index=True)
+    labels = feature_df[(feature_df['season'] == season) & (feature_df['week'].isin(weeks))][
+        ['player_display_name', 'position', 'week', 'scored_touchdown']
+    ].copy()
+    merged = pd.merge(preds_all, labels, on=['player_display_name', 'position', 'week'], how='inner')
+
+    def safe_fit_platt(df_pos: pd.DataFrame):
+        if df_pos.empty:
+            return None
+        try:
+            return fit_platt_calibrator(df_pos['scored_touchdown'], df_pos['predicted_prob'].values)
+        except Exception:
+            return None
+
+    rb_cal = safe_fit_platt(merged[merged['position'] == 'RB'])
+    wrte_cal = safe_fit_platt(merged[merged['position'].isin(['WR', 'TE'])])
+    qb_cal = safe_fit_platt(merged[merged['position'] == 'QB'])
+    return rb_cal, wrte_cal, qb_cal
+
+
+def analyze_feature_importance(base_models, features, model_name, top_n=20):
+    """
+    Analyzes and displays feature importance from base models.
+    
+    Args:
+        base_models: List of trained base models [RandomForest, LightGBM]
+        features: List of feature names
+        model_name: Name of the model (for display)
+        top_n: Number of top features to display
+    
+    Returns:
+        DataFrame with combined feature importances
+    """
+    print("\n" + "="*60 + f"\nFEATURE IMPORTANCE ANALYSIS: {model_name}\n" + "="*60)
+    
+    # Extract feature importance from RandomForest
+    rf_model = base_models[0]
+    rf_importance = rf_model.feature_importances_
+    
+    # Extract feature importance from LightGBM
+    lgbm_model = base_models[1]
+    lgbm_importance = lgbm_model.feature_importances_
+    
+    # Create DataFrame with all importances
+    importance_df = pd.DataFrame({
+        'feature': features,
+        'rf_importance': rf_importance,
+        'lgbm_importance': lgbm_importance
+    })
+    
+    # Normalize importances to sum to 1 for each model
+    importance_df['rf_importance_norm'] = importance_df['rf_importance'] / importance_df['rf_importance'].sum()
+    importance_df['lgbm_importance_norm'] = importance_df['lgbm_importance'] / importance_df['lgbm_importance'].sum()
+    
+    # Calculate average importance across both models
+    importance_df['avg_importance'] = (importance_df['rf_importance_norm'] + importance_df['lgbm_importance_norm']) / 2
+    
+    # Sort by average importance
+    importance_df = importance_df.sort_values('avg_importance', ascending=False)
+    
+    # Display top features
+    print(f"\n--- Top {top_n} Most Important Features ---")
+    top_features = importance_df.head(top_n)[['feature', 'rf_importance_norm', 'lgbm_importance_norm', 'avg_importance']]
+    print(top_features.to_string(index=False))
+    
+    # Display bottom features (potential candidates for removal)
+    print(f"\n--- Bottom {min(10, len(features))} Least Important Features ---")
+    bottom_features = importance_df.tail(min(10, len(features)))[['feature', 'rf_importance_norm', 'lgbm_importance_norm', 'avg_importance']]
+    print(bottom_features.to_string(index=False))
+    
+    # Summary statistics
+    print("\n--- Feature Importance Summary ---")
+    print(f"Total features: {len(features)}")
+    print(f"Top 5 features account for: {importance_df.head(5)['avg_importance'].sum():.1%} of importance")
+    print(f"Top 10 features account for: {importance_df.head(10)['avg_importance'].sum():.1%} of importance")
+    print(f"Bottom 10 features account for: {importance_df.tail(10)['avg_importance'].sum():.1%} of importance")
+    
+    # Identify features with very low importance (< 0.5% average)
+    low_importance = importance_df[importance_df['avg_importance'] < 0.005]
+    if not low_importance.empty:
+        print(f"\n⚠️  Features with <0.5% importance (consider removing): {len(low_importance)}")
+        print(low_importance[['feature', 'avg_importance']].to_string(index=False))
+    
+    return importance_df
+
+
 def evaluate_specialist_model(base_models, meta_model, model_name, validation_df, features, k=25):
     """Calculates performance metrics for a manually stacked model."""
     print("\n" + "="*60 + f"\nEVALUATION FOR: {model_name}\n" + "="*60)
@@ -728,22 +936,72 @@ def evaluate_specialist_model(base_models, meta_model, model_name, validation_df
 
     # No scaling required for tree-based base models
 
-    # --- 1. Performance Metrics (Precision@k) ---
-    print(f"\n--- Weekly Performance @ K={k} ---")
-    y_pred_proba = predict_stacked_proba(X_val, base_models, meta_model)
+    # --- 1. Performance Metrics (Precision@k) - STACKED ---
+    print(f"\n--- Weekly Performance @ K={k} (STACKED MODEL) ---")
+    y_pred_proba_stacked = predict_stacked_proba(X_val, base_models, meta_model)
     
     results_df = validation_df[['player_display_name', 'week', 'scored_touchdown']].copy()
-    results_df['predicted_prob'] = y_pred_proba
+    results_df['predicted_prob'] = y_pred_proba_stacked
     
-    weekly_performance = evaluate_model_at_k(results_df, k=k)
-    print(weekly_performance)
+    weekly_performance_stacked = evaluate_model_at_k(results_df, k=k)
+    print(weekly_performance_stacked)
     
-    average_performance = weekly_performance.mean()
-    print("\n--- Average Season Performance ---")
-    print(f"Average Precision@{k}: {average_performance['precision_at_k']:.3f}")
-    print(f"Average Recall@{k}:    {average_performance['recall_at_k']:.3f}")
-    print(f"Average Successful Picks Per Week: {average_performance['successful_picks']:.1f}")
+    average_performance_stacked = weekly_performance_stacked.mean()
+    print("\n--- Average Season Performance (STACKED) ---")
+    print(f"Average Precision@{k}: {average_performance_stacked['precision_at_k']:.3f}")
+    print(f"Average Recall@{k}:    {average_performance_stacked['recall_at_k']:.3f}")
+    print(f"Average Successful Picks Per Week: {average_performance_stacked['successful_picks']:.1f}")
 
+    # --- 1b. Compare with Standalone Models ---
+    print("\n" + "="*60 + "\nCOMPARISON: STACKED vs STANDALONE MODELS\n" + "="*60)
+    
+    # RandomForest standalone
+    y_pred_proba_rf = base_models[0].predict_proba(X_val)[:, 1]
+    results_df_rf = validation_df[['player_display_name', 'week', 'scored_touchdown']].copy()
+    results_df_rf['predicted_prob'] = y_pred_proba_rf
+    weekly_performance_rf = evaluate_model_at_k(results_df_rf, k=k)
+    average_performance_rf = weekly_performance_rf.mean()
+    
+    # LightGBM standalone
+    y_pred_proba_lgbm = base_models[1].predict_proba(X_val)[:, 1]
+    results_df_lgbm = validation_df[['player_display_name', 'week', 'scored_touchdown']].copy()
+    results_df_lgbm['predicted_prob'] = y_pred_proba_lgbm
+    weekly_performance_lgbm = evaluate_model_at_k(results_df_lgbm, k=k)
+    average_performance_lgbm = weekly_performance_lgbm.mean()
+    
+    # Display comparison
+    comparison_results = pd.DataFrame({
+        'Model': ['Stacked (RF+LGBM)', 'RandomForest Only', 'LightGBM Only'],
+        f'Precision@{k}': [
+            average_performance_stacked['precision_at_k'],
+            average_performance_rf['precision_at_k'],
+            average_performance_lgbm['precision_at_k']
+        ],
+        f'Recall@{k}': [
+            average_performance_stacked['recall_at_k'],
+            average_performance_rf['recall_at_k'],
+            average_performance_lgbm['recall_at_k']
+        ],
+        'Avg Picks/Week': [
+            average_performance_stacked['successful_picks'],
+            average_performance_rf['successful_picks'],
+            average_performance_lgbm['successful_picks']
+        ]
+    })
+    
+    print("\n--- Performance Comparison ---")
+    print(comparison_results.to_string(index=False))
+    
+    # Highlight best model
+    best_precision = comparison_results[f'Precision@{k}'].max()
+    best_model = comparison_results[comparison_results[f'Precision@{k}'] == best_precision]['Model'].values[0]
+    improvement = (best_precision - average_performance_stacked['precision_at_k']) * 100
+    
+    if 'Stacked' not in best_model:
+        print(f"\n⚠️  {best_model} outperforms stacking by {improvement:.1f} percentage points!")
+        print(f"   Consider using {best_model} standalone for simpler, faster predictions.")
+    else:
+        print(f"\n✅  Stacked model performs best (Precision@{k} = {best_precision:.3f})")
 
     # --- 2. Base Model Importance (Meta-Model Coefficients) ---
     print("\n--- Base Model Importance (Final Estimator Weights) ---")
@@ -755,9 +1013,22 @@ def evaluate_specialist_model(base_models, meta_model, model_name, validation_df
         'Coefficient (Weight)': final_estimator_coefs
     }).sort_values(by='Coefficient (Weight)', ascending=False)
     print(model_importance_df)
+    
+    rf_weight = final_estimator_coefs[0]
+    lgbm_weight = final_estimator_coefs[1]
+    weight_ratio = rf_weight / lgbm_weight if lgbm_weight > 0 else float('inf')
+    print(f"\nRF weight is {weight_ratio:.1f}× larger than LGBM weight")
+    
+    if weight_ratio > 5:
+        print("⚠️  Large weight imbalance suggests stacking may be overkill!")
 
     # --- 3. Probability Quality ---
-    evaluate_probability_quality(validation_df['scored_touchdown'], y_pred_proba, label=f"{model_name}")
+    evaluate_probability_quality(validation_df['scored_touchdown'], y_pred_proba_stacked, label=f"{model_name} - Stacked")
+    
+    # --- 4. Feature Importance Analysis ---
+    importance_df = analyze_feature_importance(base_models, features, model_name, top_n=20)
+    
+    return importance_df, comparison_results
 
 
 ###
@@ -820,6 +1091,8 @@ def save_joblib_locally(python_object, file_path):
 if __name__ == '__main__':
     # -- Configuration --
     all_years_to_load = range(2020, 2026) ### TODO: change to 2026
+    CURRENT_SEASON = 2025
+    CURRENT_WEEK = 5
 
     
 
@@ -875,7 +1148,9 @@ if __name__ == '__main__':
     print("Engineering features...")
     nfl_df = data.get_all_historic_data(all_years_to_load, team_map)
     nfl_df = nfl_df[nfl_df['week'] <= 18]
-    #nfl_df = nfl_df[nfl_df['season'] < 2025]
+    nfl_df = nfl_df[(nfl_df['season'] < CURRENT_SEASON) | ((nfl_df['season'] == CURRENT_SEASON) & (nfl_df['week'] < CURRENT_WEEK))]
+
+
     nfl_df.to_csv("raw_nfl_data.csv", index=False)
     feature_df = feature_engineering(nfl_df)
     #feature_df = feature_engineering(nfl_df, redzone_df, redzone_td_df, ez_target_df, odds_df, goal_line_df, positional_defense_df, depth_chart_df, snap_counts_df, ngs_rushing_df, ngs_receiving_df)
@@ -891,11 +1166,41 @@ if __name__ == '__main__':
     df_qb = feature_df[feature_df['position'] == 'QB'].copy()
 
 
-    # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
-    # The function now returns the trained base/meta models and the best params
-    rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
-    qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    # Toggle: reuse saved best params (weekly retrains) vs. re-tune
+    USE_SAVED_PARAMS = True
+
+    if not USE_SAVED_PARAMS:
+        # --- Phase 1: Tune, Train, and Evaluate on 2024 Season ---
+        # The function now returns the trained base/meta models and the best params
+        rb_models, rb_meta_model, rb_rf_params, rb_lgbm_params = tune_and_train_specialist_model(df_rb, RB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+        wr_te_models, wr_te_meta_model, wr_te_rf_params, wr_te_lgbm_params = tune_and_train_specialist_model(df_wr_te, WR_TE_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+        qb_models, qb_meta_model, qb_rf_params, qb_lgbm_params = tune_and_train_specialist_model(df_qb, QB_FEATURES, RF_PARAM_DIST, LGBM_PARAM_DIST)
+    else:
+        print("\n" + "="*60 + "\nLOADING SAVED BEST HYPERPARAMETERS\n" + "="*60)
+        rb_rf_params, rb_lgbm_params, _ = load_best_params('rb')
+        wr_te_rf_params, wr_te_lgbm_params, _ = load_best_params('wr_te')
+        qb_rf_params, qb_lgbm_params, _ = load_best_params('qb')
+
+        # Train models for validation using loaded params (no re-tuning)
+        validation_year = 2024
+
+        def train_for_validation(df_pos, features, rf_params, lgbm_params):
+            df_pos = df_pos.sort_values(['season', 'week', 'player_id']).copy()
+            train_df = df_pos[df_pos['season'] < validation_year].sort_values(['season', 'week', 'player_id']).copy()
+            X_train = train_df[features]
+            y_train = train_df['scored_touchdown']
+            base_estimators = [
+                RandomForestClassifier(random_state=42, class_weight='balanced', **rf_params),
+                lgb.LGBMClassifier(objective='binary', random_state=42, is_unbalance=True, verbosity=-1, **lgbm_params)
+            ]
+            meta_estimator = LogisticRegression(class_weight='balanced', penalty='l2', C=0.5)
+            oof_splits = build_week_splits_covering_all_weeks(train_df, test_weeks=1, embargo_weeks=0, min_train_weeks=8)
+            assert_week_splits_valid(train_df, oof_splits)
+            return train_stacked_model_timeseries(X_train, y_train, base_estimators, meta_estimator, cv_splits=oof_splits)
+
+        rb_models, rb_meta_model = train_for_validation(df_rb, RB_FEATURES, rb_rf_params, rb_lgbm_params)
+        wr_te_models, wr_te_meta_model = train_for_validation(df_wr_te, WR_TE_FEATURES, wr_te_rf_params, wr_te_lgbm_params)
+        qb_models, qb_meta_model = train_for_validation(df_qb, QB_FEATURES, qb_rf_params, qb_lgbm_params)
 
 
     # --- MODEL EVALUATION ON 2024 SEASON ---
@@ -911,9 +1216,96 @@ if __name__ == '__main__':
     wr_te_val_proba = predict_stacked_proba(val_df_wr_te[WR_TE_FEATURES], wr_te_models, wr_te_meta_model)
     qb_val_proba = predict_stacked_proba(val_df_qb[QB_FEATURES], qb_models, qb_meta_model)
 
-    evaluate_specialist_model(rb_models, rb_meta_model, "RB Model", val_df_rb, RB_FEATURES, k=15)
-    evaluate_specialist_model(wr_te_models, wr_te_meta_model, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES)
-    evaluate_specialist_model(qb_models, qb_meta_model, "QB Model", val_df_qb, QB_FEATURES, k=5)
+    rb_importance, rb_comparison = evaluate_specialist_model(rb_models, rb_meta_model, "RB Model", val_df_rb, RB_FEATURES, k=10)
+    wr_te_importance, wr_te_comparison = evaluate_specialist_model(wr_te_models, wr_te_meta_model, "WR/TE Model", val_df_wr_te, WR_TE_FEATURES, k=10)
+    qb_importance, qb_comparison = evaluate_specialist_model(qb_models, qb_meta_model, "QB Model", val_df_qb, QB_FEATURES, k=5)
+    
+    # Save feature importance and model comparison to CSV for further analysis
+    print("\n" + "="*60 + "\nSAVING ANALYSIS RESULTS\n" + "="*60)
+    os.makedirs('models', exist_ok=True)
+    rb_importance.to_csv('models/rb_feature_importance.csv', index=False)
+    wr_te_importance.to_csv('models/wr_te_feature_importance.csv', index=False)
+    qb_importance.to_csv('models/qb_feature_importance.csv', index=False)
+    print("Feature importance saved to models/ directory")
+    
+    # Save model comparison results
+    rb_comparison.to_csv('models/rb_model_comparison.csv', index=False)
+    wr_te_comparison.to_csv('models/wr_te_model_comparison.csv', index=False)
+    qb_comparison.to_csv('models/qb_model_comparison.csv', index=False)
+    print("Model comparison results saved to models/ directory")
+    
+    # Create unified summary
+    print("\n" + "="*60 + "\nSTACKED vs STANDALONE MODEL SUMMARY\n" + "="*60)
+    summary_data = []
+    for pos, comp_df in [('RB', rb_comparison), ('WR/TE', wr_te_comparison), ('QB', qb_comparison)]:
+        stacked_perf = comp_df[comp_df['Model'].str.contains('Stacked')].iloc[0]
+        rf_perf = comp_df[comp_df['Model'].str.contains('RandomForest')].iloc[0]
+        lgbm_perf = comp_df[comp_df['Model'].str.contains('LightGBM')].iloc[0]
+        
+        # Get the precision column name dynamically
+        precision_col = [col for col in comp_df.columns if 'Precision' in col][0]
+        
+        summary_data.append({
+            'Position': pos,
+            'Stacked': stacked_perf[precision_col],
+            'RF Only': rf_perf[precision_col],
+            'LGBM Only': lgbm_perf[precision_col],
+            'Best': comp_df[precision_col].max(),
+            'Best Model': comp_df.loc[comp_df[precision_col].idxmax(), 'Model']
+        })
+    
+    summary_df = pd.DataFrame(summary_data)
+    print("\n--- Position-by-Position Comparison ---")
+    print(summary_df.to_string(index=False))
+    summary_df.to_csv('models/stacked_vs_standalone_summary.csv', index=False)
+    
+    # Overall recommendation
+    stacked_wins = (summary_df['Best Model'].str.contains('Stacked')).sum()
+    rf_wins = (summary_df['Best Model'].str.contains('RandomForest Only')).sum()
+    lgbm_wins = (summary_df['Best Model'].str.contains('LightGBM Only')).sum()
+    
+    print("\n--- Overall Recommendation ---")
+    if stacked_wins == 3:
+        print("✅ Stacking wins for ALL positions - keep current approach")
+    elif rf_wins >= 2:
+        print(f"⚠️  RandomForest Only wins for {rf_wins}/3 positions")
+        print("   Consider switching to RF-only models for simplicity")
+    elif stacked_wins >= 2:
+        print(f"✅ Stacking wins for {stacked_wins}/3 positions - current approach is good")
+    else:
+        print("📊 Mixed results - evaluate based on your priorities (performance vs simplicity)")
+    
+    # Create a consolidated comparison report
+    print("\n" + "="*60 + "\nCROSS-POSITION FEATURE IMPORTANCE COMPARISON\n" + "="*60)
+    
+    # Find common features across positions
+    rb_features_set = set(rb_importance['feature'])
+    wr_te_features_set = set(wr_te_importance['feature'])
+    qb_features_set = set(qb_importance['feature'])
+    
+    common_features = rb_features_set & wr_te_features_set & qb_features_set
+    print(f"\nFeatures common to all positions: {len(common_features)}")
+    if common_features:
+        print("Common features:", sorted(common_features))
+        
+        # Compare importance of common features
+        comparison_data = []
+        for feat in common_features:
+            rb_imp = rb_importance[rb_importance['feature'] == feat]['avg_importance'].values[0]
+            wr_te_imp = wr_te_importance[wr_te_importance['feature'] == feat]['avg_importance'].values[0]
+            qb_imp = qb_importance[qb_importance['feature'] == feat]['avg_importance'].values[0]
+            comparison_data.append({
+                'feature': feat,
+                'rb_importance': rb_imp,
+                'wr_te_importance': wr_te_imp,
+                'qb_importance': qb_imp,
+                'avg_across_positions': (rb_imp + wr_te_imp + qb_imp) / 3
+            })
+        
+        comparison_df = pd.DataFrame(comparison_data).sort_values('avg_across_positions', ascending=False)
+        print("\n--- Importance of Common Features Across Positions ---")
+        print(comparison_df.to_string(index=False))
+        comparison_df.to_csv('models/cross_position_feature_comparison.csv', index=False)
 
     
 
@@ -968,6 +1360,7 @@ if __name__ == '__main__':
     rb_calibrator = fit_platt_calibrator(val_df_rb['scored_touchdown'], rb_val_proba)
     wr_te_calibrator = fit_platt_calibrator(val_df_wr_te['scored_touchdown'], wr_te_val_proba)
     qb_calibrator = fit_platt_calibrator(val_df_qb['scored_touchdown'], qb_val_proba)
+
 
     print("\n" + "="*60 + "\nSAVING MODEL ARTIFACTS LOCALLY\n" + "="*60)
     # Save RB models

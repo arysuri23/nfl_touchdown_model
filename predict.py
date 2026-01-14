@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 import numpy as np
 import joblib
-import nfl_data_py as nfl
+import nflreadpy as nfl
 import data_collection as data # Assuming data_collection.py is in the same deployment package
 
 
@@ -32,33 +32,51 @@ RB_FEATURES = [
     
     # These Next Gen Stats measure rushing efficiency and style. They might be correlated with avg_rushing_epa.
     # Consider testing the model with avg_rushing_epa vs. this block of features.
-    'avg_rush_yards_over_expected_per_att', # Correlated with avg_rushing_epa.
-    'avg_rush_pct_over_expected',
-    'avg_avg_time_to_los',
-    'avg_percent_attempts_gte_eight_defenders', # Measures ability against stacked boxes.
+    #'avg_rush_yards_over_expected_per_att', # Correlated with avg_rushing_epa.
+    #'avg_rush_pct_over_expected',
+    #'avg_avg_time_to_los',
+    #'avg_percent_attempts_gte_eight_defenders', # Measures ability against stacked boxes.
 
     # --- High-Value Touches ---
     # These features are crucial but can be correlated. For example, a high redzone carry share
     # often leads to a high inside_5 carry share. The model should handle this, but it's worth noting.
     'avg_redzone_carry_share',
     'avg_redzone_target_share',
-    'avg_endzone_targets',
-    'avg_endzone_target_share',
+    #'avg_endzone_targets',  # 1.2% importance - lowest RB feature, removed
+    #'avg_endzone_target_share',
     'avg_inside_5_carry_share',
-    'avg_inside_5_target_share',
+    #'avg_inside_5_target_share',
 
     # --- Contextual & Matchup Features ---
     'rush_matchup_value',
-    'pass_matchup_value',
-    #'redzone_td_rate', # Team-level efficiency in the red zone.
+    #'pass_matchup_value',  # 2.5% importance - low value for RBs, removed
+    #'pass_rate',
+    #'rush_rate',
+    'redzone_td_rate', # Team-level efficiency in the red zone.
+
     'rushing_tds_allowed_to_RB', # Opponent tendency.
     'passing_tds_allowed_to_RB', # Opponent tendency.
     'implied_total', # Game script proxy.
+    'spread_line',
     'depth_chart_rank',
+    
+    # --- Game Context Features ---
+    # Removed: All schedule features had <0.05% importance (is_home_game, is_thursday, is_dome, is_grass, is_cold, is_windy)
+    # Their effects are already captured by implied_total and spread_line
 
     # --- Target Variable Lag ---
     # This is a lagged version of the target. Highly predictive, but ensure no data leakage.
     'avg_scored_touchdown',
+    'avg_rushing_yards_allowed',
+    'avg_receiving_yards_allowed',
+    'avg_rushing_epa_allowed',
+    'avg_receiving_epa_allowed',
+    'avg_receiving_air_yards_allowed',
+    'avg_explosive_rushing_plays',
+    'avg_explosive_receiving_plays',
+
+    'avg_explosive_rushing_plays_allowed',
+    'avg_explosive_receiving_plays_allowed',
 
     # --- Commented Out: Base Volume Stats ---
     # These are likely redundant given the advanced metrics above (e.g., avg_wopr, avg_rushing_epa).
@@ -85,50 +103,73 @@ WR_TE_FEATURES = [
     # avg_avg_cushion and avg_avg_separation both measure a receiver's ability to get open.
     # They are likely correlated. Test with one or both.
     #'avg_avg_cushion',
-    'avg_avg_separation',
+    #'avg_avg_separation',  # 1.7% importance - NGS metric, minimal value, removed
 
     # These metrics describe how a player is used and how well they perform on their targets.
     # They are generally complementary.
-    'avg_percent_share_of_intended_air_yards', # Correlated with avg_wopr.
-    'avg_catch_percentage',
-    'avg_avg_expected_yac',
-    'avg_avg_yac_above_expectation',
+    #'avg_percent_share_of_intended_air_yards', # Correlated with avg_wopr.
+    #'avg_catch_percentage',
+   #'avg_avg_expected_yac',
+    #'avg_avg_yac_above_expectation',
 
     # --- High-Value Touches ---
     # Crucial for touchdown prediction.
-    'avg_redzone_target_share',
+    #'avg_redzone_target_share',  # 1.0% importance - surprisingly useless for WR/TE, removed
     'avg_endzone_targets',
     'avg_endzone_target_share',
-    'avg_inside_5_target_share',
+    #'avg_inside_5_target_share',
 
     # --- Contextual & Matchup Features ---
-    'pass_matchup_value',
-    #'redzone_td_rate', # Team-level efficiency.
+    #'pass_matchup_value',  # 0.64% importance - LOWEST feature, engineered feature fails, removed
+   
+    'redzone_td_rate', # Team-level efficiency.
+    #'pass_rate',
+    #'rush_rate',
+
     'passing_tds_allowed_to_WR', # Opponent tendency.
     'passing_tds_allowed_to_TE', # Opponent tendency.
     'implied_total', # Game script proxy.
+    'spread_line',
     'depth_chart_rank',
+    
+    # --- Game Context Features ---
+    # Removed: All schedule features had <0.06% importance (is_home_game, is_thursday, is_primetime, is_dome, is_grass, is_cold, is_windy)
+    # Their effects are already captured by implied_total and spread_line
 
     # --- Target Variable Lag ---
     # Highly predictive, but ensure no data leakage.
     'avg_scored_touchdown',
 
-    # --- Commented Out: Base Volume & Air Yard Stats ---
-    # Mostly captured by more advanced metrics.
-    'avg_receptions',
-    'avg_receiving_yards',
-    'avg_receiving_air_yards', # Raw air yards; avg_percent_share_of_intended_air_yards is often more predictive.
-    'avg_avg_intended_air_yards', # Player's aDOT; consider testing this uncommented. It shows role (deep threat vs. possession).
+    # --- Volume & Air Yard Stats ---
+    # IMPORTANT: These volume stats are TOP 5 features! Don't remove them!
+    'avg_receptions',  # 8.5% importance - 4th most important!
+    'avg_receiving_yards',  # 8.6% importance - 3rd most important!
+    'avg_receiving_air_yards',  # 6.1% importance - 6th most important!
+    #'avg_avg_intended_air_yards',  # 1.5% importance - minimal value, removed
+
+    'avg_receiving_yards_allowed',
+    'avg_receiving_epa_allowed',
+    'avg_receiving_air_yards_allowed',
+
+    'avg_explosive_receiving_plays',
+    'avg_explosive_receiving_plays_allowed',
 ]
 QB_FEATURES = [
     'avg_offense_snap_share', 
     #'team_continuity',
     'avg_carries', 'avg_rushing_yards', 'avg_rushing_epa', 
-    'avg_scored_touchdown', 'avg_redzone_carry_share', 'avg_inside_5_carry_share',
+    'avg_scored_touchdown', 
+    'avg_redzone_carry_share', 'avg_inside_5_carry_share',
     'rush_matchup_value', 
-    #'redzone_td_rate',
-    'rushing_tds_allowed_to_QB', 'implied_total', 'depth_chart_rank',
-    'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',]
+    #'redzone_td_rate', 
+    'rushing_tds_allowed_to_QB', 'implied_total', 'spread_line', 'depth_chart_rank',
+    #'avg_rush_yards_over_expected_per_att', 'avg_rush_pct_over_expected', 'avg_avg_time_to_los',
+    'avg_explosive_rushing_plays',
+    
+    # --- Game Context Features ---
+   # 1.23% importance - keeping this one for QB as it has marginal value
+    # Removed: is_thursday (0.39%), is_dome (1.04%), is_grass (0.98%) - low importance
+    ]
 
 
 
@@ -153,13 +194,14 @@ def transform_features(df):
                       'endzone_targets', 'endzone_target_share', 'inside_5_carry_share', 'inside_5_target_share', 'offense_snap_share', 
                       'rush_yards_over_expected_per_att', 'rush_pct_over_expected', 'avg_time_to_los', 'percent_attempts_gte_eight_defenders',
                       'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards', 
-                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation']
+                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation', 'explosive_rushing_plays', 'explosive_receiving_plays']
+    
     
     # In inference, EWMs need not be shifted as we only use historical rows (< target week)
     for stat in player_stats:
         df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(alpha=0.3, min_periods=1).mean())
 
-    pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col]
+    pos_defense_cols = [col for col in df.columns if 'tds_allowed_to' in col] + ['rushing_yards_allowed', 'receiving_yards_allowed', 'rushing_epa_allowed', 'receiving_epa_allowed', 'receiving_air_yards_allowed', 'explosive_rushing_plays_allowed', 'explosive_receiving_plays_allowed']
 
     opponent_stats_df = (
         df[['season', 'week', 'opponent_team'] + pos_defense_cols]
@@ -169,7 +211,10 @@ def transform_features(df):
     )
     
     for col in pos_defense_cols:
-         opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(alpha = 0.3, min_periods=1).mean())
+        if 'tds_allowed_to' in col:
+            opponent_stats_df[col] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(alpha = 0.3, min_periods=1).mean())
+        else:
+            opponent_stats_df[f'avg_{col}'] = opponent_stats_df.groupby('opponent_team')[col].transform(lambda x: x.ewm(alpha = 0.3, min_periods=1).mean())
 
 
     df.drop(columns=pos_defense_cols, inplace=True)
@@ -209,13 +254,13 @@ def predict_touchdown_scorers(feature_df, models, calibrators, year, week, futur
     # transform_features now called inside predict_touchdown_scorers after filtering; avoid double transform
 
     # Get schedule and roster for the prediction week
-    schedule = nfl.import_schedules([year])
+    schedule = nfl.load_schedules([year]).to_pandas()
     #schedule['home_team'] = schedule['home_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
     #schedule['away_team'] = schedule['away_team'].replace({'LA': 'LAR', 'LV': 'LVR'})
     
     week_schedule = schedule[schedule['week'] == week]
     
-    rosters = nfl.import_weekly_rosters([year])
+    rosters = nfl.load_rosters_weekly([year]).to_pandas()
     rosters = rosters[rosters['status']=='ACT']
     
     #rosters['team'] = rosters['team'].replace({'LA': 'LAR', 'LV': 'LVR'})
@@ -227,63 +272,57 @@ def predict_touchdown_scorers(feature_df, models, calibrators, year, week, futur
     
     teams_playing = list(opponent_map.keys())
     
-    week_rosters = rosters[rosters['team'].isin(teams_playing) & rosters['position'].isin(['QB', 'RB', 'WR', 'TE'])].drop_duplicates(subset=['player_id'], keep='last')
+    week_rosters = rosters[rosters['team'].isin(teams_playing) & rosters['position'].isin(['QB', 'RB', 'WR', 'TE'])].drop_duplicates(subset=['gsis_id'], keep='last')
 
+
+    prediction_df = week_rosters[['gsis_id', 'full_name', 'position', 'team']]
     
-    prediction_df = week_rosters[['player_id', 'player_name', 'position', 'team']]
-    
-    prediction_df.rename(columns={'player_name': 'player_display_name'}, inplace=True)
+    prediction_df.rename(columns={'gsis_id': 'player_id', 'full_name': 'player_display_name'}, inplace=True)
     prediction_df['opponent_team'] = prediction_df['team'].map(opponent_map)
 
     # Assemble features using historical data from the pre-engineered feature_df
     all_features = set(RB_FEATURES + WR_TE_FEATURES + QB_FEATURES)
+    
+    # Identify features that are NOT player-specific (need to be merged separately)
     non_player_features = set()
     for f in all_features:
-        if 'allowed_to' in f or f in ['rush_matchup_value', 'pass_matchup_value', 
-                                      #'redzone_td_rate', 
-                                      'implied_total']:
+        # Opponent defensive stats (all contain 'allowed')
+        if 'allowed' in f:
+            non_player_features.add(f)
+        # Matchup values (calculated from player + opponent stats)
+        elif f in ['rush_matchup_value', 'pass_matchup_value']:
+            non_player_features.add(f)
+        # Game context features (week-specific, not player-specific)
+        elif f in ['implied_total', 'spread_line', 'is_home_game', 'div_game', 'redzone_td_rate']:
             non_player_features.add(f)
     
     player_history_features = sorted(list(all_features - non_player_features))
-    #team_history_features = ['redzone_td_rate']
-    opponent_history_features = [f for f in all_features if 'allowed_to' in f]
+    opponent_history_features = [f for f in all_features if 'allowed' in f]  # All opponent defensive stats
+    team_history_features = ['redzone_td_rate'] if 'redzone_td_rate' in all_features else []
     
-    features_from_player_history = player_history_features #+ team_history_features
+    features_from_player_history = player_history_features
     # Ensure chronological order so groupby().last() picks the most recent row per player
     feature_df = feature_df.sort_values(['player_id', 'season', 'week']).copy()
     latest_player_data = feature_df.groupby('player_id')[features_from_player_history].last().reset_index()
 
     prediction_df = pd.merge(prediction_df, latest_player_data, on='player_id', how='left')
 
-
-     # NEW: Calculate team_continuity for the prediction week
-    # A player has continuity if their team for the upcoming week is the same as their last known team from history.
-   # prediction_df['team_continuity'] = (prediction_df['team'] == prediction_df['recent_team']).astype(int) # Note: pandas may add a suffix like _y
+    # Get the latest opponent defensive stats for each opponent team
+    if opponent_history_features:
+        opponent_stats_df = feature_df[['season', 'week', 'opponent_team'] + opponent_history_features]
+        opponent_stats_df = opponent_stats_df.sort_values(by=['opponent_team', 'season', 'week']).copy()
+        latest_opponent_data = opponent_stats_df.groupby('opponent_team')[opponent_history_features].last().reset_index()
+        prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
     
-    # Get the latest opponent data for each team
-    opponent_stats_df = feature_df[['season', 'week', 'opponent_team'] + opponent_history_features]
-    # Ensure chronological order per opponent before selecting last
-    opponent_stats_df = opponent_stats_df.sort_values(by=['opponent_team', 'season', 'week']).copy()
-  
-   
-
-     # Debugging output
-    latest_opponent_data = opponent_stats_df.groupby('opponent_team')[opponent_history_features].last().reset_index()
+    # Get the latest team-level stats (redzone_td_rate) for each team
+    if team_history_features:
+        team_stats_df = feature_df[['season', 'week', 'team'] + team_history_features]
+        team_stats_df = team_stats_df.sort_values(by=['team', 'season', 'week']).copy()
+        latest_team_data = team_stats_df.groupby('team')[team_history_features].last().reset_index()
+        prediction_df = pd.merge(prediction_df, latest_team_data, on='team', how='left', suffixes=('', '_team'))
+        
     
-
-    
-    
-   
-    #rename recent_team to opponent_team
-    #latest_opponent_data.rename(columns={'recent_team': 'opponent_team'}, inplace=True)
-
-    prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
-
-    print(prediction_df.team.unique())
-    print(future_odds_df.team.unique())
-    
-    
-    prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total']], on='team', how='left')
+    prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total', 'spread_line']], on='team', how='left')
     
     # Opponent encoding removed; rely on engineered opponent-week features instead
 
@@ -361,7 +400,7 @@ if __name__ == '__main__':
     """
     print("Lambda function initiated.")
     prediction_year = 2025
-    prediction_week = 3
+    prediction_week = 5
     
     # --- 1. Load Models and Encoders from Local Files ---
     print("Loading model artifacts from local files...")
