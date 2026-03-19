@@ -11,6 +11,7 @@ import data_collection as data
 
 # Feature lists must match those used during training
 
+
 WR_TE_FEATURES = [
     'avg_offense_snap_share',
     'avg_wopr',
@@ -39,6 +40,34 @@ WR_TE_FEATURES = [
     'avg_rec_touchdown_exp', 
     'avg_rec_touchdown_exp_team'
 ]
+# WR_TE_FEATURES = [
+# 'avg_offense_snap_share',
+#     'avg_wopr',
+#     'avg_target_share',
+#     'avg_receiving_epa',
+#     'avg_racr',
+#     'avg_endzone_targets', 
+#     'avg_endzone_target_share',  
+#     #'avg_redzone_target_share',
+#     'redzone_td_rate',  
+#     'passing_tds_allowed_to_WR', 
+#     'passing_tds_allowed_to_TE',
+#     'implied_total',
+#     'spread_line',
+#     'depth_chart_rank',
+#     #'avg_total_tds',
+#     'avg_scored_touchdown',
+#     'avg_receptions',
+#     'avg_receiving_yards',
+#     'avg_receiving_air_yards',
+#     'avg_receiving_yards_allowed',  
+#     'avg_receiving_epa_allowed',  
+#     'avg_receiving_air_yards_allowed',  
+#     'avg_explosive_receiving_plays',
+#     'avg_explosive_receiving_plays_allowed'
+#     #'avg_rec_touchdown_exp', 
+#     #'avg_rec_touchdown_exp_team'
+# ]
 
 
 ### LOCAL FILE LOADING FUNCTIONS ###
@@ -216,7 +245,7 @@ if __name__ == '__main__':
     print("="*60)
     
     prediction_year = 2025
-    prediction_week = 12 # Update this for each week
+    prediction_week = 15 # Update this for each week
     
     # --- 1. Load WR/TE Model ---
     print("\nLoading WR/TE model artifacts from local files...")

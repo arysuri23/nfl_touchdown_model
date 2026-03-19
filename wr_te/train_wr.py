@@ -51,7 +51,34 @@ WR_TE_FEATURES = [
     'avg_rec_touchdown_exp', 
     'avg_rec_touchdown_exp_team'
 ]
-
+# WR_TE_FEATURES = [
+# 'avg_offense_snap_share',
+#     'avg_wopr',
+#     'avg_target_share',
+#     'avg_receiving_epa',
+#     'avg_racr',
+#     'avg_endzone_targets', 
+#     'avg_endzone_target_share',  
+#     #'avg_redzone_target_share',
+#     'redzone_td_rate',  
+#     'passing_tds_allowed_to_WR', 
+#     'passing_tds_allowed_to_TE',
+#     'implied_total',
+#     'spread_line',
+#     'depth_chart_rank',
+#     #'avg_total_tds',
+#     'avg_scored_touchdown',
+#     'avg_receptions',
+#     'avg_receiving_yards',
+#     'avg_receiving_air_yards',
+#     'avg_receiving_yards_allowed',  
+#     'avg_receiving_epa_allowed',  
+#     'avg_receiving_air_yards_allowed',  
+#     'avg_explosive_receiving_plays',
+#     'avg_explosive_receiving_plays_allowed'
+#     #'avg_rec_touchdown_exp', 
+#     #'avg_rec_touchdown_exp_team'
+# ]
 
 # -- Hyperparameter Distributions --
 RF_PARAM_DIST = {
@@ -359,7 +386,7 @@ def main():
     print("="*60)
     
     CURRENT_SEASON = 2025
-    CURRENT_WEEK = 12  # Updated: we have data through week 9
+    CURRENT_WEEK = 15  # Updated: we have data through week 9
     # Configuration
     USE_SAVED_PARAMS = False  # Re-tune hyperparameters with new data
 

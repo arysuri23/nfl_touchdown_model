@@ -5,6 +5,7 @@ import nflreadpy as nfl
 import numpy as np
 import pandas as pd
 import polars as pl
+import os
 
 
 def get_nfl_data(years):
@@ -783,3 +784,59 @@ def get_all_historic_data(years, team_map):
     return nfl_df
     
 
+
+def get_historical_vegas_data(years):
+    """
+    Loads and processes historical player touchdown odds from wr_te/vegas/{year}/week_{week}_td_odds.csv.
+    Returns a DataFrame with columns: ['merge_name', 'season', 'week', 'market_implied_prob']
+    """
+    all_odds = []
+    
+    for year in years:
+        # Iterate through weeks 1-18
+        for week in range(1, 19):
+            file_path = f'vegas/{year}/week_{week}_td_odds.csv'
+            
+            if not os.path.exists(file_path):
+                continue
+                
+            try:
+                df = pd.read_csv(file_path)
+                
+                # Check for required columns
+                if 'Player' not in df.columns or 'Odds' not in df.columns:
+                    continue
+                    
+                # Standardize Player Name for merging
+                # Logic matches predict_wr.py and get_snap_counts
+                df['merge_name'] = df['Player'].astype(str).str.lower().str.replace(r'[^a-z0-9\s]', '', regex=True).str.replace(r'\s(jr|sr|ii|iii|iv)$', '', regex=True).str.strip()
+                
+                # Calculate Implied Probability from American Odds
+                # Positive Odds (+150): 100 / (Odds + 100)
+                # Negative Odds (-150): |Odds| / (|Odds| + 100)
+                
+                # Ensure Odds is numeric
+                df['Odds'] = pd.to_numeric(df['Odds'], errors='coerce')
+                df = df.dropna(subset=['Odds'])
+                
+                prob_if_pos = 100 / (df['Odds'] + 100)
+                prob_if_neg = df['Odds'].abs() / (df['Odds'].abs() + 100)
+                
+                df['market_implied_prob'] = np.where(df['Odds'] > 0, prob_if_pos, prob_if_neg)
+                
+                # Add metadata
+                df['season'] = year
+                df['week'] = week
+                
+                # Select relevant columns
+                df_subset = df[['merge_name', 'season', 'week', 'market_implied_prob']].copy()
+                all_odds.append(df_subset)
+                
+            except Exception as e:
+                print(f"Error processing {file_path}: {e}")
+                continue
+                
+    if not all_odds:
+        return pd.DataFrame(columns=['merge_name', 'season', 'week', 'market_implied_prob'])
+        
+    return pd.concat(all_odds, ignore_index=True)
