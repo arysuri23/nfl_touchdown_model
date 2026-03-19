@@ -1,0 +1,33 @@
+game_id,commence_time,in_play,bookmaker,last_update,home_team,away_team,market,label,description,price,point,over/under
+aca5234c57e31b1931e51d2d0d6046f5,9/19/2025,FALSE,DraftKings,9/17/2025,Buffalo Bills,Miami Dolphins,spreads,Buffalo Bills,,-112,-12.5,49.5
+aca5234c57e31b1931e51d2d0d6046f5,9/19/2025,FALSE,DraftKings,9/17/2025,Buffalo Bills,Miami Dolphins,spreads,Miami Dolphins,,-108,12.5,49.5
+5737e4dbf6879c5061bb23033a4d8a55,9/21/2025,FALSE,DraftKings,9/17/2025,Carolina Panthers,Atlanta Falcons,spreads,Atlanta Falcons,,-108,-5.5,43.5
+5737e4dbf6879c5061bb23033a4d8a55,9/21/2025,FALSE,DraftKings,9/17/2025,Carolina Panthers,Atlanta Falcons,spreads,Carolina Panthers,,-112,5.5,43.5
+eefb7f130c8fc2c129e296fe5c6ba3e3,9/21/2025,FALSE,DraftKings,9/17/2025,Minnesota Vikings,Cincinnati Bengals,spreads,Cincinnati Bengals,,-105,3,41.5
+eefb7f130c8fc2c129e296fe5c6ba3e3,9/21/2025,FALSE,DraftKings,9/17/2025,Minnesota Vikings,Cincinnati Bengals,spreads,Minnesota Vikings,,-115,-3,41.5
+581955d1b79fe87a3a61a4885cd7ea67,9/21/2025,FALSE,DraftKings,9/17/2025,Cleveland Browns,Green Bay Packers,spreads,Cleveland Browns,,-110,8.5,41.5
+581955d1b79fe87a3a61a4885cd7ea67,9/21/2025,FALSE,DraftKings,9/17/2025,Cleveland Browns,Green Bay Packers,spreads,Green Bay Packers,,-110,-8.5,41.5
+97de7672b61dbddbce982711c121e76d,9/21/2025,FALSE,DraftKings,9/17/2025,Jacksonville Jaguars,Houston Texans,spreads,Houston Texans,,-110,1.5,44.5
+97de7672b61dbddbce982711c121e76d,9/21/2025,FALSE,DraftKings,9/17/2025,Jacksonville Jaguars,Houston Texans,spreads,Jacksonville Jaguars,,-110,-1.5,44.5
+03a5eed2c8ef5d1c8a48866ea4b0d63a,9/21/2025,FALSE,DraftKings,9/17/2025,Washington Commanders,Las Vegas Raiders,spreads,Las Vegas Raiders,,-112,3.5,44.5
+03a5eed2c8ef5d1c8a48866ea4b0d63a,9/21/2025,FALSE,DraftKings,9/17/2025,Washington Commanders,Las Vegas Raiders,spreads,Washington Commanders,,-108,-3.5,44.5
+c4c42918a645b1a4773f47d7eaa5cfcf,9/21/2025,FALSE,DraftKings,9/17/2025,New England Patriots,Pittsburgh Steelers,spreads,New England Patriots,,-105,1.5,44.5
+c4c42918a645b1a4773f47d7eaa5cfcf,9/21/2025,FALSE,DraftKings,9/17/2025,New England Patriots,Pittsburgh Steelers,spreads,Pittsburgh Steelers,,-115,-1.5,44.5
+02522f48a7b7e7524881c1b1638cd94d,9/21/2025,FALSE,DraftKings,9/17/2025,Tampa Bay Buccaneers,New York Jets,spreads,New York Jets,,-105,7,43.5
+02522f48a7b7e7524881c1b1638cd94d,9/21/2025,FALSE,DraftKings,9/17/2025,Tampa Bay Buccaneers,New York Jets,spreads,Tampa Bay Buccaneers,,-115,-7,43.5
+bb506016737825f4d0b1f9862f95c246,9/21/2025,FALSE,DraftKings,9/17/2025,Tennessee Titans,Indianapolis Colts,spreads,Indianapolis Colts,,-105,-4.5,43.5
+bb506016737825f4d0b1f9862f95c246,9/21/2025,FALSE,DraftKings,9/17/2025,Tennessee Titans,Indianapolis Colts,spreads,Tennessee Titans,,-115,4.5,43.5
+4c4ae4a2d54fc3f71c450187e9391ddc,9/21/2025,FALSE,DraftKings,9/17/2025,Philadelphia Eagles,Los Angeles Rams,spreads,Los Angeles Rams,,-115,3.5,44.5
+4c4ae4a2d54fc3f71c450187e9391ddc,9/21/2025,FALSE,DraftKings,9/17/2025,Philadelphia Eagles,Los Angeles Rams,spreads,Philadelphia Eagles,,-105,-3.5,44.5
+0ee3f5a0078c21cfdffd1b97002e7da5,9/21/2025,FALSE,DraftKings,9/17/2025,Los Angeles Chargers,Denver Broncos,spreads,Denver Broncos,,-105,2.5,45.5
+0ee3f5a0078c21cfdffd1b97002e7da5,9/21/2025,FALSE,DraftKings,9/17/2025,Los Angeles Chargers,Denver Broncos,spreads,Los Angeles Chargers,,-115,-2.5,45.5
+311c411c2d53e36a902763dc7a2ef678,9/21/2025,FALSE,DraftKings,9/17/2025,Seattle Seahawks,New Orleans Saints,spreads,New Orleans Saints,,-110,7.5,41.5
+311c411c2d53e36a902763dc7a2ef678,9/21/2025,FALSE,DraftKings,9/17/2025,Seattle Seahawks,New Orleans Saints,spreads,Seattle Seahawks,,-110,-7.5,41.5
+186868cc79ce1f5d22075b67ebbc7b64,9/21/2025,FALSE,DraftKings,9/17/2025,Chicago Bears,Dallas Cowboys,spreads,Chicago Bears,,-118,1.5,50.5
+186868cc79ce1f5d22075b67ebbc7b64,9/21/2025,FALSE,DraftKings,9/17/2025,Chicago Bears,Dallas Cowboys,spreads,Dallas Cowboys,,-102,-1.5,50.5
+20b50dac292089c063b21e1410f172ef,9/21/2025,FALSE,DraftKings,9/17/2025,San Francisco 49ers,Arizona Cardinals,spreads,Arizona Cardinals,,-105,2.5,45.5
+20b50dac292089c063b21e1410f172ef,9/21/2025,FALSE,DraftKings,9/17/2025,San Francisco 49ers,Arizona Cardinals,spreads,San Francisco 49ers,,-115,-2.5,45.5
+ee840f13db8bd150fcdd8f6670fa7041,9/22/2025,FALSE,DraftKings,9/17/2025,New York Giants,Kansas City Chiefs,spreads,Kansas City Chiefs,,-110,-6,45.5
+ee840f13db8bd150fcdd8f6670fa7041,9/22/2025,FALSE,DraftKings,9/17/2025,New York Giants,Kansas City Chiefs,spreads,New York Giants,,-110,6,45.5
+6e67ddae4bb01d1c2d3f461ee62d2666,9/23/2025,FALSE,DraftKings,9/17/2025,Baltimore Ravens,Detroit Lions,spreads,Baltimore Ravens,,-112,-4.5,52.5
+6e67ddae4bb01d1c2d3f461ee62d2666,9/23/2025,FALSE,DraftKings,9/17/2025,Baltimore Ravens,Detroit Lions,spreads,Detroit Lions,,-108,4.5,52.5
