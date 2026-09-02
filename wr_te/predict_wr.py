@@ -54,7 +54,10 @@ def transform_features(df):
     df.drop(columns=pos_defense_cols, inplace=True)
     df = pd.merge(df, opponent_stats_df, on=['season', 'week', 'opponent_team'], how='left')
 
-    df.fillna(0, inplace=True)
+    # Only fill numeric columns: non-numeric columns read back from CSV under
+    # pandas's default string dtype (e.g. 'surface') reject an int fill value.
+    numeric_cols = df.select_dtypes(include='number').columns
+    df[numeric_cols] = df[numeric_cols].fillna(0)
     return df
 
 
@@ -170,7 +173,10 @@ def predict_touchdown_scorers(feature_df, model, calibrator, season, week, lines
     prediction_df = pd.merge(prediction_df, depth_df[['player_id', 'depth_chart_rank']], on='player_id', how='left')
     prediction_df['depth_chart_rank'] = prediction_df['depth_chart_rank'].fillna(4).astype(int)
 
-    prediction_df.fillna(0, inplace=True)
+    # Only fill numeric columns; see transform_features for why a blanket
+    # fillna(0) breaks on non-numeric (e.g. string-dtype) columns.
+    numeric_cols = prediction_df.select_dtypes(include='number').columns
+    prediction_df[numeric_cols] = prediction_df[numeric_cols].fillna(0)
     print("Feature assembly complete.")
 
     # Filter for WR/TE only (roster_df should already be scoped, but stay defensive)
