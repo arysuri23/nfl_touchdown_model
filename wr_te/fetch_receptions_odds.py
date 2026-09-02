@@ -5,6 +5,8 @@ import time
 import datetime
 from typing import List, Dict, Optional
 
+import config
+
 class OddsAPIClient:
     """Client for interacting with The Odds API."""
     
@@ -15,7 +17,7 @@ class OddsAPIClient:
     DATE_FORMAT = "iso"
     
     def __init__(self, api_key: str):
-        self.api_key = '8db99b0d1a04d209bbc64119dcb102b1'
+        self.api_key = config.odds_api_key()
 
     def _make_request(self, endpoint: str, params: Dict) -> Optional[Dict]:
         """Helper to make API requests with error handling and rate limiting."""
@@ -116,7 +118,7 @@ def parse_receptions_odds(event_data: Dict, season: int, week: int) -> List[Dict
     return rows
 
 def main():
-    API_KEY = '8db99b0d1a04d209bbc64119dcb102b1'
+    API_KEY = config.odds_api_key()
     SEASON = 2024
     OUTPUT_DIR = f'vegas/{SEASON}'
     
