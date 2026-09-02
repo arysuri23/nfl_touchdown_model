@@ -34,6 +34,11 @@ def test_train_seasons(monkeypatch):
     assert config.TRAIN_SEASONS == [2020, 2021, 2022, 2023, 2024, 2025]
 
 
+def test_validation_season(monkeypatch):
+    _reload_with_env(monkeypatch)
+    assert config.VALIDATION_SEASON == 2023
+
+
 def test_odds_api_key_missing_raises(monkeypatch):
     monkeypatch.delenv("ODDS_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="ODDS_API_KEY"):

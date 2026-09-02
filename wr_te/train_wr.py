@@ -390,7 +390,7 @@ def main():
     print("WR/TE RANDOMFOREST TD SCORER PREDICTION - RETRAINED")
     print("="*60)
     print(f"🔄 Training on {train_years[0]}-{train_years[-1]} (config.TRAIN_SEASONS < config.SEASON={config.SEASON})")
-    print("📊 Informational validation on 2023")
+    print(f"📊 Informational validation on {config.VALIDATION_SEASON}")
     print("="*60)
 
     nfl_teams = pd.read_csv('data/nfl_teams.csv')
@@ -429,11 +429,11 @@ def main():
     # Informational train/validation split (2020-2022 -> 2023). This is NOT
     # the deployed model — the deployed model is retrained on all rows below
     # and calibrated on its own OOB predictions.
-    train_df = df[df['season'] < 2023].copy()
-    val_df = df[df['season'] == 2023].copy()
+    train_df = df[df['season'] < config.VALIDATION_SEASON].copy()
+    val_df = df[df['season'] == config.VALIDATION_SEASON].copy()
 
     print(f"\n[informational] Train set: {len(train_df)} rows ({train_df['season'].min()}-{train_df['season'].max()})")
-    print(f"[informational] Validation set: {len(val_df)} rows (2023)")
+    print(f"[informational] Validation set: {len(val_df)} rows ({config.VALIDATION_SEASON})")
 
     # Filter for WR/TE only
     train_df_wr_te = train_df[train_df['position'].isin(['WR','TE'])].copy()
@@ -453,7 +453,7 @@ def main():
     wr_te_model, wr_te_params, wr_te_training_time = train_rf_model(X_train_wr_te, y_train_wr_te, 'wr_te', use_saved_params=use_saved_params)
     wr_te_importance, wr_te_precision = evaluate_rf_model(
         wr_te_model,
-        "informational: not the deployed model (WR/TE, validated on 2023)",
+        f"informational: not the deployed model (WR/TE, validated on {config.VALIDATION_SEASON})",
         val_df_wr_te,
         WR_TE_FEATURES,
     )
@@ -515,7 +515,7 @@ def main():
 
     print(f"\n{'='*60}\nPERFORMANCE SUMMARY\n{'='*60}")
     print(f"Position: WR/TE")
-    print(f"[informational] Validation Set (2023) Precision@5: {wr_te_precision:.3f}")
+    print(f"[informational] Validation Set ({config.VALIDATION_SEASON}) Precision@5: {wr_te_precision:.3f}")
     print(f"Training Data: {train_years[0]}-{train_years[-1]}")
     print(f"Calibration: Platt scaling on OOB predictions ({latest_season} rows)")
 

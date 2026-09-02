@@ -19,6 +19,11 @@ WEEK = int(os.environ.get("WRTE_WEEK", 1))
 
 TRAIN_SEASONS = [2020, 2021, 2022, 2023, 2024, 2025]
 
+# Season used for the informational (not deployed) train/validation split in
+# train_wr.py. Fixed regardless of config.SEASON so the reported validation
+# metrics stay comparable run over run.
+VALIDATION_SEASON = 2023
+
 
 def odds_api_key() -> str:
     """Return the ODDS_API_KEY environment variable, or raise if unset/empty."""
