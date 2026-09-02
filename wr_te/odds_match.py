@@ -39,10 +39,21 @@ def match_odds_to_players(players: pd.DataFrame, odds: pd.DataFrame, team_map: d
     left["_pidx"] = left.index
     left["_merge_name"] = merge_name(left["player_display_name"])
 
-    right = odds.copy()
+    # Keep only the odds columns this function actually needs. Real odds
+    # snapshots (from fetch_live_odds.py, or the legacy-CSV conversion) carry
+    # their own `season`/`week` columns that collide with `players`' -- an
+    # unrestricted merge would suffix both sides (season_x/season_y) and
+    # break the `player_cols` lookup below.
+    right = odds[["description", "home_team", "away_team", "price", "bookmaker"]].copy()
     right["_merge_name"] = merge_name(right["description"])
-    right["_home_abbr"] = right["home_team"].map(team_map)
-    right["_away_abbr"] = right["away_team"].map(team_map)
+    # team_map (built from data/nfl_teams.csv) maps "Los Angeles Rams" / "Las
+    # Vegas Raiders" to the legacy "LAR"/"LVR" codes, but rosters and
+    # schedule-derived lines (data_collection.schedule_to_team_lines) both
+    # use the modern "LA"/"LV" codes -- normalise here the same way, or
+    # every Rams/Raiders player fails the in-game check below and is
+    # silently dropped from the matched output.
+    right["_home_abbr"] = right["home_team"].map(team_map).replace({"LAR": "LA", "LVR": "LV"})
+    right["_away_abbr"] = right["away_team"].map(team_map).replace({"LAR": "LA", "LVR": "LV"})
 
     merged = left.merge(right, on="_merge_name", how="inner")
     in_game = (merged["team"] == merged["_home_abbr"]) | (merged["team"] == merged["_away_abbr"])
