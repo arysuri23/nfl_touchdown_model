@@ -25,10 +25,6 @@ LEDGER_COLUMNS = [
     "stake", "outcome", "pnl", "clv",
 ]
 
-# Any TD type (rush/rec/return) counts for the anytime-TD (ATD) market this
-# ledger tracks.
-_TD_TYPE_AGNOSTIC = True
-
 
 def implied_prob(price) -> float:
     """American odds -> break-even (implied) probability."""
@@ -135,13 +131,33 @@ def record_picks(
 def attach_closing(ledger_path: Path, close_odds: pd.DataFrame, team_map: dict) -> int:
     """Fill price_close/implied_close/clv for unsettled ledger rows matched
     to `close_odds` (same name+team-in-game rule as `predict_wr.join_odds`).
+    Restricted to the single season/week that `close_odds` covers (raises
+    `ValueError` if it spans more than one), so a later week's close run
+    can never overwrite an older, still-unsettled week's row.
     Returns the number of rows updated.
     """
     ledger_df = _read_ledger(ledger_path)
     if ledger_df.empty:
         return 0
 
-    unsettled = ledger_df[ledger_df["outcome"].isna()]
+    if close_odds.empty:
+        return 0
+
+    close_seasons = close_odds["season"].unique()
+    close_weeks = close_odds["week"].unique()
+    if len(close_seasons) > 1 or len(close_weeks) > 1:
+        raise ValueError(
+            f"close_odds must cover a single season/week, got seasons={list(close_seasons)} "
+            f"weeks={list(close_weeks)}"
+        )
+    close_season = close_odds["season"].iloc[0]
+    close_week = close_odds["week"].iloc[0]
+
+    unsettled = ledger_df[
+        ledger_df["outcome"].isna()
+        & (ledger_df["season"] == close_season)
+        & (ledger_df["week"] == close_week)
+    ]
     if unsettled.empty:
         return 0
 

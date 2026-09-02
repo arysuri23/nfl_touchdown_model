@@ -147,6 +147,8 @@ def test_attach_closing_updates_matched_and_leaves_unmatched_empty(tmp_path):
             "away_team": "Buffalo Bills",
             "price": 250,
             "bookmaker": "book2",
+            "season": 2026,
+            "week": 1,
         },
         # No closing-line row for "Nobody Matched" -> stays empty.
     ])
@@ -162,6 +164,75 @@ def test_attach_closing_updates_matched_and_leaves_unmatched_empty(tmp_path):
 
     assert pd.isna(out.loc["P2", "price_close"])
     assert pd.isna(out.loc["P2", "clv"])
+
+
+def test_attach_closing_does_not_cross_weeks(tmp_path):
+    # Same player+team has an unsettled bet open in week 1 AND week 2
+    # (e.g. a rematch, or a bet that was simply never settled). Attaching
+    # week 2's close file must only update the week-2 row.
+    ledger_path = tmp_path / "bets.csv"
+
+    def _pred_row(week, player_id):
+        return {
+            "season": 2026, "week": week, "player_id": player_id,
+            "player_display_name": "Mike Williams", "team": "NYJ",
+            "opponent_team": "BUF", "position": "WR",
+            "predicted_touchdown_probability": 0.4,
+            "price": 300, "market_implied_prob": ledger.implied_prob(300),
+            "model_edge": 0.1, "bookmaker": "book1",
+        }
+
+    ledger.record_picks(pd.DataFrame([_pred_row(1, "P1W1")]), 2026, 1, "top5_prob", 1.0, ledger_path, now="2026-09-02T12:00:00")
+    ledger.record_picks(pd.DataFrame([_pred_row(2, "P1W2")]), 2026, 2, "top5_prob", 1.0, ledger_path, now="2026-09-09T12:00:00")
+
+    close_odds_week2 = pd.DataFrame([
+        {
+            "description": "Mike Williams",
+            "home_team": "New York Jets",
+            "away_team": "Buffalo Bills",
+            "price": 250,
+            "bookmaker": "book2",
+            "season": 2026,
+            "week": 2,
+        },
+    ])
+
+    updated = ledger.attach_closing(ledger_path, close_odds_week2, TEAM_MAP)
+
+    assert updated == 1
+    out = pd.read_csv(ledger_path).set_index("player_id")
+    assert out.loc["P1W2", "price_close"] == 250
+    assert pd.isna(out.loc["P1W1", "price_close"])
+    assert pd.isna(out.loc["P1W1", "clv"])
+
+
+def test_attach_closing_raises_on_multi_week_close_odds(tmp_path):
+    ledger_path = tmp_path / "bets.csv"
+    preds = pd.DataFrame([{
+        "season": 2026, "week": 1, "player_id": "P1",
+        "player_display_name": "Mike Williams", "team": "NYJ",
+        "opponent_team": "BUF", "position": "WR",
+        "predicted_touchdown_probability": 0.4,
+        "price": 300, "market_implied_prob": ledger.implied_prob(300),
+        "model_edge": 0.1, "bookmaker": "book1",
+    }])
+    ledger.record_picks(preds, 2026, 1, "top5_prob", 1.0, ledger_path, now="2026-09-02T12:00:00")
+
+    close_odds_multi_week = pd.DataFrame([
+        {
+            "description": "Mike Williams", "home_team": "New York Jets",
+            "away_team": "Buffalo Bills", "price": 250, "bookmaker": "book2",
+            "season": 2026, "week": 1,
+        },
+        {
+            "description": "Mike Williams", "home_team": "New York Jets",
+            "away_team": "Buffalo Bills", "price": 260, "bookmaker": "book2",
+            "season": 2026, "week": 2,
+        },
+    ])
+
+    with pytest.raises(ValueError, match="single season/week"):
+        ledger.attach_closing(ledger_path, close_odds_multi_week, TEAM_MAP)
 
 
 # --------------------------------------------------------------------------
