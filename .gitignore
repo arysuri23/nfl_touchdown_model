@@ -23,9 +23,6 @@ unscaled.csv
 processed_*.csv
 feature_analysis_results.csv
 
-# Prediction outputs
-**/predictions/
-
 # Training/test output logs
 *.txt
 !requirements.txt
