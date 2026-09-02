@@ -51,36 +51,58 @@ def get_nfl_2025_weekly_data():
     return df
 
 
-def get_odds_data(years, team_map):
-    """Loads and processes historical betting odds data."""
+def schedule_to_team_lines(schedule):
+    """Derive per-team game lines from an nflverse-style schedule DataFrame.
 
-    df_odds = pd.read_csv('data/historic_lines.csv', low_memory=False)
-    # rename LAR to LA and LVR to LV
-    df_odds['team_favorite_id'] = df_odds['team_favorite_id'].replace({'LAR': 'LA', 'LVR': 'LV'})
-    df_odds['team_home_id'] = df_odds['team_home_id'].replace({'LAR': 'LA', 'LVR': 'LV'})
-    df_odds['team_away_id'] = df_odds['team_away_id'].replace({'LAR': 'LA', 'LVR': 'LV'})
+    Binding convention: `spread_line` is from the team's own perspective,
+    negative = that team is favored. nflverse schedules encode
+    `spread_line > 0` as home favored, so home `spread_line = -sched.spread_line`
+    and away `spread_line = +sched.spread_line`.
+    `implied_total = total_line / 2 - spread_line / 2`.
 
-    df_odds = df_odds[['schedule_season', 'schedule_week', 'team_home', 'team_away',
-                         'team_favorite_id', 'spread_favorite', 'over_under_line', 'schedule_playoff', 'team_home_id', 'team_away_id']]
-    
-    df_odds.rename(columns={'schedule_season': 'season', 'schedule_week': 'week', 'over_under_line': 'total_line'}, inplace=True)
+    Rows with a null `spread_line` or `total_line` are dropped (produce no
+    output rows for that game). Team codes `LAR`/`LVR` are renamed to `LA`/`LV`.
 
-    df_odds = df_odds[df_odds['season'].isin(years) & (df_odds['schedule_playoff'] == False)]
+    Returns columns: season, week, team, opponent, spread_line, total_line,
+    implied_total.
+    """
+    df = schedule
+    if 'game_type' in df.columns:
+        df = df[df['game_type'] == 'REG']
+    df = df.dropna(subset=['spread_line', 'total_line']).copy()
 
-    for col in ['total_line', 'spread_favorite', 'season', 'week']:
-        df_odds[col] = pd.to_numeric(df_odds[col], errors='coerce')
+    df_home = df[['season', 'week', 'home_team', 'away_team', 'spread_line', 'total_line']].rename(
+        columns={'home_team': 'team', 'away_team': 'opponent'}
+    )
+    df_home['spread_line'] = -df_home['spread_line']
 
-    df_odds.dropna(subset=['week', 'total_line', 'spread_favorite'], inplace=True)
-    df_odds['week'] = df_odds['week'].astype(int)
-    df_odds['home_spread'] = np.where(df_odds['team_favorite_id'] == df_odds['team_home_id'], df_odds['spread_favorite'], -df_odds['spread_favorite'])
-    df_home = df_odds[['season', 'week', 'team_home_id', 'home_spread', 'total_line']].rename(columns={'team_home_id': 'team', 'home_spread': 'spread_line'})
-    df_away = df_odds[['season', 'week', 'team_away_id', 'home_spread', 'total_line']].rename(columns={'team_away_id': 'team'})
-    df_away['spread_line'] = -df_away['home_spread']
-    df_away.drop(columns=['home_spread'], inplace=True)
-    df_processed_odds = pd.concat([df_home, df_away]).dropna(subset=['team'])
-    df_processed_odds['implied_total'] = (df_processed_odds['total_line'] / 2) - (df_processed_odds['spread_line'] / 2)
-    
+    df_away = df[['season', 'week', 'away_team', 'home_team', 'spread_line', 'total_line']].rename(
+        columns={'away_team': 'team', 'home_team': 'opponent'}
+    )
+
+    df_team_lines = pd.concat([df_home, df_away], ignore_index=True)
+    df_team_lines['team'] = df_team_lines['team'].replace({'LAR': 'LA', 'LVR': 'LV'})
+    df_team_lines['opponent'] = df_team_lines['opponent'].replace({'LAR': 'LA', 'LVR': 'LV'})
+    df_team_lines['implied_total'] = (df_team_lines['total_line'] / 2) - (df_team_lines['spread_line'] / 2)
+
+    return df_team_lines[['season', 'week', 'team', 'opponent', 'spread_line', 'total_line', 'implied_total']]
+
+
+def get_odds_data(years, team_map=None, load_schedules=nfl.load_schedules):
+    """Loads and processes game lines derived from nflverse schedules."""
+    schedule = load_schedules(years).to_pandas()
+    schedule = schedule[schedule['game_type'] == 'REG']
+
+    df_processed_odds = schedule_to_team_lines(schedule)
+    df_processed_odds = df_processed_odds[df_processed_odds['week'] <= 18]
+
     return df_processed_odds
+
+
+def get_week_lines(season, week, load_schedules=nfl.load_schedules):
+    """Returns game lines for a single season/week."""
+    odds_df = get_odds_data([season], load_schedules=load_schedules)
+    return odds_df[odds_df['week'] == week]
 
 def get_redzone_data(pbp):
     """Calculates each player's share of their team's red zone carries and targets."""
@@ -448,65 +470,6 @@ def get_depth_chart_data(years):
     })
     
     return depth_df.select(['player_id', 'season', 'week', 'depth_chart_rank']).to_pandas()
-
-def transform_future_odds(df, team_map):
-    """Transform week_2_lines data to include: team, opponent, spread_line, total_line, implied_total"""
-    games = []
-    
-    for game_id in df['game_id'].unique():
-        game_data = df[df['game_id'] == game_id]
-        
-        # Get home and away teams
-        home_team = game_data['home_team'].iloc[0]
-        away_team = game_data['away_team'].iloc[0]
-        
-        # Get the total line (over/under) - should be the same for both teams
-        total_line = game_data['over/under'].iloc[0]
-        
-        # Get spread data for both teams
-        home_spread_data = game_data[game_data['label'] == home_team]
-        away_spread_data = game_data[game_data['label'] == away_team]
-        
-        if len(home_spread_data) > 0 and len(away_spread_data) > 0:
-            home_spread = home_spread_data['point'].iloc[0]
-            away_spread = away_spread_data['point'].iloc[0]
-            
-            # Map team names to team IDs
-            home_team_id = team_map.get(home_team, home_team)
-            away_team_id = team_map.get(away_team, away_team)
-            
-            # Calculate implied totals
-            # For home team: implied_total = (total_line / 2) - (spread_line / 2)
-            # For away team: implied_total = (total_line / 2) - (spread_line / 2)
-            home_implied_total = (total_line / 2) - (home_spread / 2)
-            away_implied_total = (total_line / 2) - (away_spread / 2)
-            
-            # Add home team row
-            games.append({
-                'team': home_team_id,
-                'opponent': away_team_id,
-                'spread_line': home_spread,
-                'total_line': total_line,
-                'implied_total': home_implied_total
-            })
-            
-            # Add away team row
-            games.append({
-                'team': away_team_id,
-                'opponent': home_team_id,
-                'spread_line': away_spread,
-                'total_line': total_line,
-                'implied_total': away_implied_total
-            })
-    
-    # Create final dataframe
-    result_df = pd.DataFrame(games)
-    result_df['team'] = result_df['team'].replace({'LAR': 'LA', 'LVR': 'LV'})
-    # Sort by team for consistency
-
-    
-    return result_df
-
 
 def get_snap_counts(years):
     """Fetches and prepares snap count data for joining."""
