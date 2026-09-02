@@ -6,68 +6,12 @@ import joblib
 import nflreadpy as nfl
 import data_collection as data
 
+from features import WR_TE_FEATURES, PLAYER_EWM_STATS
+
 
 ### CONSTANTS ###
 
-# Feature lists must match those used during training
-
-
-WR_TE_FEATURES = [
-    'avg_offense_snap_share',
-    'avg_wopr',
-    'avg_target_share',
-    'avg_receiving_epa',
-    'avg_racr',
-    'avg_endzone_targets', 
-    'avg_endzone_target_share',  
-    #'avg_redzone_target_share',
-    'redzone_td_rate',  
-    'passing_tds_allowed_to_WR', 
-    'passing_tds_allowed_to_TE',
-    'implied_total',
-    'spread_line',
-    'depth_chart_rank',
-    #'avg_total_tds',
-    'avg_scored_touchdown',
-    'avg_receptions',
-    'avg_receiving_yards',
-    'avg_receiving_air_yards',
-    'avg_receiving_yards_allowed',  
-    'avg_receiving_epa_allowed',  
-    'avg_receiving_air_yards_allowed',  
-    'avg_explosive_receiving_plays',
-    'avg_explosive_receiving_plays_allowed',
-    'avg_rec_touchdown_exp', 
-    'avg_rec_touchdown_exp_team'
-]
-# WR_TE_FEATURES = [
-# 'avg_offense_snap_share',
-#     'avg_wopr',
-#     'avg_target_share',
-#     'avg_receiving_epa',
-#     'avg_racr',
-#     'avg_endzone_targets', 
-#     'avg_endzone_target_share',  
-#     #'avg_redzone_target_share',
-#     'redzone_td_rate',  
-#     'passing_tds_allowed_to_WR', 
-#     'passing_tds_allowed_to_TE',
-#     'implied_total',
-#     'spread_line',
-#     'depth_chart_rank',
-#     #'avg_total_tds',
-#     'avg_scored_touchdown',
-#     'avg_receptions',
-#     'avg_receiving_yards',
-#     'avg_receiving_air_yards',
-#     'avg_receiving_yards_allowed',  
-#     'avg_receiving_epa_allowed',  
-#     'avg_receiving_air_yards_allowed',  
-#     'avg_explosive_receiving_plays',
-#     'avg_explosive_receiving_plays_allowed'
-#     #'avg_rec_touchdown_exp', 
-#     #'avg_rec_touchdown_exp_team'
-# ]
+# Feature lists must match those used during training (imported from features.py)
 
 
 ### LOCAL FILE LOADING FUNCTIONS ###
@@ -85,12 +29,8 @@ def transform_features(df):
     # Ensure chronological order before EWM calculations
     df = df.sort_values(['player_id', 'season', 'week']).copy()
 
-    player_stats = ['receptions', 'receiving_yards', 'wopr', 'receiving_epa', 'target_share',
-                      'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_target_share', 'total_tds',
-                      'endzone_targets', 'endzone_target_share', 'inside_5_target_share', 'inside_10_targets', 'offense_snap_share',
-                      'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards',
-                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation', 'explosive_receiving_plays', 'rec_touchdown_exp', 'rec_touchdown_exp_team']
-    
+    player_stats = PLAYER_EWM_STATS
+
     # In inference, EWMs need not be shifted as we only use historical rows (< target week)
     for stat in player_stats:
         df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.ewm(alpha=0.3, min_periods=1).mean())
@@ -159,13 +99,12 @@ def predict_touchdown_scorers(feature_df, model, calibrator, year, week, future_
         if 'allowed' in f:
             non_player_features.add(f)
         # Game context features (week-specific, not player-specific)
-        elif f in ['implied_total', 'spread_line', 'is_home_game', 'div_game', 'redzone_td_rate']:
+        elif f in ['implied_total', 'spread_line', 'is_home_game', 'div_game']:
             non_player_features.add(f)
-    
+
     player_history_features = sorted(list(all_features - non_player_features))
     opponent_history_features = [f for f in all_features if 'allowed' in f]  # All opponent defensive stats
-    team_history_features = ['redzone_td_rate'] if 'redzone_td_rate' in all_features else []
-    
+
     features_from_player_history = player_history_features
     # Ensure chronological order so groupby().last() picks the most recent row per player
     feature_df = feature_df.sort_values(['player_id', 'season', 'week']).copy()
@@ -179,14 +118,6 @@ def predict_touchdown_scorers(feature_df, model, calibrator, year, week, future_
         opponent_stats_df = opponent_stats_df.sort_values(by=['opponent_team', 'season', 'week']).copy()
         latest_opponent_data = opponent_stats_df.groupby('opponent_team')[opponent_history_features].last().reset_index()
         prediction_df = pd.merge(prediction_df, latest_opponent_data, on='opponent_team', how='left')
-    
-    # Get the latest team-level stats (redzone_td_rate) for each team
-    if team_history_features:
-        team_stats_df = feature_df[['season', 'week', 'team'] + team_history_features]
-        team_stats_df = team_stats_df.sort_values(by=['team', 'season', 'week']).copy()
-        latest_team_data = team_stats_df.groupby('team')[team_history_features].last().reset_index()
-        prediction_df = pd.merge(prediction_df, latest_team_data, on='team', how='left', suffixes=('', '_team'))
-        
     
     prediction_df = pd.merge(prediction_df, future_odds_df[['team', 'implied_total', 'spread_line']], on='team', how='left')
     

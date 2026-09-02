@@ -18,67 +18,10 @@ import json
 import time
 from datetime import datetime
 
+from features import WR_TE_FEATURES, PLAYER_EWM_STATS
+
 
 ### CONSTANTS ###
-
-# -- Position-Specific Feature Lists --
-
-WR_TE_FEATURES = [
-    'avg_offense_snap_share',
-    'avg_wopr',
-    'avg_target_share',
-    'avg_receiving_epa',
-    'avg_racr',
-    'avg_endzone_targets', 
-    'avg_endzone_target_share',  
-    #'avg_redzone_target_share',
-    'redzone_td_rate',  
-    'passing_tds_allowed_to_WR', 
-    'passing_tds_allowed_to_TE',
-    'implied_total',
-    'spread_line',
-    'depth_chart_rank',
-    #'avg_total_tds',
-    'avg_scored_touchdown',
-    'avg_receptions',
-    'avg_receiving_yards',
-    'avg_receiving_air_yards',
-    'avg_receiving_yards_allowed',  
-    'avg_receiving_epa_allowed',  
-    'avg_receiving_air_yards_allowed',  
-    'avg_explosive_receiving_plays',
-    'avg_explosive_receiving_plays_allowed',
-    'avg_rec_touchdown_exp', 
-    'avg_rec_touchdown_exp_team'
-]
-# WR_TE_FEATURES = [
-# 'avg_offense_snap_share',
-#     'avg_wopr',
-#     'avg_target_share',
-#     'avg_receiving_epa',
-#     'avg_racr',
-#     'avg_endzone_targets', 
-#     'avg_endzone_target_share',  
-#     #'avg_redzone_target_share',
-#     'redzone_td_rate',  
-#     'passing_tds_allowed_to_WR', 
-#     'passing_tds_allowed_to_TE',
-#     'implied_total',
-#     'spread_line',
-#     'depth_chart_rank',
-#     #'avg_total_tds',
-#     'avg_scored_touchdown',
-#     'avg_receptions',
-#     'avg_receiving_yards',
-#     'avg_receiving_air_yards',
-#     'avg_receiving_yards_allowed',  
-#     'avg_receiving_epa_allowed',  
-#     'avg_receiving_air_yards_allowed',  
-#     'avg_explosive_receiving_plays',
-#     'avg_explosive_receiving_plays_allowed'
-#     #'avg_rec_touchdown_exp', 
-#     #'avg_rec_touchdown_exp_team'
-# ]
 
 # -- Hyperparameter Distributions --
 RF_PARAM_DIST = {
@@ -97,12 +40,8 @@ def feature_engineering(df):
     # Ensure strict chronological ordering per player before lag/EWM to avoid leakage
     df.sort_values(by=['player_id', 'season', 'week'], inplace=True, ignore_index=True)
     
-    player_stats = ['receptions', 'receiving_yards', 'wopr','receiving_epa', 'target_share',
-                      'receiving_air_yards', 'racr', 'scored_touchdown', 'redzone_target_share', 'total_tds',
-                      'endzone_targets', 'endzone_target_share', 'inside_5_target_share', 'inside_10_targets', 'offense_snap_share',
-                      'avg_cushion', 'avg_separation', 'avg_intended_air_yards', 'percent_share_of_intended_air_yards',
-                    'catch_percentage', 'avg_expected_yac', 'avg_yac_above_expectation', 'explosive_receiving_plays', 'rec_touchdown_exp', 'rec_touchdown_exp_team']
-    
+    player_stats = PLAYER_EWM_STATS
+
     for stat in player_stats:
         df[f'avg_{stat}'] = df.groupby('player_id')[stat].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
    
@@ -126,21 +65,11 @@ def feature_engineering(df):
     df.drop(columns=pos_defense_cols, inplace=True)
     df = pd.merge(df, opponent_stats_df, on=['season', 'week', 'opponent_team'], how='left')
 
-    # Team-level stats
-    df['redzone_td_rate'] = df.groupby('team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
-    df['redzone_td_rate'] = df.groupby('team')['redzone_td_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
-    df['pass_rate'] = df.groupby('team')['pass_rate'].transform(lambda x: x.shift(1).ewm(alpha=0.3, min_periods=1).mean())
-    
     # is_home is already a binary/static feature per game, no need to lag/smooth it for the player
     # But we need to ensure it exists. It comes from get_game_data -> merged in data_collection.
     if 'is_home' not in df.columns:
         df['is_home'] = 0 # Fallback
-   
-    df['pass_matchup_value'] = np.select(
-        [df['position'] == 'WR', df['position'] == 'TE'],
-        [df['avg_redzone_target_share'] * df['passing_tds_allowed_to_WR'], df['avg_redzone_target_share'] * df['passing_tds_allowed_to_TE']],
-        default=0)
-    
+
     df.fillna(0, inplace=True)
 
     return df
