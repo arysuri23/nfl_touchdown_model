@@ -1,0 +1,122 @@
+import json
+
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+
+import train_wr
+
+
+# --- chronological ---
+
+def test_chronological_sorts_by_season_week_player_id():
+    df = pd.DataFrame(
+        {
+            "season": [2020, 2020, 2019],
+            "week": [1, 1, 5],
+            "player_id": ["B", "A", "Z"],
+            "value": [1, 2, 3],
+        },
+        index=[5, 2, 9],
+    )
+
+    out = train_wr.chronological(df)
+
+    assert list(out["season"]) == [2019, 2020, 2020]
+    assert list(out["week"]) == [5, 1, 1]
+    assert list(out["player_id"]) == ["Z", "A", "B"]
+    assert list(out.index) == [0, 1, 2]
+
+
+# --- fit_calibrator_oob ---
+
+def _make_synthetic_oob_data(n=2000, seed=0):
+    rng = np.random.default_rng(seed)
+    X = rng.normal(size=(n, 5))
+    coef = np.array([1.0, -0.5, 0.3, 0.8, -0.2])
+    linear = X @ coef
+    prob = 1.0 / (1.0 + np.exp(-linear))
+    y = (prob > rng.uniform(size=n)).astype(int)
+    return X, y
+
+
+def test_fit_calibrator_oob_fits_monotonic_logistic_on_masked_rows():
+    X, y = _make_synthetic_oob_data()
+    model = RandomForestClassifier(
+        n_estimators=60, max_depth=4, oob_score=True, random_state=0, n_jobs=-1
+    )
+    model.fit(X, y)
+
+    mask = np.zeros(len(y), dtype=bool)
+    mask[-800:] = True
+
+    calibrator = train_wr.fit_calibrator_oob(model, pd.Series(y), pd.Series(mask))
+
+    assert hasattr(calibrator, "coef_")
+    low = calibrator.predict_proba([[0.1]])[:, 1]
+    high = calibrator.predict_proba([[0.9]])[:, 1]
+    assert low[0] < high[0]
+
+
+def test_fit_calibrator_oob_falls_back_to_all_rows_when_mask_too_small():
+    X, y = _make_synthetic_oob_data()
+    model = RandomForestClassifier(
+        n_estimators=60, max_depth=4, oob_score=True, random_state=0, n_jobs=-1
+    )
+    model.fit(X, y)
+
+    mask = np.zeros(len(y), dtype=bool)
+    mask[:100] = True
+
+    calibrator = train_wr.fit_calibrator_oob(
+        model, pd.Series(y), pd.Series(mask), min_rows=500
+    )
+
+    assert calibrator.n_features_in_ == 1
+
+
+# --- calibration_report ---
+
+def test_calibration_report_on_perfectly_calibrated_input():
+    rng = np.random.default_rng(1)
+    p = rng.uniform(0.05, 0.95, size=5000)
+    y = (rng.uniform(size=5000) < p).astype(int)
+
+    report = train_wr.calibration_report(y, p)
+
+    assert set(report.keys()) == {"brier", "log_loss", "ece"}
+    assert report["ece"] < 0.05
+
+
+# --- train_rf_model ---
+
+def test_train_rf_model_with_saved_params_skips_randomized_search(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    models_dir = tmp_path / "models"
+    models_dir.mkdir()
+    params = {
+        "n_estimators": 10,
+        "max_depth": 3,
+        "min_samples_split": 2,
+        "min_samples_leaf": 1,
+        "max_features": "sqrt",
+    }
+    (models_dir / "wr_te_rf_best_params.json").write_text(json.dumps(params))
+
+    def _raise(*args, **kwargs):
+        raise AssertionError(
+            "RandomizedSearchCV should not be called when use_saved_params=True"
+        )
+
+    monkeypatch.setattr(train_wr, "RandomizedSearchCV", _raise)
+
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame(rng.normal(size=(50, 3)), columns=["a", "b", "c"])
+    y = pd.Series((rng.uniform(size=50) > 0.5).astype(int))
+
+    model, best_params, elapsed = train_wr.train_rf_model(
+        X, y, "wr_te", use_saved_params=True
+    )
+
+    assert best_params == params
+    assert hasattr(model, "predict_proba")
