@@ -28,6 +28,7 @@ feature_analysis_results.csv
 
 # Training/test output logs
 *.txt
+!requirements.txt
 
 # Test/scratch artifacts
 *_test.py
