@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 
 import ledger
+import predict_wr
 
 
 TEAM_MAP = {
@@ -112,6 +113,20 @@ def test_record_picks_top5_edge_le400_excludes_expensive_price(tmp_path):
     # P3 has the highest edge (0.50) but price 600 > 400, must be excluded.
     assert "P3" not in out["player_id"].values
     assert len(out) == 5
+
+
+def test_record_picks_preserves_game_id_for_settlement(tmp_path):
+    preds = _predictions_7rows().head(1).copy()
+    preds["game_id"] = "GAME-1"
+    ledger_path = tmp_path / "bets.csv"
+
+    ledger.record_picks(
+        preds, 2026, 1, "top5_prob", 1.0, ledger_path,
+        now="2026-09-02T12:00:00",
+    )
+
+    out = pd.read_csv(ledger_path)
+    assert out.loc[0, "game_id"] == "GAME-1"
 
 
 # --------------------------------------------------------------------------
@@ -338,6 +353,186 @@ def test_settle_accepts_polars_pbp(tmp_path):
     assert out.loc["B", "outcome"] == 0
 
 
+def _game_id_settle_ledger(tmp_path):
+    ledger_path = tmp_path / "bets.csv"
+    predictions = pd.DataFrame([{
+        "season": 2026, "week": 1, "game_id": "GAME-1", "player_id": "A",
+        "player_display_name": "Player A", "team": "NYJ", "opponent_team": "BUF",
+        "position": "WR", "predicted_touchdown_probability": 0.5,
+        "price": 300, "market_implied_prob": ledger.implied_prob(300),
+        "model_edge": 0.1, "bookmaker": "book1",
+    }])
+    ledger.record_picks(
+        predictions, 2026, 1, "top5_prob", 1.0, ledger_path,
+        now="2026-09-02T12:00:00",
+    )
+    return ledger_path
+
+
+def _game_id_pbp():
+    return pd.DataFrame([{
+        "season": 2026, "week": 1, "game_id": "GAME-1",
+        "posteam": "NYJ", "defteam": "BUF", "touchdown": 1, "td_player_id": "A",
+    }])
+
+
+def test_settle_leaves_partial_pbp_unsettled_until_schedule_marks_game_complete(tmp_path):
+    ledger_path = _game_id_settle_ledger(tmp_path)
+
+    def fake_load_schedules(seasons):
+        return pd.DataFrame([{
+            "season": 2026, "week": 1, "game_type": "REG", "game_id": "GAME-1",
+            "home_team": "NYJ", "away_team": "BUF", "result": float("nan"),
+        }])
+
+    assert ledger.settle(
+        ledger_path, 2026, 1, load_pbp=lambda years: _game_id_pbp(),
+        load_schedules=fake_load_schedules,
+    ) == 0
+    assert pd.isna(pd.read_csv(ledger_path).loc[0, "outcome"])
+
+    def completed_schedule(seasons):
+        return pd.DataFrame([{
+            "season": 2026, "week": 1, "game_type": "REG", "game_id": "GAME-1",
+            "home_team": "NYJ", "away_team": "BUF", "result": 7.0,
+        }])
+
+    assert ledger.settle(
+        ledger_path, 2026, 1, load_pbp=lambda years: _game_id_pbp(),
+        load_schedules=completed_schedule,
+    ) == 1
+    assert ledger.settle(
+        ledger_path, 2026, 1, load_pbp=lambda years: _game_id_pbp(),
+        load_schedules=completed_schedule,
+    ) == 0
+    assert pd.read_csv(ledger_path).loc[0, "outcome"] == 1
+
+
+def test_in_progress_schedule_with_scores_does_not_settle(tmp_path):
+    ledger_path = _game_id_settle_ledger(tmp_path)
+
+    def in_progress_schedule(seasons):
+        return pd.DataFrame([{
+            "season": 2026, "week": 1, "game_type": "REG", "game_id": "GAME-1",
+            "home_team": "NYJ", "away_team": "BUF", "status": "IN_PROGRESS",
+            "home_score": 7, "away_score": 3,
+        }])
+
+    assert ledger.settle(
+        ledger_path, 2026, 1, load_pbp=lambda years: _game_id_pbp(),
+        load_schedules=in_progress_schedule,
+    ) == 0
+    assert pd.isna(pd.read_csv(ledger_path).loc[0, "outcome"])
+
+
+def test_completed_game_without_pbp_remains_unsettled(tmp_path):
+    ledger_path = tmp_path / "bets.csv"
+    predictions = pd.DataFrame([
+        {
+            "season": 2026, "week": 1, "game_id": "GAME-1", "player_id": "A",
+            "player_display_name": "Player A", "team": "NYJ", "opponent_team": "BUF",
+            "position": "WR", "predicted_touchdown_probability": 0.5,
+            "price": 300, "market_implied_prob": ledger.implied_prob(300),
+            "model_edge": 0.1, "bookmaker": "book1",
+        },
+        {
+            "season": 2026, "week": 1, "game_id": "GAME-2", "player_id": "B",
+            "player_display_name": "Player B", "team": "LAC", "opponent_team": "DEN",
+            "position": "WR", "predicted_touchdown_probability": 0.4,
+            "price": 300, "market_implied_prob": ledger.implied_prob(300),
+            "model_edge": 0.1, "bookmaker": "book1",
+        },
+    ])
+    ledger.record_picks(
+        predictions, 2026, 1, "top5_prob", 1.0, ledger_path,
+        now="2026-09-02T12:00:00",
+    )
+
+    def completed_schedule(seasons):
+        return pd.DataFrame([
+            {
+                "season": 2026, "week": 1, "game_type": "REG", "game_id": "GAME-1",
+                "home_team": "NYJ", "away_team": "BUF", "result": 7.0,
+            },
+            {
+                "season": 2026, "week": 1, "game_type": "REG", "game_id": "GAME-2",
+                "home_team": "LAC", "away_team": "DEN", "result": 3.0,
+            },
+        ])
+
+    settled = ledger.settle(
+        ledger_path, 2026, 1,
+        load_pbp=lambda years: _game_id_pbp(),
+        load_schedules=completed_schedule,
+    )
+
+    assert settled == 1
+    out = pd.read_csv(ledger_path).set_index("game_id")
+    assert out.loc["GAME-1", "outcome"] == 1
+    assert pd.isna(out.loc["GAME-2", "outcome"])
+
+
+def test_provider_event_id_can_flow_to_settlement_via_schedule_game_id(tmp_path):
+    ledger_path = tmp_path / "bets.csv"
+    predictions = pd.DataFrame([{
+        "player_id": "A",
+        "player_display_name": "Player A",
+        "team": "NYJ",
+        "opponent_team": "BUF",
+        "position": "WR",
+        "predicted_touchdown_probability": 0.5,
+    }])
+    odds_snapshot = pd.DataFrame([{
+        "description": "Player A",
+        "home_team": "New York Jets",
+        "away_team": "Buffalo Bills",
+        "price": 300,
+        "bookmaker": "book1",
+        "game_id": "2026_01_NYJ_BUF",
+        "provider_event_id": "provider-event-abc123",
+    }])
+
+    joined = predict_wr.join_odds(predictions, odds_snapshot, TEAM_MAP)
+    assert joined.loc[0, "game_id"] == "2026_01_NYJ_BUF"
+    assert joined.loc[0, "game_id"] != odds_snapshot.loc[0, "provider_event_id"]
+    ledger.record_picks(
+        joined, 2026, 1, "top5_prob", 1.0, ledger_path,
+        now="2026-09-02T12:00:00",
+    )
+
+    def completed_schedule(seasons):
+        return pd.DataFrame([{
+            "season": 2026,
+            "week": 1,
+            "game_type": "REG",
+            "game_id": "2026_01_NYJ_BUF",
+            "home_team": "NYJ",
+            "away_team": "BUF",
+            "result": 7.0,
+        }])
+
+    pbp = pd.DataFrame([{
+        "season": 2026,
+        "week": 1,
+        "game_id": "2026_01_NYJ_BUF",
+        "posteam": "NYJ",
+        "defteam": "BUF",
+        "touchdown": 1,
+        "td_player_id": "A",
+    }])
+
+    assert ledger.settle(
+        ledger_path,
+        2026,
+        1,
+        load_pbp=lambda years: pbp,
+        load_schedules=completed_schedule,
+    ) == 1
+    settled = pd.read_csv(ledger_path)
+    assert settled.loc[0, "game_id"] == "2026_01_NYJ_BUF"
+    assert settled.loc[0, "outcome"] == 1
+
+
 # --------------------------------------------------------------------------
 # report
 # --------------------------------------------------------------------------
@@ -357,3 +552,20 @@ def test_report_cumulative_stats(tmp_path):
     assert cumulative["hits"] == 1
     assert cumulative["pnl"] == pytest.approx(2.0)
     assert cumulative["roi"] == pytest.approx(1.0)
+
+
+def test_report_keeps_same_numbered_week_separate_by_season(tmp_path):
+    ledger_path = tmp_path / "bets.csv"
+    for season in [2025, 2026]:
+        predictions = _predictions_7rows().head(1).copy()
+        predictions["season"] = season
+        ledger.record_picks(
+            predictions, season, 1, "top5_prob", 1.0, ledger_path,
+            now=f"{season}-09-02T12:00:00",
+        )
+
+    report = ledger.report(ledger_path)
+    weekly = report[(report["strategy"] == "top5_prob") & (report["week"] == 1)]
+
+    assert set(weekly["season"]) == {2025, 2026}
+    assert len(weekly) == 2

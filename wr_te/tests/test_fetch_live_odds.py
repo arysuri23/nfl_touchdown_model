@@ -90,6 +90,40 @@ def test_select_week_events_window_is_half_open():
     assert selected == []
 
 
+def test_select_week_events_requires_scheduled_matchup_when_provided():
+    events = [
+        {
+            "id": "target",
+            "commence_time": "2026-09-13T17:00:00Z",
+            "home_team": "Kansas City Chiefs",
+            "away_team": "Baltimore Ravens",
+        },
+        {
+            "id": "wrong-game",
+            "commence_time": "2026-09-13T17:00:00Z",
+            "home_team": "Buffalo Bills",
+            "away_team": "New York Jets",
+        },
+    ]
+    scheduled_matchups = {frozenset({"KC", "BAL"})}
+    team_map = {
+        "Kansas City Chiefs": "KC",
+        "Baltimore Ravens": "BAL",
+        "Buffalo Bills": "BUF",
+        "New York Jets": "NYJ",
+    }
+
+    selected = fetch_live_odds.select_week_events(
+        events,
+        datetime(2026, 9, 9, tzinfo=timezone.utc),
+        datetime(2026, 9, 15, tzinfo=timezone.utc),
+        scheduled_matchups=scheduled_matchups,
+        team_map=team_map,
+    )
+
+    assert [event["id"] for event in selected] == ["target"]
+
+
 # ---------------------------------------------------------------------------
 # week_window
 # ---------------------------------------------------------------------------
@@ -109,7 +143,7 @@ def _fake_load_schedules_factory(season):
     return fake_load_schedules
 
 
-def test_week_window_spans_min_to_max_plus_one_day():
+def test_week_window_spans_min_to_max_plus_two_days():
     fake_load_schedules = _fake_load_schedules_factory(2026)
 
     start, end = fetch_live_odds.week_window(
@@ -117,7 +151,31 @@ def test_week_window_spans_min_to_max_plus_one_day():
     )
 
     assert start == datetime(2026, 9, 10, tzinfo=timezone.utc)
-    assert end == datetime(2026, 9, 14, tzinfo=timezone.utc)
+    assert end == datetime(2026, 9, 15, tzinfo=timezone.utc)
+
+
+def test_week_window_includes_late_monday_kickoff_but_not_adjacent_week():
+    def fake_load_schedules(seasons):
+        return pl.DataFrame(
+            {
+                "season": [2026] * 4,
+                "week": [1, 1, 1, 2],
+                "game_type": ["REG"] * 4,
+                "gameday": ["2026-09-10", "2026-09-13", "2026-09-14", "2026-09-17"],
+            }
+        )
+
+    start, end = fetch_live_odds.week_window(
+        2026, 1, load_schedules=fake_load_schedules
+    )
+    events = [
+        {"id": "monday", "commence_time": "2026-09-15T00:15:00Z"},
+        {"id": "next-week", "commence_time": "2026-09-18T00:20:00Z"},
+    ]
+
+    selected = fetch_live_odds.select_week_events(events, start, end)
+
+    assert [event["id"] for event in selected] == ["monday"]
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +261,42 @@ def test_fetch_writes_csv_with_expected_columns_and_rows(tmp_path, monkeypatch):
     odds_url, odds_params = fake_get.calls[1]
     assert odds_params["markets"] == "player_anytime_td"
     assert odds_params["bookmakers"] == "draftkings,fanduel"
+
+
+def test_fetch_writes_schedule_game_id_when_provider_event_id_differs(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+
+    class _DifferentIdGet(_FakeGet):
+        def __init__(self):
+            super().__init__()
+            self._responses[1]._payload = dict(self._responses[1]._payload)
+            self._responses[1]._payload["id"] = "provider-event-abc123"
+
+    def fake_load_schedules(seasons):
+        return pl.DataFrame(
+            {
+                "season": [2026],
+                "week": [1],
+                "game_type": ["REG"],
+                "gameday": ["2026-09-13"],
+                "game_id": ["2026_01_BAL_KC"],
+                "home_team": ["Kansas City Chiefs"],
+                "away_team": ["Baltimore Ravens"],
+            }
+        )
+
+    out = fetch_live_odds.fetch(
+        2026,
+        1,
+        "open",
+        ["draftkings"],
+        get=_DifferentIdGet(),
+        load_schedules=fake_load_schedules,
+    )
+
+    assert set(out["game_id"]) == {"2026_01_BAL_KC"}
+    assert "provider-event-abc123" not in set(out["game_id"])
 
 
 def test_fetch_raises_runtime_error_when_api_key_unset(monkeypatch):

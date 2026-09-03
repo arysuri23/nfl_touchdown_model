@@ -38,8 +38,10 @@ run from `wr_te/`.
    ```bash
    python predict_wr.py
    ```
-4. **Record picks to the ledger** -- `top5_edge_le400` is logged at zero
-   stake (tracked for its own record, not actually bet)
+4. **Record picks to the ledger** -- `top5_prob` is the primary funded
+   strategy. `top5_edge_le400` is an optional zero-stake benchmark (tracked
+   for its own record, not actually bet). The ledger does not apply a separate
+   edge-threshold rule.
    ```bash
    python ledger.py record --strategy top5_prob
    python ledger.py record --strategy top5_edge_le400 --stake 0
@@ -54,6 +56,16 @@ run from `wr_te/`.
    python ledger.py settle
    python ledger.py report
    ```
+
+### Periodic training refresh
+
+Each scheduled training refresh collects all available completed rows from
+`config.DATA_SEASONS` (the prior training seasons plus the active prediction
+season), writes the feature cache, and fits the deployed forest only on rows
+from the configured prior-season `TRAIN_SEASONS` cut. It then recalibrates that
+deployed forest on its OOB predictions and refreshes the model, calibrator, and
+feature-importance artifacts. The refresh cadence does not change the ledger
+strategies or introduce an implicit edge threshold.
 
 ### Overriding season/week
 

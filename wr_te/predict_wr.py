@@ -25,6 +25,14 @@ def load_joblib_locally(file_path):
         raise
 
 
+def prediction_history(feature_df, season, week):
+    """Return only rows completed before the requested prediction week."""
+    return feature_df[
+        (feature_df['season'] < season)
+        | ((feature_df['season'] == season) & (feature_df['week'] < week))
+    ].copy()
+
+
 def transform_features(df):
     # Ensure chronological order before EWM calculations
     df = df.sort_values(['player_id', 'season', 'week']).copy()
@@ -124,16 +132,54 @@ def predict_touchdown_scorers(feature_df, model, calibrator, season, week, lines
     """
     print("Assembling features for prediction...")
 
+    required_line_columns = {'team', 'opponent', 'implied_total', 'spread_line'}
+    if (
+        lines_df is None
+        or lines_df.empty
+        or not required_line_columns.issubset(lines_df.columns)
+    ):
+        raise ValueError(
+            "Missing schedule line context for the requested game; "
+            "refresh the nflverse schedule and ensure spread_line/total_line are available."
+        )
+
+    # Only active roster rows whose teams appear in this week's schedule are
+    # prediction candidates; players from bye teams have no game context.
+    scheduled_teams = set(lines_df['team'].dropna())
+    prediction_df = roster_df[roster_df['team'].isin(scheduled_teams)].copy()
+
+    game_context = lines_df[
+        ['team', 'opponent', 'implied_total', 'spread_line']
+    ].copy()
+    game_context['implied_total'] = pd.to_numeric(
+        game_context['implied_total'], errors='coerce'
+    )
+    game_context['spread_line'] = pd.to_numeric(
+        game_context['spread_line'], errors='coerce'
+    )
+    game_context = game_context.dropna(
+        subset=['team', 'opponent', 'implied_total', 'spread_line']
+    )
+    prediction_df = pd.merge(prediction_df, game_context, on='team', how='left')
+
+    missing_context = prediction_df[
+        prediction_df[['opponent', 'implied_total', 'spread_line']].isna().any(axis=1)
+    ]
+    if not missing_context.empty:
+        missing_teams = sorted(missing_context['team'].dropna().astype(str).unique())
+        raise ValueError(
+            "Missing schedule line context for team(s) "
+            f"{', '.join(missing_teams) or '<unknown>'}; "
+            "refresh the nflverse schedule and ensure spread_line/total_line are available."
+        )
+
     # Filter feature_df to only include data up to the week before the prediction week
-    hist_df = feature_df[(feature_df['season'] < season) | ((feature_df['season'] == season) & (feature_df['week'] < week))].copy()
+    hist_df = prediction_history(feature_df, season, week)
     # Compute lagged EWMs on the filtered historical subset to avoid leakage
     hist_df = transform_features(hist_df)
 
-    prediction_df = roster_df.copy()
-
-    # Attach opponent + game context (implied_total, spread_line) for the target week
-    game_context = lines_df[['team', 'opponent', 'implied_total', 'spread_line']].rename(columns={'opponent': 'opponent_team'})
-    prediction_df = pd.merge(prediction_df, game_context, on='team', how='left')
+    # Rename the validated schedule context to the model's feature name.
+    prediction_df.rename(columns={'opponent': 'opponent_team'}, inplace=True)
 
     # Assemble features using historical data from the pre-engineered feature_df
     all_features = set(WR_TE_FEATURES)

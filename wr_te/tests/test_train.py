@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 
 import train_wr
+import config
 
 
 # --- chronological ---
@@ -91,9 +92,9 @@ def test_calibration_report_on_perfectly_calibrated_input():
 # --- train_rf_model ---
 
 def test_train_rf_model_with_saved_params_skips_randomized_search(tmp_path, monkeypatch):
-    monkeypatch.chdir(tmp_path)
     models_dir = tmp_path / "models"
     models_dir.mkdir()
+    monkeypatch.setattr(train_wr.config, "MODELS_DIR", models_dir)
     params = {
         "n_estimators": 10,
         "max_depth": 3,
@@ -120,3 +121,73 @@ def test_train_rf_model_with_saved_params_skips_randomized_search(tmp_path, monk
 
     assert best_params == params
     assert hasattr(model, "predict_proba")
+
+
+def test_train_rf_model_reads_params_from_configured_model_path(tmp_path, monkeypatch):
+    models_dir = tmp_path / "models"
+    models_dir.mkdir()
+    monkeypatch.setattr(config, "MODELS_DIR", models_dir)
+    params = {
+        "n_estimators": 10,
+        "max_depth": 3,
+        "min_samples_split": 2,
+        "min_samples_leaf": 1,
+        "max_features": "sqrt",
+    }
+    (models_dir / "wr_te_rf_best_params.json").write_text(json.dumps(params))
+
+    def _raise(*args, **kwargs):
+        raise AssertionError("RandomizedSearchCV should not be called")
+
+    monkeypatch.setattr(train_wr, "RandomizedSearchCV", _raise)
+    rng = np.random.default_rng(2)
+    X = pd.DataFrame(rng.normal(size=(50, 3)), columns=["a", "b", "c"])
+    y = pd.Series((rng.uniform(size=50) > 0.5).astype(int))
+
+    _, best_params, _ = train_wr.train_rf_model(
+        X, y, "wr_te", use_saved_params=True
+    )
+
+    assert best_params == params
+
+
+def test_feature_importance_table_uses_the_supplied_deployed_model():
+    class _Model:
+        feature_importances_ = np.array([0.2, 0.8])
+
+    out = train_wr.feature_importance_table(_Model(), ["first", "second"])
+
+    assert list(out["feature"]) == ["second", "first"]
+    np.testing.assert_allclose(out["importance"], [0.8, 0.2])
+    np.testing.assert_allclose(out["importance_pct"], [80.0, 20.0])
+
+
+class _FakeCalibrator:
+    def __init__(self):
+        self.seen = None
+
+    def predict_proba(self, X):
+        self.seen = np.asarray(X).copy()
+        calibrated = np.asarray(X).ravel() * 0.5 + 0.25
+        return np.column_stack([1.0 - calibrated, calibrated])
+
+
+def test_deployed_calibration_report_uses_calibrated_oob_array(monkeypatch):
+    calls = []
+
+    def capture_report(y_true, probabilities):
+        calls.append(np.asarray(probabilities).copy())
+        return {"brier": 0.0, "log_loss": 0.0, "ece": 0.0}
+
+    monkeypatch.setattr(train_wr, "calibration_report", capture_report)
+    calibrator = _FakeCalibrator()
+    raw_oob = np.array([0.1, 0.8])
+
+    reports = train_wr.deployed_calibration_reports(
+        np.array([0, 1]), raw_oob, calibrator
+    )
+
+    assert len(calls) == 2
+    np.testing.assert_allclose(calls[0], [0.1, 0.8])
+    np.testing.assert_allclose(calls[1], [0.30, 0.65])
+    assert set(reports) == {"raw", "calibrated"}

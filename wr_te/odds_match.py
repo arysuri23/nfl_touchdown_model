@@ -44,7 +44,10 @@ def match_odds_to_players(players: pd.DataFrame, odds: pd.DataFrame, team_map: d
     # their own `season`/`week` columns that collide with `players`' -- an
     # unrestricted merge would suffix both sides (season_x/season_y) and
     # break the `player_cols` lookup below.
-    right = odds[["description", "home_team", "away_team", "price", "bookmaker"]].copy()
+    odds_columns = ["description", "home_team", "away_team", "price", "bookmaker"]
+    if "game_id" in odds.columns:
+        odds_columns.append("game_id")
+    right = odds[odds_columns].copy()
     right["_merge_name"] = merge_name(right["description"])
     # team_map (built from data/nfl_teams.csv) maps "Los Angeles Rams" / "Las
     # Vegas Raiders" to the legacy "LAR"/"LVR" codes, but rosters and
@@ -63,5 +66,8 @@ def match_odds_to_players(players: pd.DataFrame, odds: pd.DataFrame, team_map: d
     merged = merged.drop_duplicates(subset="_pidx", keep="first")
     merged = merged.sort_values("_pidx")
 
-    result = merged[player_cols + ["price", "bookmaker"]].reset_index(drop=True)
+    result_columns = player_cols + ["price", "bookmaker"]
+    if "game_id" in right.columns:
+        result_columns.append("game_id")
+    result = merged[result_columns].reset_index(drop=True)
     return result

@@ -5,7 +5,8 @@ import nflreadpy as nfl
 import numpy as np
 import pandas as pd
 import polars as pl
-import os
+
+import config
 
 
 def get_nfl_data(years):
@@ -31,7 +32,7 @@ def get_nfl_data(years):
 
     return df.to_pandas()
 def get_nfl_2025_weekly_data():
-    df = pd.read_csv('data/stats_player_week_2025.csv')
+    df = pd.read_csv(config.DATA_DIR / 'stats_player_week_2025.csv')
     df = df[df['week'] <= 18]
     df = df[['player_id', 'player_display_name', 'position', 'team', 'season', 'week',
                'carries', 'rushing_yards', 'rushing_tds', 'receptions', 'targets',
@@ -776,9 +777,9 @@ def get_historical_vegas_data(years):
     for year in years:
         # Iterate through weeks 1-18
         for week in range(1, 19):
-            file_path = f'vegas/{year}/week_{week}_td_odds.csv'
+            file_path = config.VEGAS_DIR / str(year) / f'week_{week}_td_odds.csv'
             
-            if not os.path.exists(file_path):
+            if not file_path.exists():
                 continue
                 
             try:

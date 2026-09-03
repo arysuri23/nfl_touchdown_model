@@ -19,6 +19,11 @@ WEEK = int(os.environ.get("WRTE_WEEK", 1))
 
 TRAIN_SEASONS = [2020, 2021, 2022, 2023, 2024, 2025]
 
+# Seasons to collect for the feature cache. The active prediction season is
+# included so completed current-season rows are available to prediction;
+# train_wr.main applies the prior-season fit cut separately.
+DATA_SEASONS = sorted(set(TRAIN_SEASONS) | {SEASON})
+
 # Season used for the informational (not deployed) train/validation split in
 # train_wr.py. Fixed regardless of config.SEASON so the reported validation
 # metrics stay comparable run over run.

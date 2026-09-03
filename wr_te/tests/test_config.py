@@ -34,6 +34,12 @@ def test_train_seasons(monkeypatch):
     assert config.TRAIN_SEASONS == [2020, 2021, 2022, 2023, 2024, 2025]
 
 
+def test_data_seasons_include_current_prediction_season_without_changing_train_cut(monkeypatch):
+    _reload_with_env(monkeypatch, season=2026, week=4)
+    assert config.DATA_SEASONS == [2020, 2021, 2022, 2023, 2024, 2025, 2026]
+    assert config.TRAIN_SEASONS == [2020, 2021, 2022, 2023, 2024, 2025]
+
+
 def test_validation_season(monkeypatch):
     _reload_with_env(monkeypatch)
     assert config.VALIDATION_SEASON == 2023

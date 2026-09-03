@@ -3,6 +3,10 @@
 **Date**: November 8, 2025  
 **Analysis Period**: Weeks 1-9 of 2025 NFL Season
 
+> This is a historical diagnostic. Its former threshold recommendations are
+> superseded by the Phase 0 ledger strategies in `README.md`; use the named
+> strategies there rather than inferring an additional edge filter.
+
 ---
 
 ## 🎯 Executive Summary
@@ -46,7 +50,7 @@ Your hit rate remains stable (46-53%), but your model edge declined from +2.2% (
 
 ### 6. MARKET EFFICIENCY 🚨 CRITICAL
 - Only **47.7%** of predictions higher than market (should be ~50%)
-- Only **10.5%** of predictions have >5% positive edge
+- Only **10.5%** of predictions had material positive edge
 - Vegas has become more accurate
 
 ---
@@ -107,23 +111,27 @@ test_set: 2024 (to compare to original model)
 - **Weather**: Wind/rain impacts for outdoor games
 
 #### 4. 📊 ADJUST - Betting Strategy
-**Current Strategy**: Top 5 WRs regardless of edge  
-**Problem**: Betting negative edge picks
+**Phase 0 strategies**: `top5_prob` is the primary strategy, while
+`top5_edge_le400` is a separate benchmark that can be logged at zero stake.
+The ledger does not implement a standalone edge-threshold strategy.
 
 **Better Strategies**:
-1. **Edge threshold**: Only bet when model edge >5% (currently 10.5% of predictions)
-2. **Weighted sizing**: Bet more on higher edge picks
-3. **Position splits**: TEs may have different market efficiency
-4. **Early season focus**: Your edge was positive in weeks 1-6
+1. **Use the implemented strategies**: record the primary strategy and, if
+   desired, the zero-stake edge benchmark separately.
+2. **Weighted sizing**: any sizing change requires an explicit strategy update.
+3. **Position splits**: TEs may have different market efficiency.
+4. **Early season focus**: your edge was positive in weeks 1-6.
 
 **Expected Impact**: Could improve ROI by 50-100% without retraining
 
 ### LONGER TERM
 
-#### 5. 🔄 Implement Rolling Retraining
-- Retrain every 4 weeks during season
-- Monitor market efficiency metrics weekly
-- Set alerts when edge turns negative for 2+ consecutive weeks
+#### 5. 🔄 Periodic training refresh
+- Refresh in the first week and every 4 weeks during the season.
+- Collect completed active-season history for prediction features.
+- Fit the deployed model on the configured prior-season training cut and
+  recalibrate its OOB probabilities.
+- Monitor market efficiency metrics weekly.
 
 #### 6. 📈 Enhance Model Architecture
 Consider:
@@ -171,7 +179,8 @@ Validate the retrained model on full 2024 season and compare metrics:
 ### Step 4: Deploy for Week 10
 - Use new model + new calibrator
 - Monitor edge closely
-- **Only bet when edge >7%** (higher threshold due to market efficiency)
+- Record bets with one of the named ledger strategies; no additional edge
+  threshold is implied by the Phase 0 runbook.
 
 ### Step 5: Track Metrics
 Weekly logging:
@@ -226,8 +235,8 @@ Set alert if:
 
 Retrain, but temper expectations. The bigger wins come from:
 1. Better feature engineering (add recency, chemistry, trends)
-2. Smarter bet selection (only bet positive edge >5%)
-3. Rolling retraining schedule (every 4 weeks)
+2. Smarter bet selection through the implemented ledger strategies
+3. Periodic training refresh (every 4 weeks)
 
 ---
 
@@ -240,8 +249,8 @@ Track these to measure if retraining worked:
 | Avg Edge | -0.5% | >+2.0% |
 | Precision@5 | 46.7% | >50% |
 | Calibration Error | ~0.020 | <0.015 |
-| % Predictions w/ >5% edge | 10.5% | >15% |
-| ROI (betting >5% edge only) | N/A | >10% |
+| % Predictions with positive edge | 10.5% | Track trend |
+| ROI under a named ledger strategy | N/A | Establish baseline |
 
 ---
 
@@ -249,7 +258,8 @@ Track these to measure if retraining worked:
 
 If you want immediate improvement for week 10:
 
-1. **Change bet selection**: Only bet when edge >7%
+1. **Use the ledger strategy**: `top5_prob` is the funded strategy;
+   `top5_edge_le400` is a zero-stake benchmark.
 2. **Focus on TEs**: Check if TEs have better edge than WRs
 3. **Early week bets**: Place bets early before lines sharpen
 4. **Smaller slate**: Bet fewer games (3-4 instead of 5)
@@ -260,5 +270,3 @@ These changes could improve ROI by 30-50% immediately.
 
 **Report Generated**: November 8, 2025  
 **Next Review**: After Week 12 (3 weeks post-retrain)
-
-

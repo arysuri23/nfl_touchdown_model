@@ -143,6 +143,28 @@ def calibration_report(y_true, p):
     return {'brier': brier, 'log_loss': logloss, 'ece': ece}
 
 
+def deployed_calibration_reports(y_true, oob_proba, calibrator):
+    """Report raw and calibrated metrics for the deployed forest's OOB rows."""
+    raw_proba = np.asarray(oob_proba)
+    calibrated_proba = calibrator.predict_proba(raw_proba.reshape(-1, 1))[:, 1]
+    return {
+        'raw': calibration_report(y_true, raw_proba),
+        'calibrated': calibration_report(y_true, calibrated_proba),
+    }
+
+
+def feature_importance_table(model, features):
+    """Build the tracked feature-importance table for a fitted model."""
+    feature_importance = pd.DataFrame({
+        'feature': features,
+        'importance': model.feature_importances_,
+    }).sort_values('importance', ascending=False)
+    feature_importance['importance_pct'] = (
+        feature_importance['importance'] / feature_importance['importance'].sum()
+    ) * 100
+    return feature_importance
+
+
 # --- 3. RandomForest Training Function ---
 def train_rf_model(X_train, y_train, position_name, use_saved_params=False):
     """Trains a single RandomForest model with optional hyperparameter tuning."""
@@ -150,9 +172,9 @@ def train_rf_model(X_train, y_train, position_name, use_saved_params=False):
     print(f"\n{'='*60}\nTRAINING RANDOMFOREST MODEL: {position_name}\n{'='*60}")
 
     start_time = time.time()
-    param_file = f'models/{position_name}_rf_best_params.json'
+    param_file = config.MODELS_DIR / f'{position_name}_rf_best_params.json'
 
-    if use_saved_params and os.path.exists(param_file):
+    if use_saved_params and param_file.exists():
         # Load saved params
         with open(param_file, 'r') as f:
             best_params = json.load(f)
@@ -181,7 +203,7 @@ def train_rf_model(X_train, y_train, position_name, use_saved_params=False):
         print(f"  Best CV score: {random_search.best_score_:.4f}")
 
         # Save params
-        os.makedirs('models', exist_ok=True)
+        config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
         with open(param_file, 'w') as f:
             json.dump(best_params, f, indent=2)
         print(f"✓ Saved parameters to {param_file}")
@@ -340,13 +362,7 @@ def evaluate_rf_model(model, model_name, validation_df, features, k_values=[3, 5
     # Feature importance analysis
     print(f"\n{'='*60}\nFEATURE IMPORTANCE ANALYSIS: {model_name}\n{'='*60}")
 
-    feature_importance = pd.DataFrame({
-        'feature': features,
-        'importance': model.feature_importances_
-    }).sort_values('importance', ascending=False)
-
-    # Normalize
-    feature_importance['importance_pct'] = (feature_importance['importance'] / feature_importance['importance'].sum()) * 100
+    feature_importance = feature_importance_table(model, features)
 
     print("\n--- Top 20 Most Important Features ---")
     print(feature_importance.head(20).to_string(index=False))
@@ -393,13 +409,14 @@ def main():
     print(f"📊 Informational validation on {config.VALIDATION_SEASON}")
     print("="*60)
 
-    nfl_teams = pd.read_csv('data/nfl_teams.csv')
+    nfl_teams = pd.read_csv(config.DATA_DIR / 'nfl_teams.csv')
     team_map = dict(zip(nfl_teams['team_name'], nfl_teams['team_id']))
 
     # Load data
     print("\nLoading and preparing data...")
-    df = data.get_all_historic_data(config.TRAIN_SEASONS, team_map)
-    df.to_csv('data/raw_nfl_data.csv', index=False)
+    df = data.get_all_historic_data(config.DATA_SEASONS, team_map)
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    df.to_csv(config.DATA_DIR / 'raw_nfl_data.csv', index=False)
     df = df[df['week'] <= 18]
     df = df[df['season'].isin(config.TRAIN_SEASONS) & (df['season'] < config.SEASON)]
 
@@ -478,6 +495,10 @@ def main():
     wr_te_final.fit(X_all_wr_te, y_all_wr_te)
     print("✓ WR/TE retraining complete")
 
+    # The tracked artifact must describe the deployed final forest, not the
+    # informational validation forest trained above.
+    wr_te_importance = feature_importance_table(wr_te_final, WR_TE_FEATURES)
+
     # --- Calibrate the deployed model on its own OOB predictions ---
     print(f"\n{'='*60}\nCALIBRATING DEPLOYED MODEL (PLATT ON OOB PREDICTIONS)\n{'='*60}")
 
@@ -485,25 +506,29 @@ def main():
     wr_te_calibrator = fit_calibrator_oob(wr_te_final, y_all_wr_te, mask)
 
     oob_proba, candidate = _oob_calibration_rows(wr_te_final, mask)
-    report = calibration_report(np.asarray(y_all_wr_te)[candidate], oob_proba[candidate])
-    print("Platt on OOB predictions of the deployed forest (metrics in-sample for the 2-parameter calibrator)")
-    print(report)
+    calibration_reports = deployed_calibration_reports(
+        np.asarray(y_all_wr_te)[candidate], oob_proba[candidate], wr_te_calibrator
+    )
+    print("Raw deployed-forest OOB calibration metrics")
+    print(calibration_reports['raw'])
+    print("Calibrated deployed-forest OOB calibration metrics")
+    print(calibration_reports['calibrated'])
 
     # --- Save Models ---
     print(f"\n{'='*60}\nSAVING MODEL ARTIFACTS LOCALLY\n{'='*60}")
 
-    os.makedirs('models', exist_ok=True)
+    config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
     def save_model(model, filename):
         print(f"Saving model artifact to '{filename}'...")
-        joblib.dump(model, filename)
+        joblib.dump(model, config.MODELS_DIR / filename)
         print("Save successful.")
 
-    save_model(wr_te_final, 'models/wr_te_rf_final.pkl')
-    save_model(wr_te_calibrator, 'models/wr_te_rf_calibrator.pkl')
+    save_model(wr_te_final, 'wr_te_rf_final.pkl')
+    save_model(wr_te_calibrator, 'wr_te_rf_calibrator.pkl')
 
     # Save feature importance
-    wr_te_importance.to_csv('models/wr_te_rf_feature_importance.csv', index=False)
+    wr_te_importance.to_csv(config.MODELS_DIR / 'wr_te_rf_feature_importance.csv', index=False)
     print("Feature importance saved to models/ directory")
 
     print(f"\n{'='*60}\nWR/TE TRAINING COMPLETE - NEW MODEL READY\n{'='*60}")
@@ -528,12 +553,8 @@ def main():
     print(f"  1. ✅ Model retrained on {train_years[0]}-{train_years[-1]}")
     print("  2. ✅ Calibrator fitted on OOB predictions of the deployed forest")
     print("  3. 📊 Run predict_wr.py for weekly predictions")
-    print("  4. 🎲 ONLY BET when model_edge > 0.07 (7%)")
-    print("  5. 📈 Track weekly: hit rate, edge, calibration")
-    print("\n⚠️  BETTING STRATEGY CHANGE:")
-    print("     OLD: Bet top 5 WRs regardless of edge")
-    print("     NEW: Only bet picks with >7% model edge")
-    print("     Expected: Higher ROI, fewer but better bets")
+    print("  4. 📒 Record picks with ledger.py using a named Phase 0 strategy")
+    print("  5. 📈 Track weekly: hit rate, edge, calibration, and ROI")
 
 
 if __name__ == '__main__':

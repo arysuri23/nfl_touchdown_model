@@ -225,3 +225,82 @@ def test_predict_touchdown_scorers_smoke():
 
     assert "predicted_touchdown_probability" in out.columns
     assert (out["predicted_touchdown_probability"] == 0.3).all()
+
+
+def test_prediction_history_excludes_target_and_future_rows():
+    feature_df = _tiny_feature_df()
+    future_rows = feature_df[feature_df["week"] == 3].copy()
+    future_rows["week"] = [4] * len(future_rows)
+    future_rows["receptions"] = 999.0
+    feature_df = pd.concat([feature_df, future_rows], ignore_index=True)
+
+    history = predict_wr.prediction_history(feature_df, 2026, 4)
+
+    assert set(history["week"]) == {1, 2, 3}
+    assert history["receptions"].max() == 1.0
+
+
+class _CaptureModel:
+    def predict_proba(self, X):
+        self.features = X.copy()
+        return np.tile([[0.4, 0.6]], (len(X), 1))
+
+
+def test_prediction_integration_uses_completed_prior_weeks_only():
+    feature_df = _tiny_feature_df()
+    future_rows = feature_df[feature_df["week"] == 3].copy()
+    future_rows["week"] = [4] * len(future_rows)
+    future_rows["receptions"] = 999.0
+    future_rows["receiving_yards"] = 999.0
+    feature_df = pd.concat([feature_df, future_rows], ignore_index=True)
+    model = _CaptureModel()
+
+    out = predict_wr.predict_touchdown_scorers(
+        feature_df,
+        model,
+        None,
+        2026,
+        4,
+        _tiny_lines_df(),
+        _tiny_depth_df(),
+        _tiny_roster_df(),
+    )
+
+    assert len(out) == 2
+    assert (model.features["avg_receptions"] == 1.0).all()
+
+
+def test_prediction_fails_when_schedule_line_context_is_missing():
+    missing_lines = pd.DataFrame(
+        columns=["team", "opponent", "implied_total", "spread_line"]
+    )
+
+    with pytest.raises(ValueError, match="schedule line"):
+        predict_wr.predict_touchdown_scorers(
+            _tiny_feature_df(),
+            _FakeModel(),
+            None,
+            2026,
+            4,
+            missing_lines,
+            _tiny_depth_df(),
+            _tiny_roster_df(),
+        )
+
+
+def test_prediction_excludes_active_bye_team_before_line_validation():
+    roster = pd.concat([
+        _tiny_roster_df(),
+        pd.DataFrame([{
+            "player_id": "P3", "player_display_name": "Bye Player",
+            "position": "WR", "team": "BYE",
+        }]),
+    ], ignore_index=True)
+
+    out = predict_wr.predict_touchdown_scorers(
+        _tiny_feature_df(), _FakeModel(), None, 2026, 4,
+        _tiny_lines_df(), _tiny_depth_df(), roster,
+    )
+
+    assert set(out["team"]) == {"NYJ", "LAC"}
+    assert "P3" not in set(out["player_id"])

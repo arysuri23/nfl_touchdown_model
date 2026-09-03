@@ -16,8 +16,8 @@ class OddsAPIClient:
     ODDS_FORMAT = "american"
     DATE_FORMAT = "iso"
     
-    def __init__(self, api_key: str):
-        self.api_key = config.odds_api_key()
+    def __init__(self, api_key: str | None = None):
+        self.api_key = api_key or config.odds_api_key()
 
     def _make_request(self, endpoint: str, params: Dict) -> Optional[Dict]:
         """Helper to make API requests with error handling and rate limiting."""
@@ -120,10 +120,9 @@ def parse_receptions_odds(event_data: Dict, season: int, week: int) -> List[Dict
 def main():
     API_KEY = config.odds_api_key()
     SEASON = 2024
-    OUTPUT_DIR = f'vegas/{SEASON}'
+    OUTPUT_DIR = config.VEGAS_DIR / str(SEASON)
     
-    if not os.path.exists(OUTPUT_DIR):
-        os.makedirs(OUTPUT_DIR)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
         
     client = OddsAPIClient(API_KEY)
     
@@ -214,7 +213,7 @@ def main():
             
         if week_data:
             df = pd.DataFrame(week_data)
-            output_file = os.path.join(OUTPUT_DIR, f'week_{week_num}_receptions.csv')
+            output_file = OUTPUT_DIR / f'week_{week_num}_receptions.csv'
             df.to_csv(output_file, index=False)
             print(f"  Saved {len(df)} rows to {output_file}")
         else:
