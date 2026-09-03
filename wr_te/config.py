@@ -13,6 +13,7 @@ DATA_DIR = BASE_DIR / "data"
 VEGAS_DIR = BASE_DIR / "vegas"
 PREDICTIONS_DIR = BASE_DIR / "predictions"
 LEDGER_DIR = BASE_DIR / "ledger"
+EVALUATION_DIR = BASE_DIR / "evaluation"
 
 SEASON = int(os.environ.get("WRTE_SEASON", 2026))
 WEEK = int(os.environ.get("WRTE_WEEK", 1))
