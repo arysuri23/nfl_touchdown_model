@@ -44,6 +44,132 @@ def _identity_features(frame):
     return frame.copy()
 
 
+def _prediction_frame(outcomes, probabilities, model, variant, stream="retrospective"):
+    """Small shared-key prediction fixture for pooled metric tests."""
+    rows = []
+    for index, (outcome, probability) in enumerate(zip(outcomes, probabilities)):
+        rows.append({
+            "season": 2025,
+            "week": index // 2 + 1,
+            "game_id": f"g{index}",
+            "player_id": f"p{index}",
+            "player_display_name": f"Player {index}",
+            "team": "AAA",
+            "opponent_team": "BBB",
+            "position": "WR",
+            "scored_touchdown": outcome,
+            "evaluation_stream": stream,
+            "model": model,
+            "variant": variant,
+            "probability": probability,
+            "fold": 0,
+        })
+    return pd.DataFrame(rows)
+
+
+def test_primary_metrics_use_exact_reference_keys_and_weighted_ece():
+    model = _prediction_frame([0, 0, 1, 1], [0.1, 0.2, 0.8, 0.9], "logistic_l2", "raw")
+    reference = _prediction_frame(
+        [0, 0, 1, 1], [0.5, 0.5, 0.5, 0.5], "base_rate_overall", "raw"
+    )
+    metrics, summary = evaluation.build_metric_records(
+        pd.concat([model, reference], ignore_index=True), []
+    )
+    row = summary.query("model == 'logistic_l2' and variant == 'raw'").iloc[0]
+    assert row["log_loss"] == pytest.approx(-np.mean(np.log([0.9, 0.8, 0.8, 0.9])))
+    assert row["brier"] == pytest.approx(0.025)
+    assert row["brier_skill"] == pytest.approx(0.9)
+    assert row["brier_reference"] == "base_rate_overall/raw"
+    assert row["ece"] == pytest.approx(0.15)
+    assert len(metrics["overall"][0]["calibration_bins"]) == 10
+
+
+def test_primary_metrics_reject_reference_key_mismatch():
+    model = _prediction_frame([0], [0.2], "logistic_l2", "raw")
+    reference = _prediction_frame([0, 1], [0.5, 0.5], "base_rate_overall", "raw")
+    with pytest.raises(ValueError, match="reference key mismatch"):
+        evaluation.build_metric_records(pd.concat([model, reference], ignore_index=True), [])
+
+
+def test_odds_and_payout_use_precedence_team_matching_and_preserve_rows():
+    tagged = pd.DataFrame([{
+        "game_id": "tagged-game",
+        "commence_time": "2025-09-07T13:00:00Z",
+        "in_play": False,
+        "bookmaker": "safe-book",
+        "last_update": "2025-09-07T10:00:00Z",
+        "home_team": "New York Jets",
+        "away_team": "Buffalo Bills",
+        "description": "Mike Williams",
+        "price": 200,
+        "season": 2025,
+        "week": 1,
+        "tag": "open",
+        "fetched_at": "2025-09-07T10:05:00Z",
+    }])
+    legacy = pd.DataFrame([{
+        "Player": "Mike Williams", "HomeTeam": "New York Jets", "AwayTeam": "Buffalo Bills",
+        "Odds": 150, "Bookmaker": "legacy-book", "Season": 2025, "Week": 1,
+    }])
+    selected, provenance, warnings = evaluation.select_open_odds(tagged, legacy)
+    assert provenance == "timestamp_safe_open"
+    assert selected.iloc[0]["price"] == 200
+    assert warnings == []
+
+    unsafe = tagged.copy()
+    unsafe["fetched_at"] = ""
+    selected, provenance, warnings = evaluation.select_open_odds(unsafe, legacy)
+    assert provenance == "timestamp_unsafe_legacy"
+    assert selected.iloc[0]["price"] == 150
+    assert warnings
+
+    predictions = pd.DataFrame([
+        {"season": 2025, "week": 1, "game_id": "g1", "player_id": "p1",
+         "player_display_name": "Mike Williams", "team": "NYJ", "opponent_team": "BUF",
+         "position": "WR", "scored_touchdown": 1, "evaluation_stream": "retrospective",
+         "model": "logistic_l2", "variant": "raw", "probability": 0.9},
+        {"season": 2025, "week": 1, "game_id": "g2", "player_id": "p2",
+         "player_display_name": "Mike Williams", "team": "LAC", "opponent_team": "DEN",
+         "position": "WR", "scored_touchdown": 0, "evaluation_stream": "retrospective",
+         "model": "logistic_l2", "variant": "raw", "probability": 0.8},
+        {"season": 2025, "week": 1, "game_id": "g3", "player_id": "p3",
+         "player_display_name": "Nobody Here", "team": "SF", "opponent_team": "SEA",
+         "position": "WR", "scored_touchdown": 0, "evaluation_stream": "retrospective",
+         "model": "logistic_l2", "variant": "raw", "probability": 0.7},
+        {"season": 2025, "week": 1, "game_id": "g4", "player_id": "p4",
+         "player_display_name": "Other Player", "team": "NYJ", "opponent_team": "BUF",
+         "position": "WR", "scored_touchdown": 0, "evaluation_stream": "retrospective",
+         "model": "logistic_l2", "variant": "raw", "probability": 0.6},
+    ])
+    odds = pd.DataFrame([
+            {"description": "Mike Williams", "home_team": "New York Jets", "away_team": "Buffalo Bills",
+             "price": 150, "bookmaker": "book1"},
+            {"description": "Mike Williams", "home_team": "New York Jets", "away_team": "Buffalo Bills",
+             "price": 200, "bookmaker": "book2"},
+            {"description": "Mike Williams", "home_team": "Los Angeles Chargers", "away_team": "Denver Broncos",
+             "price": 300, "bookmaker": "book1"},
+            {"description": "Other Player", "home_team": "New York Jets", "away_team": "Buffalo Bills",
+             "price": 300, "bookmaker": "book1"},
+    ])
+    enriched, betting = evaluation.attach_open_odds_and_score_bets(
+        predictions, {(2025, 1): (odds, "timestamp_unsafe_legacy")},
+        {"New York Jets": "NYJ", "Buffalo Bills": "BUF", "Los Angeles Chargers": "LAC", "Denver Broncos": "DEN"},
+    )
+    report = next(row for row in betting if row["model"] == "logistic_l2" and row["variant"] == "raw")
+    assert report["bets"] == 3
+    assert report["stake"] == 3.0
+    assert report["pnl"] == pytest.approx(0.0)
+    assert report["roi"] == pytest.approx(0.0)
+    assert report["hits"] == 1
+    assert report["hit_rate"] == pytest.approx(1 / 3)
+    assert report["betting_label"] == "research-only, timestamp unsafe"
+    assert len(enriched) == len(predictions)
+    assert enriched.loc[enriched["player_id"] == "p1", "price_open"].iloc[0] == 200
+    assert enriched.loc[enriched["player_id"] == "p2", "price_open"].iloc[0] == 300
+    assert pd.isna(enriched.loc[enriched["player_id"] == "p3", "price_open"].iloc[0])
+    assert enriched.loc[enriched["player_id"] == "p3", "open_provenance"].iloc[0] == "timestamp_unsafe_legacy"
+
+
 def test_whole_week_folds_cross_season_boundary_and_reject_short_history():
     rows, counts = evaluation.prepare_evaluation_rows(
         _raw_rows([(2021, 16), (2021, 17), (2021, 18), (2022, 1), (2022, 2)]),

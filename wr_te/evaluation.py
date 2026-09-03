@@ -17,6 +17,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from features import PLAYER_EWM_STATS, WR_TE_FEATURES
+import ledger
+import odds_match
 
 
 GroupKey = tuple[int, int]
@@ -455,3 +457,411 @@ def evaluate_folds(
     if not fold_frame.empty:
         fold_frame = fold_frame.sort_values("test_group", kind="mergesort").reset_index(drop=True)
     return predictions, fold_frame
+
+
+# The evaluation odds helpers intentionally accept frames rather than paths.
+# This keeps source selection and provenance decisions in the offline runner,
+# while leaving the production prediction and ledger flows unchanged.
+_ODDS_COLUMNS = ("description", "home_team", "away_team", "price", "bookmaker")
+_LEGACY_ODDS_COLUMNS = {
+    "Player": "description",
+    "HomeTeam": "home_team",
+    "AwayTeam": "away_team",
+    "Odds": "price",
+    "Bookmaker": "bookmaker",
+    "Season": "season",
+    "Week": "week",
+}
+
+
+def _empty_odds_frame() -> pd.DataFrame:
+    return pd.DataFrame(columns=[*_ODDS_COLUMNS, "season", "week"])
+
+
+def _normalize_odds_frame(frame: pd.DataFrame | None) -> pd.DataFrame:
+    """Return the common odds_match schema without mutating ``frame``."""
+    if frame is None:
+        return _empty_odds_frame()
+    if not isinstance(frame, pd.DataFrame):
+        raise TypeError("odds source must be a pandas DataFrame")
+    result = frame.rename(columns=_LEGACY_ODDS_COLUMNS).copy(deep=True)
+    missing = [column for column in _ODDS_COLUMNS if column not in result.columns]
+    if missing:
+        raise ValueError(f"odds source is missing required columns: {missing}")
+    result["price"] = pd.to_numeric(result["price"], errors="coerce")
+    for column in ("season", "week"):
+        if column not in result.columns:
+            result[column] = pd.NA
+    return result
+
+
+def _timestamp_safe_open(frame: pd.DataFrame) -> bool:
+    required = {"tag", "in_play", "last_update", "fetched_at", "commence_time"}
+    if frame.empty or not required.issubset(frame.columns):
+        return False
+
+    def nonempty(series: pd.Series) -> pd.Series:
+        return series.notna() & series.astype(str).str.strip().ne("")
+
+    if not (nonempty(frame["tag"]).all() and frame["tag"].astype(str).str.lower().eq("open").all()):
+        return False
+    in_play = frame["in_play"].map(
+        lambda value: value if isinstance(value, bool) else str(value).strip().lower() == "true"
+    )
+    # A missing or unrecognised value is not proof that the quote was pre-game.
+    if not frame["in_play"].notna().all() or in_play.any():
+        return False
+    if not all(nonempty(frame[column]).all() for column in ("last_update", "fetched_at", "commence_time")):
+        return False
+    updates = pd.to_datetime(frame["last_update"], errors="coerce", utc=True)
+    fetched = pd.to_datetime(frame["fetched_at"], errors="coerce", utc=True)
+    commence = pd.to_datetime(frame["commence_time"], errors="coerce", utc=True)
+    if updates.isna().any() or fetched.isna().any() or commence.isna().any():
+        return False
+    return bool((updates < commence).all() and (fetched < commence).all())
+
+
+def select_open_odds(
+    tagged_open: pd.DataFrame | None,
+    legacy: pd.DataFrame | None,
+) -> tuple[pd.DataFrame, str, list[str]]:
+    """Select and normalize a timestamp-safe open or legacy odds snapshot.
+
+    A malformed tagged snapshot is rejected as a whole.  The warning is kept
+    as a record rather than logging so callers can publish deterministic
+    manifests without making this pure helper perform I/O.
+    """
+    warnings: list[str] = []
+    if tagged_open is not None:
+        if _timestamp_safe_open(tagged_open):
+            return _normalize_odds_frame(tagged_open), "timestamp_safe_open", warnings
+        if not tagged_open.empty:
+            warnings.append("rejected tagged open snapshot: timestamp/open fields were unsafe")
+
+    if legacy is not None and not legacy.empty:
+        return _normalize_odds_frame(legacy), "timestamp_unsafe_legacy", warnings
+    return _empty_odds_frame(), "uncovered", warnings
+
+
+def _provenance_label(provenance: str) -> str:
+    if provenance == "timestamp_unsafe_legacy":
+        return "research-only, timestamp unsafe"
+    if provenance == "timestamp_safe_open":
+        return "timestamp-safe open"
+    if provenance == "uncovered":
+        return "uncovered"
+    return "mixed provenance"
+
+
+def _key_tuple(row: pd.Series | Mapping[str, Any]) -> tuple[Any, ...]:
+    return tuple(row[column] for column in ROW_KEY_COLUMNS)
+
+
+def _coverage_record(
+    covered_keys: set[tuple[Any, ...]],
+    eligible: pd.DataFrame,
+) -> tuple[int, int, float | None, list[dict[str, Any]]]:
+    total = len(eligible)
+    covered = len(covered_keys)
+    overall = covered / total if total else None
+    by_week: list[dict[str, Any]] = []
+    for (season, week), group in eligible.groupby(["season", "week"], sort=True):
+        keys = {_key_tuple(row) for _, row in group.iterrows()}
+        n_covered = len(keys & covered_keys)
+        n_total = len(keys)
+        by_week.append({
+            "season": int(season),
+            "week": int(week),
+            "open_coverage_count": n_covered,
+            "open_coverage_total": n_total,
+            "open_coverage_rate": n_covered / n_total if n_total else None,
+        })
+    return covered, total, overall, by_week
+
+
+def attach_open_odds_and_score_bets(
+    predictions: pd.DataFrame,
+    odds_by_group: Mapping[GroupKey, tuple[pd.DataFrame, str]],
+    team_map: Mapping[str, str],
+) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+    """Attach matched open odds while preserving every prediction row.
+
+    Matching is done once per unique football row key and then broadcast to
+    each model variant.  Bets are only scored for learned variants and are
+    selected independently within each test week.
+    """
+    required = set(ROW_KEY_COLUMNS + [
+        "player_display_name", "team", "probability", "scored_touchdown", "model", "variant"
+    ])
+    missing = sorted(required - set(predictions.columns))
+    if missing:
+        raise ValueError(f"predictions is missing required odds columns: {missing}")
+    result = predictions.copy(deep=True)
+    result["odds_covered"] = False
+    result["price_open"] = np.nan
+    result["bookmaker_open"] = pd.NA
+    result["open_provenance"] = pd.NA
+
+    unique_columns = list(dict.fromkeys(ROW_KEY_COLUMNS + [
+        "player_display_name", "team", "opponent_team", "position", "evaluation_stream"
+    ]))
+    unique_columns = [column for column in unique_columns if column in result.columns]
+    eligible = result[unique_columns].drop_duplicates(ROW_KEY_COLUMNS, keep="first").copy()
+    eligible = eligible.sort_values(ROW_KEY_COLUMNS, kind="mergesort").reset_index(drop=True)
+    eligible["evaluation_row_id"] = np.arange(len(eligible), dtype=int)
+    odds_for_key: dict[tuple[Any, ...], dict[str, Any]] = {}
+    provenance_by_group = {
+        (int(group[0]), int(group[1])): str(source[1])
+        for group, source in odds_by_group.items()
+    }
+
+    for group, source in sorted(odds_by_group.items(), key=lambda item: tuple(item[0])):
+        odds, provenance = source
+        group_rows = eligible[
+            (pd.to_numeric(eligible["season"], errors="coerce") == int(group[0]))
+            & (pd.to_numeric(eligible["week"], errors="coerce") == int(group[1]))
+        ].copy()
+        if group_rows.empty:
+            continue
+        normalized = _normalize_odds_frame(odds)
+        normalized = normalized[np.isfinite(normalized["price"].to_numpy(dtype=float))]
+        if normalized.empty:
+            continue
+        players = group_rows[[
+            "evaluation_row_id", "player_display_name", "team"
+        ]].copy()
+        matched = odds_match.match_odds_to_players(players, normalized, dict(team_map))
+        for _, match in matched.iterrows():
+            player_row = group_rows[group_rows["evaluation_row_id"] == match["evaluation_row_id"]].iloc[0]
+            odds_for_key[_key_tuple(player_row)] = {
+                "price": match["price"],
+                "bookmaker": match["bookmaker"],
+                "provenance": str(provenance),
+            }
+
+    for index, row in result.iterrows():
+        key = _key_tuple(row)
+        quote = odds_for_key.get(key)
+        if quote is None:
+            group = (int(row["season"]), int(row["week"]))
+            result.at[index, "open_provenance"] = provenance_by_group.get(group, "uncovered")
+            continue
+        result.at[index, "odds_covered"] = True
+        result.at[index, "price_open"] = quote["price"]
+        result.at[index, "bookmaker_open"] = quote["bookmaker"]
+        result.at[index, "open_provenance"] = quote["provenance"]
+
+    football = eligible
+    all_covered = set(odds_for_key)
+    result_records: list[dict[str, Any]] = []
+    for stream, stream_rows in result.groupby(
+        "evaluation_stream" if "evaluation_stream" in result else pd.Series("retrospective", index=result.index),
+        sort=True,
+    ):
+        stream = str(stream)
+        stream_eligible = football[
+            football.get("evaluation_stream", pd.Series("retrospective", index=football.index)).astype(str) == stream
+        ]
+        stream_keys = {_key_tuple(row) for _, row in stream_eligible.iterrows()}
+        stream_covered = stream_keys & all_covered
+        coverage_count, coverage_total, coverage_rate, by_week = _coverage_record(stream_covered, stream_eligible)
+        stream_groups = {
+            (int(row["season"]), int(row["week"])) for _, row in stream_eligible.iterrows()
+        }
+        source_values = {provenance_by_group[group] for group in stream_groups if group in provenance_by_group}
+        if not source_values:
+            provenance = "uncovered"
+        elif len(source_values) == 1:
+            provenance = next(iter(source_values))
+        else:
+            provenance = "mixed"
+
+        stream_prediction = stream_rows.copy()
+        for model, variant in sorted(
+            {(str(model), str(variant)) for model, variant in stream_prediction[["model", "variant"]].itertuples(index=False, name=None)}
+        ):
+            model_rows = stream_prediction[
+                (stream_prediction["model"] == model) & (stream_prediction["variant"] == variant)
+            ].copy()
+            common = {
+                "evaluation_stream": stream,
+                "model": model,
+                "variant": variant,
+                "bets": None,
+                "settled_bets": None,
+                "stake": None,
+                "pnl": None,
+                "roi": None,
+                "hits": None,
+                "hit_rate": None,
+                "open_coverage_count": None,
+                "open_coverage_total": None,
+                "open_coverage_rate": None,
+                "coverage_by_week": None,
+                "betting_provenance": None,
+                "betting_label": None,
+            }
+            if model in {"logistic_l2", "random_forest_current"}:
+                common.update({
+                    "open_coverage_count": coverage_count,
+                    "open_coverage_total": coverage_total,
+                    "open_coverage_rate": coverage_rate,
+                    "coverage_by_week": by_week,
+                    "betting_provenance": provenance,
+                    "betting_label": _provenance_label(provenance),
+                })
+                selected_parts: list[pd.DataFrame] = []
+                model_rows["_covered"] = model_rows["odds_covered"].fillna(False).astype(bool)
+                for _, week_rows in model_rows[model_rows["_covered"]].groupby(["season", "week"], sort=True):
+                    selected_parts.append(
+                        week_rows.sort_values(
+                            ["probability", "player_id"], ascending=[False, True], kind="mergesort"
+                        ).head(5)
+                    )
+                selected = pd.concat(selected_parts, ignore_index=True) if selected_parts else model_rows.iloc[0:0]
+                bets = len(selected)
+                settled_mask = pd.to_numeric(selected["scored_touchdown"], errors="coerce").isin([0, 1])
+                settled = selected.loc[settled_mask]
+                pnl = 0.0
+                hits = 0
+                for _, bet in settled.iterrows():
+                    hit = int(bet["scored_touchdown"]) == 1
+                    hits += int(hit)
+                    pnl += ledger.decimal_odds(bet["price_open"]) - 1 if hit else -1.0
+                stake = float(bets)
+                common.update({
+                    "bets": bets,
+                    "settled_bets": len(settled),
+                    "stake": stake,
+                    "pnl": pnl,
+                    "roi": pnl / stake if stake else None,
+                    "hits": hits,
+                    "hit_rate": hits / len(settled) if len(settled) else None,
+                })
+            result_records.append(common)
+    result_records.sort(key=lambda row: (row["evaluation_stream"], row["model"], row["variant"]))
+    return result, result_records
+
+
+def _calibration_bins(probabilities: np.ndarray, outcomes: np.ndarray) -> list[dict[str, Any]]:
+    bins: list[dict[str, Any]] = []
+    bin_ids = np.minimum((probabilities * 10).astype(int), 9)
+    for index in range(10):
+        selected = bin_ids == index
+        count = int(selected.sum())
+        if count:
+            mean_probability = float(probabilities[selected].mean())
+            event_rate = float(outcomes[selected].mean())
+            gap = mean_probability - event_rate
+        else:
+            mean_probability = None
+            event_rate = None
+            gap = None
+        bins.append({
+            "bin": index,
+            "lower": index / 10,
+            "upper": 1.0 if index == 9 else (index + 1) / 10,
+            "count": count,
+            "mean_probability": mean_probability,
+            "event_rate": event_rate,
+            "gap": gap,
+        })
+    return bins
+
+
+def _metric_values(frame: pd.DataFrame) -> dict[str, Any]:
+    probabilities = pd.to_numeric(frame["probability"], errors="coerce").to_numpy(dtype=float)
+    outcomes = pd.to_numeric(frame["scored_touchdown"], errors="coerce").to_numpy(dtype=float)
+    if not np.isfinite(probabilities).all() or not np.isfinite(outcomes).all():
+        raise ValueError("metrics require finite probabilities and outcomes")
+    if ((outcomes < 0) | (outcomes > 1) | (outcomes != outcomes.astype(int))).any():
+        raise ValueError("metrics require binary outcomes")
+    clipped = np.clip(probabilities, 1e-15, 1 - 1e-15)
+    log_loss = float(-np.mean(outcomes * np.log(clipped) + (1 - outcomes) * np.log1p(-clipped)))
+    brier = float(np.mean((probabilities - outcomes) ** 2))
+    calibration_bins = _calibration_bins(probabilities, outcomes)
+    ece = float(sum(
+        bin_record["count"] / len(frame) * abs(bin_record["gap"])
+        for bin_record in calibration_bins
+        if bin_record["count"]
+    )) if len(frame) else None
+    return {
+        "rows": len(frame),
+        "weeks": int(frame[["season", "week"]].drop_duplicates().shape[0]),
+        "log_loss": log_loss,
+        "brier": brier,
+        "ece": ece,
+        "calibration_bins": calibration_bins,
+    }
+
+
+def build_metric_records(
+    predictions: pd.DataFrame,
+    betting_records: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], pd.DataFrame]:
+    """Build pooled, stream-separated primary metrics and flat summaries."""
+    required = set(ROW_KEY_COLUMNS + ["model", "variant", "probability", "scored_touchdown", "season", "week"])
+    missing = sorted(required - set(predictions.columns))
+    if missing:
+        raise ValueError(f"predictions is missing required metric columns: {missing}")
+    frame = predictions.copy()
+    if "evaluation_stream" not in frame.columns:
+        frame["evaluation_stream"] = "retrospective"
+    duplicate = frame.duplicated(ROW_KEY_COLUMNS + ["evaluation_stream", "model", "variant"])
+    if duplicate.any():
+        raise ValueError("duplicate prediction metric key")
+
+    betting_by_key = {
+        (str(record.get("evaluation_stream", "retrospective")), str(record["model"]), str(record["variant"])): dict(record)
+        for record in betting_records
+    }
+    metric_records: list[dict[str, Any]] = []
+    summary_records: list[dict[str, Any]] = []
+    for stream, stream_frame in frame.groupby("evaluation_stream", sort=True):
+        stream = str(stream)
+        reference = stream_frame[
+            (stream_frame["model"] == "base_rate_overall") & (stream_frame["variant"] == "raw")
+        ]
+        if reference.empty:
+            raise ValueError("reference key mismatch")
+        reference = reference.sort_values(ROW_KEY_COLUMNS, kind="mergesort")
+        reference_keys = set(map(tuple, reference[ROW_KEY_COLUMNS].to_numpy()))
+        ref_values = _metric_values(reference)
+        for (model, variant), model_frame in sorted(
+            stream_frame.groupby(["model", "variant"], sort=True), key=lambda item: (str(item[0][0]), str(item[0][1]))
+        ):
+            model_frame = model_frame.sort_values(ROW_KEY_COLUMNS, kind="mergesort")
+            model_keys = set(map(tuple, model_frame[ROW_KEY_COLUMNS].to_numpy()))
+            if model_keys != reference_keys or len(model_frame) != len(reference):
+                raise ValueError("reference key mismatch")
+            values = _metric_values(model_frame)
+            reference_name = "base_rate_overall/raw"
+            denominator = ref_values["brier"]
+            record = {
+                "evaluation_stream": stream,
+                "model": str(model),
+                "variant": str(variant),
+                **values,
+                "log_loss_delta_vs_reference": values["log_loss"] - ref_values["log_loss"],
+                "brier_delta_vs_reference": values["brier"] - ref_values["brier"],
+                "brier_skill": 1 - values["brier"] / denominator if denominator else None,
+                "brier_reference": reference_name,
+            }
+            metric_records.append(record)
+            flat = {key: value for key, value in record.items() if key != "calibration_bins"}
+            flat.update({
+                "football_context_provenance": str(stream_frame["football_context_provenance"].iloc[0])
+                if "football_context_provenance" in stream_frame.columns else _PROVENANCE,
+            })
+            betting_columns = (
+                "bets", "settled_bets", "stake", "pnl", "roi", "hits", "hit_rate",
+                "open_coverage_count", "open_coverage_total", "open_coverage_rate",
+                "betting_provenance", "betting_label",
+            )
+            betting_record = betting_by_key.get((stream, str(model), str(variant)), {})
+            flat.update({key: betting_record.get(key) for key in betting_columns})
+            summary_records.append(flat)
+
+    metric_records.sort(key=lambda row: (row["evaluation_stream"], row["model"], row["variant"]))
+    summary_records.sort(key=lambda row: (row["evaluation_stream"], row["model"], row["variant"]))
+    return {"overall": metric_records}, pd.DataFrame(summary_records)
