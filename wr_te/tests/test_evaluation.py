@@ -1,9 +1,94 @@
 import numpy as np
 import pandas as pd
 import pytest
+import json
+from pathlib import Path
 
 import evaluation
+import evaluate_wr
 from features import PLAYER_EWM_STATS, WR_TE_FEATURES
+
+
+def test_evaluation_output_dir_is_contained_and_atomic_payload_keys(tmp_path):
+    root = tmp_path / "evaluation"
+    resolved = evaluate_wr.resolve_output_dir(None, 2022, 2025, 8, 42, root)
+    assert resolved == root / "walk_forward_2022_2025_cal8_seed42"
+    assert evaluate_wr.resolve_output_dir(Path("run"), 2022, 2025, 8, 42, root) == root / "run"
+    with pytest.raises(ValueError, match="beneath evaluation directory"):
+        evaluate_wr.resolve_output_dir(Path("../outside"), 2022, 2025, 8, 42, root)
+    with pytest.raises(ValueError, match="exactly the known artifacts"):
+        evaluate_wr.write_artifacts_atomic(root / "run", {"manifest.json": b"{}"})
+
+
+def test_deterministic_cli_outputs_and_preserves_unrelated_file(tmp_path):
+    raw_path = tmp_path / "raw.csv"
+    params_path = tmp_path / "params.json"
+    teams_path = tmp_path / "teams.csv"
+    vegas_dir = tmp_path / "vegas"
+    _raw_rows([(2021, 16), (2021, 17), (2021, 18), (2022, 1), (2022, 2)]).to_csv(raw_path, index=False)
+    params_path.write_text(json.dumps({
+        "n_estimators": 5, "max_depth": 2, "min_samples_split": 2,
+        "min_samples_leaf": 1, "max_features": "sqrt",
+    }))
+    pd.DataFrame({"team_name": ["AAA", "BBB"], "team_id": ["AAA", "BBB"]}).to_csv(teams_path, index=False)
+    first = evaluate_wr.run_evaluation(
+        start_season=2022, end_season=2022, calibration_weeks=2, seed=42,
+        input_path=raw_path, rf_params_path=params_path, vegas_dir=vegas_dir,
+        team_path=teams_path, output_dir=tmp_path / "run1", feature_engineer=_identity_features,
+    )
+    second = evaluate_wr.run_evaluation(
+        start_season=2022, end_season=2022, calibration_weeks=2, seed=42,
+        input_path=raw_path, rf_params_path=params_path, vegas_dir=vegas_dir,
+        team_path=teams_path, output_dir=tmp_path / "run2", feature_engineer=_identity_features,
+    )
+    assert set(first) == set(evaluate_wr.ARTIFACT_NAMES)
+    assert all(first[name].read_bytes() == second[name].read_bytes() for name in evaluate_wr.ARTIFACT_NAMES)
+    manifest = json.loads(first["manifest.json"].read_text())
+    assert manifest["football_context_provenance"] == "retrospective_finalish_game_context"
+    assert manifest["definitions"]["roi_used_for_selection"] is False
+    assert manifest["deferred"] == evaluate_wr._DEFERRED
+    unrelated = tmp_path / "run1" / "unrelated.txt"
+    unrelated.write_text("preserve")
+    evaluate_wr.run_evaluation(
+        start_season=2022, end_season=2022, calibration_weeks=2, seed=42,
+        input_path=raw_path, rf_params_path=params_path, vegas_dir=vegas_dir,
+        team_path=teams_path, output_dir=tmp_path / "run1", feature_engineer=_identity_features,
+    )
+    assert unrelated.read_text() == "preserve"
+
+
+def test_missing_input_publishes_no_artifact(tmp_path):
+    output = tmp_path / "run"
+    with pytest.raises(FileNotFoundError, match="missing required input"):
+        evaluate_wr.run_evaluation(
+            start_season=2022, end_season=2022, calibration_weeks=2, seed=42,
+            input_path=tmp_path / "missing.csv", rf_params_path=tmp_path / "params.json",
+            vegas_dir=tmp_path / "vegas", team_path=tmp_path / "teams.csv", output_dir=output,
+            feature_engineer=_identity_features,
+        )
+    assert not output.exists()
+
+
+def test_atomic_outputs_publish_nothing_when_metrics_preparation_fails(tmp_path, monkeypatch):
+    output = tmp_path / "run"
+    output.mkdir()
+    old = {name: f"old-{name}".encode() for name in evaluate_wr.ARTIFACT_NAMES}
+    for name, payload in old.items():
+        (output / name).write_bytes(payload)
+    original_mkstemp = evaluate_wr.tempfile.mkstemp
+
+    def fail_metrics(*args, **kwargs):
+        if str(kwargs.get("prefix", "")).startswith(".metrics.json."):
+            raise OSError("injected metrics preparation failure")
+        return original_mkstemp(*args, **kwargs)
+
+    monkeypatch.setattr(evaluate_wr.tempfile, "mkstemp", fail_metrics)
+    with pytest.raises(OSError, match="injected metrics preparation failure"):
+        evaluate_wr.write_artifacts_atomic(
+            output, {name: f"new-{name}".encode() for name in evaluate_wr.ARTIFACT_NAMES}
+        )
+    assert {name: (output / name).read_bytes() for name in evaluate_wr.ARTIFACT_NAMES} == old
+    assert not list(output.glob(".*.tmp"))
 
 
 def _raw_rows(groups):

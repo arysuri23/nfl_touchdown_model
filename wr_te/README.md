@@ -12,7 +12,8 @@ python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
 # Required only for fetch_live_odds.py (The Odds API). Not needed to train,
-# predict, or run the ledger against an odds snapshot that already exists.
+# predict, evaluate the local cache, or run the ledger against an odds snapshot
+# that already exists.
 export ODDS_API_KEY=...
 ```
 
@@ -111,7 +112,22 @@ WRTE_SEASON=2025 WRTE_WEEK=15 python predict_wr.py
   probability.
 - Single book: odds snapshots are pulled from one bookmaker
   (`fetch_live_odds.py --bookmakers draftkings` by default).
-- No walk-forward backtest yet -- that is Phase 1 follow-up work; today's
-  "informational" validation split in `train_wr.py` (train seasons <
-  `config.VALIDATION_SEASON`, validate on `config.VALIDATION_SEASON`) is
-  reported for visibility only and is not the deployed model.
+
+## Walk-forward evaluation
+
+From `wr_te/`, run the frozen-model comparison against the local cache:
+
+```bash
+python evaluate_wr.py \
+  --start-season 2022 \
+  --end-season 2025 \
+  --calibration-weeks 8 \
+  --seed 42
+```
+
+The evaluator makes no network calls and writes five deterministic artifacts
+beneath `evaluation/`. Refresh `data/raw_nfl_data.csv` separately, and only
+freeze an in-progress week after all games are final. Historical football
+results are labeled `retrospective_finalish_game_context`; legacy odds ROI is
+research-only and timestamp unsafe, not Tuesday-open performance. Odds never
+change the football evaluation row set or model selection.
