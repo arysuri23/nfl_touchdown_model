@@ -106,7 +106,8 @@ class _RecordingEstimator:
         return self
 
     def predict_proba(self, features):
-        p = np.full(len(features), 0.25 if self.kind == "logistic_l2" else 0.35)
+        # Group markers make calibration inputs auditable per fold.
+        p = (features.iloc[:, 0].to_numpy() % 100) / 100
         return np.column_stack([1 - p, p])
 
 
@@ -171,6 +172,15 @@ def test_shared_keys_and_temporal_calibration_do_not_use_test_rows():
         expected_calibration_outcomes.extend([calibration["scored_touchdown"].to_numpy()] * 2)
     assert all(
         np.array_equal(record[1], expected_calibration_outcomes[index // 2])
+        for index, record in enumerate(_RecordingCalibrator.fits)
+    )
+    expected_calibration_probabilities = []
+    for fold in folds:
+        _, calibration, _ = evaluation.split_and_assert_fold(rows, fold)
+        expected = (calibration[WR_TE_FEATURES[0]].to_numpy() % 100) / 100
+        expected_calibration_probabilities.extend([expected] * 2)
+    assert all(
+        np.array_equal(record[0], expected_calibration_probabilities[index])
         for index, record in enumerate(_RecordingCalibrator.fits)
     )
     assert all(set(outcomes) == {0, 1} for _, outcomes in _RecordingCalibrator.fits)
