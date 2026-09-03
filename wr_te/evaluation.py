@@ -505,11 +505,15 @@ def _timestamp_safe_open(frame: pd.DataFrame) -> bool:
 
     if not (nonempty(frame["tag"]).all() and frame["tag"].astype(str).str.lower().eq("open").all()):
         return False
-    in_play = frame["in_play"].map(
-        lambda value: value if isinstance(value, bool) else str(value).strip().lower() == "true"
-    )
-    # A missing or unrecognised value is not proof that the quote was pre-game.
-    if not frame["in_play"].notna().all() or in_play.any():
+    def explicit_false(value: Any) -> bool:
+        # CSV round-trips of the fetcher's boolean column are represented as
+        # numpy.bool_, while a string "False" is the only accepted textual
+        # representation.  Numeric and unrecognised values are unsafe.
+        if isinstance(value, (bool, np.bool_)):
+            return not bool(value)
+        return isinstance(value, str) and value == "False"
+
+    if not frame["in_play"].map(explicit_false).all():
         return False
     if not all(nonempty(frame[column]).all() for column in ("last_update", "fetched_at", "commence_time")):
         return False
@@ -680,6 +684,8 @@ def attach_open_odds_and_score_bets(
         for model, variant in sorted(
             {(str(model), str(variant)) for model, variant in stream_prediction[["model", "variant"]].itertuples(index=False, name=None)}
         ):
+            if model in {"logistic_l2", "random_forest_current"} and variant not in {"raw", "platt"}:
+                continue
             model_rows = stream_prediction[
                 (stream_prediction["model"] == model) & (stream_prediction["variant"] == variant)
             ].copy()
@@ -701,7 +707,7 @@ def attach_open_odds_and_score_bets(
                 "betting_provenance": None,
                 "betting_label": None,
             }
-            if model in {"logistic_l2", "random_forest_current"}:
+            if model in {"logistic_l2", "random_forest_current"} and variant in {"raw", "platt"}:
                 common.update({
                     "open_coverage_count": coverage_count,
                     "open_coverage_total": coverage_total,

@@ -91,6 +91,22 @@ def test_primary_metrics_reject_reference_key_mismatch():
         evaluation.build_metric_records(pd.concat([model, reference], ignore_index=True), [])
 
 
+@pytest.mark.parametrize("unsafe_in_play", ["", "unknown", 1, "malformed", "false"])
+def test_tagged_odds_reject_non_boolean_false_in_play(unsafe_in_play):
+    tagged = pd.DataFrame([{
+        "description": "Player", "home_team": "Home", "away_team": "Away", "price": 100,
+        "bookmaker": "book", "tag": "open", "in_play": unsafe_in_play,
+        "last_update": "2025-09-07T10:00:00Z", "fetched_at": "2025-09-07T10:05:00Z",
+        "commence_time": "2025-09-07T13:00:00Z",
+    }])
+    legacy = pd.DataFrame([{
+        "Player": "Player", "HomeTeam": "Home", "AwayTeam": "Away", "Odds": 110,
+        "Bookmaker": "legacy", "Season": 2025, "Week": 1,
+    }])
+    _, provenance, _ = evaluation.select_open_odds(tagged, legacy)
+    assert provenance == "timestamp_unsafe_legacy"
+
+
 def test_odds_and_payout_use_precedence_team_matching_and_preserve_rows():
     tagged = pd.DataFrame([{
         "game_id": "tagged-game",
@@ -141,6 +157,9 @@ def test_odds_and_payout_use_precedence_team_matching_and_preserve_rows():
          "position": "WR", "scored_touchdown": 0, "evaluation_stream": "retrospective",
          "model": "logistic_l2", "variant": "raw", "probability": 0.6},
     ])
+    unexpected_variant = predictions.iloc[[0]].copy()
+    unexpected_variant["variant"] = "unexpected"
+    predictions = pd.concat([predictions, unexpected_variant], ignore_index=True)
     odds = pd.DataFrame([
             {"description": "Mike Williams", "home_team": "New York Jets", "away_team": "Buffalo Bills",
              "price": 150, "bookmaker": "book1"},
@@ -156,6 +175,7 @@ def test_odds_and_payout_use_precedence_team_matching_and_preserve_rows():
         {"New York Jets": "NYJ", "Buffalo Bills": "BUF", "Los Angeles Chargers": "LAC", "Denver Broncos": "DEN"},
     )
     report = next(row for row in betting if row["model"] == "logistic_l2" and row["variant"] == "raw")
+    assert not any(row["variant"] == "unexpected" for row in betting)
     assert report["bets"] == 3
     assert report["stake"] == 3.0
     assert report["pnl"] == pytest.approx(0.0)
