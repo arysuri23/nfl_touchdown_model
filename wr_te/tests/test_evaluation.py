@@ -57,13 +57,22 @@ def test_whole_week_folds_cross_season_boundary_and_reject_short_history():
     )
     assert [fold.test_group for fold in folds] == [(2022, 1), (2022, 2)]
     assert counts["eligible_rows"] == 20
-    test_keys = set(
-        map(tuple, rows.loc[(rows.season == 2022) & (rows.week == 1), evaluation.ROW_KEY_COLUMNS].to_numpy())
+    fit_rows, calibration_rows, test_rows = evaluation.split_and_assert_fold(rows, folds[0])
+    test_keys = set(map(tuple, test_rows[evaluation.ROW_KEY_COLUMNS].to_numpy()))
+    expected_test_keys = set(
+        map(
+            tuple,
+            rows.loc[(rows.season == 2022) & (rows.week == 1), evaluation.ROW_KEY_COLUMNS].to_numpy(),
+        )
     )
-    assert len(test_keys) == 4
-    assert all(len(set(part)) == len(part) for fold in folds for part in (
-        fold.fit_groups, fold.calibration_groups, (fold.test_group,)
-    ))
+    assert test_keys == expected_test_keys
+    assert len(test_rows) == 4
+    key_sets = [set(map(tuple, part[evaluation.ROW_KEY_COLUMNS].to_numpy())) for part in (
+        fit_rows, calibration_rows, test_rows
+    )]
+    game_sets = [set(part["game_id"]) for part in (fit_rows, calibration_rows, test_rows)]
+    assert not (key_sets[0] & key_sets[1] or key_sets[0] & key_sets[2] or key_sets[1] & key_sets[2])
+    assert not (game_sets[0] & game_sets[1] or game_sets[0] & game_sets[2] or game_sets[1] & game_sets[2])
 
     short, _ = evaluation.prepare_evaluation_rows(
         _raw_rows([(2021, 18), (2022, 1)]), _identity_features
@@ -78,6 +87,12 @@ def test_duplicate_eligible_row_key_is_rejected():
         evaluation.prepare_evaluation_rows(raw, _identity_features)
 
 
+def test_player_display_name_is_required():
+    raw = _raw_rows([(2022, 1)]).drop(columns=["player_display_name"])
+    with pytest.raises(ValueError, match="player_display_name"):
+        evaluation.prepare_evaluation_rows(raw, _identity_features)
+
+
 class _RecordingEstimator:
     fits = []
 
@@ -85,7 +100,9 @@ class _RecordingEstimator:
         self.kind = kind
 
     def fit(self, features, outcomes):
-        self.__class__.fits.append((self.kind, set(features.iloc[:, 0]), set(outcomes)))
+        self.__class__.fits.append(
+            (self.kind, features.iloc[:, 0].to_numpy().copy(), np.asarray(outcomes).copy())
+        )
         return self
 
     def predict_proba(self, features):
@@ -138,16 +155,33 @@ def test_shared_keys_and_temporal_calibration_do_not_use_test_rows():
             evaluation.ROW_KEY_COLUMNS,
         ]
         assert list(map(tuple, got.to_numpy())) == expected_keys
-    assert _RecordingEstimator.fits[0][1] == {202116}
-    assert _RecordingEstimator.fits[0][2] == {0, 1}
+    assert set(_RecordingEstimator.fits[0][1]) == {202116}
+    assert set(_RecordingEstimator.fits[0][2]) == {0, 1}
+    assert len(_RecordingEstimator.fits) == 4
+    assert len(_RecordingCalibrator.fits) == 4
+    assert [set(record[1]) for record in _RecordingEstimator.fits] == [
+        {202116},
+        {202116},
+        {202116, 202117},
+        {202116, 202117},
+    ]
+    expected_calibration_outcomes = []
+    for fold in folds:
+        _, calibration, _ = evaluation.split_and_assert_fold(rows, fold)
+        expected_calibration_outcomes.extend([calibration["scored_touchdown"].to_numpy()] * 2)
+    assert all(
+        np.array_equal(record[1], expected_calibration_outcomes[index // 2])
+        for index, record in enumerate(_RecordingCalibrator.fits)
+    )
     assert all(set(outcomes) == {0, 1} for _, outcomes in _RecordingCalibrator.fits)
     assert set(fold_rows["football_context_provenance"]) == {
         "retrospective_finalish_game_context"
     }
 
     perturbed = raw.copy()
-    perturbed.loc[perturbed["season"] == 2022, "scored_touchdown"] = 1 - perturbed.loc[
-        perturbed["season"] == 2022, "scored_touchdown"
+    outer_test = (perturbed["season"] == 2022) & (perturbed["week"] == 1)
+    perturbed.loc[outer_test, "scored_touchdown"] = 1 - perturbed.loc[
+        outer_test, "scored_touchdown"
     ]
     rows_perturbed, _ = evaluation.prepare_evaluation_rows(perturbed, _identity_features)
     rows_perturbed[WR_TE_FEATURES[0]] = rows_perturbed["season"] * 100 + rows_perturbed["week"]
@@ -162,7 +196,10 @@ def test_shared_keys_and_temporal_calibration_do_not_use_test_rows():
         },
         calibrator_factory=_RecordingCalibrator,
     )
-    pd.testing.assert_series_equal(predictions["probability"], rerun["probability"])
+    pd.testing.assert_series_equal(
+        predictions.loc[predictions["fold"] == 0, "probability"].reset_index(drop=True),
+        rerun.loc[rerun["fold"] == 0, "probability"].reset_index(drop=True),
+    )
 
 
 def test_calibration_class_and_probability_failures_happen_before_concat():
@@ -178,8 +215,20 @@ def test_calibration_class_and_probability_failures_happen_before_concat():
         "min_samples_leaf": 1,
         "max_features": "sqrt",
     }
+    _RecordingEstimator.fits = []
     with pytest.raises(ValueError, match="calibration partition.*both outcome classes"):
-        evaluation.evaluate_folds(rows, folds, params, seed=42)
+        evaluation.evaluate_folds(
+            rows,
+            folds,
+            params,
+            seed=42,
+            estimator_factories={
+                "logistic_l2": lambda seed, params: _RecordingEstimator("logistic_l2"),
+                "random_forest_current": lambda seed, params: _RecordingEstimator("random_forest_current"),
+            },
+            calibrator_factory=_RecordingCalibrator,
+        )
+    assert _RecordingEstimator.fits == []
 
     class _NaNEstimator(_RecordingEstimator):
         def predict_proba(self, features):

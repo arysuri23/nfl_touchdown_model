@@ -67,6 +67,7 @@ def _required_raw_columns() -> set[str]:
     return {
         *ROW_KEY_COLUMNS,
         "team",
+        "player_display_name",
         "position",
         "scored_touchdown",
         "opponent_team",
@@ -272,6 +273,13 @@ def _validate_fold_partitions(rows: pd.DataFrame, fold: FoldSpec) -> tuple[pd.Da
     return fit, calibration, test
 
 
+def split_and_assert_fold(
+    rows: pd.DataFrame, fold: FoldSpec
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Return validated fit, calibration, and test frames for one fold."""
+    return _validate_fold_partitions(rows, fold)
+
+
 def _positive_probabilities(estimator: Any, features: pd.DataFrame) -> np.ndarray:
     probabilities = np.asarray(estimator.predict_proba(features))
     if probabilities.ndim == 1:
@@ -363,8 +371,11 @@ def evaluate_folds(
         x_test = test[feature_columns]
         test_keys = list(map(tuple, test[ROW_KEY_COLUMNS].to_numpy()))
         fold_stream = str(test["evaluation_stream"].iloc[0]) if "evaluation_stream" in test else "retrospective"
+        variant_parts: list[pd.DataFrame] = []
+        first_variant_keys: list[tuple[Any, ...]] | None = None
 
         def add_variant(model: str, variant: str, probabilities: Any) -> None:
+            nonlocal first_variant_keys
             checked = _validate_probabilities(probabilities, len(test), f"{model}/{variant}")
             part = test.loc[:, metadata_columns].copy()
             part["model"] = model
@@ -372,7 +383,12 @@ def evaluate_folds(
             part["probability"] = checked
             part["fold"] = fold_number
             part["football_context_provenance"] = _PROVENANCE
-            prediction_parts.append(part)
+            variant_keys = list(map(tuple, part[ROW_KEY_COLUMNS].to_numpy()))
+            if first_variant_keys is None:
+                first_variant_keys = variant_keys
+            elif variant_keys != first_variant_keys:
+                raise ValueError(f"{model}/{variant} returned a different test row-key set")
+            variant_parts.append(part)
 
         overall_rate = float(y_fit.mean())
         position_rates = fit.groupby("position")["scored_touchdown"].mean().to_dict()
@@ -402,6 +418,7 @@ def evaluate_folds(
             )
             add_variant(model, "raw", test_raw)
             add_variant(model, "platt", test_platt)
+        prediction_parts.extend(variant_parts)
 
         fold_records.append(
             {
@@ -430,21 +447,6 @@ def evaluate_folds(
         predictions = predictions.sort_values(
             ROW_KEY_COLUMNS + ["model", "variant"], kind="mergesort"
         ).reset_index(drop=True)
-        first_keys = None
-        for model, variant in MODEL_VARIANTS:
-            part_keys = list(
-                map(
-                    tuple,
-                    predictions.loc[
-                        (predictions["model"] == model) & (predictions["variant"] == variant),
-                        ROW_KEY_COLUMNS,
-                    ].to_numpy(),
-                )
-            )
-            if first_keys is None:
-                first_keys = part_keys
-            elif part_keys != first_keys:
-                raise ValueError(f"{model}/{variant} returned a different test row-key set")
     else:
         predictions = pd.DataFrame(
             columns=metadata_columns + ["model", "variant", "probability", "fold", "football_context_provenance"]
