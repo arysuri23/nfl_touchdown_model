@@ -104,13 +104,15 @@
     "wr_te": 21618
   },
   "source": {
+    "count": 21618,
     "mode": "cache",
     "path": "data/raw_nfl_data.csv",
+    "row_count": 21618,
     "sha256": "31edb3a2a5fc9d2c5af2056f6f8ca9d085bdb6432129f39ffabb84afbb2743cc"
   },
   "source_file_hashes": {
     "config.py": "48731089f4877743d0037420516430a49efffdbb2212d30468a9416ac36822dc",
     "features.py": "603cb8d8d45de70bacf9c9afac75602d7fb166ebee9a132da808da5bba13f1c1",
-    "train_wr.py": "05cac6db4f3abf3f88e54de99d79391476cd5811b32ace1188b08325ce31389c"
+    "train_wr.py": "b3b19ad259a4df695974a9f44a7a40cde7461e770513bf8d38f00aa02dac5b36"
   }
 }
