@@ -593,13 +593,15 @@ def test_fetch_rejects_duplicate_provider_event_for_one_game_before_paid_call(
     monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
     calls = []
     events = _load_fixture("events_sample.json")
-    events.append(dict(events[0]))
+    conflicting = dict(events[0])
+    conflicting["id"] = "provider-event-b"
+    events.append(conflicting)
 
     def fake_get(url, params=None):
         calls.append(url)
         return _FakeResponse(events)
 
-    with pytest.raises(ValueError, match="multiple provider events"):
+    with pytest.raises(ValueError, match="Multiple provider events"):
         fetch_live_odds.fetch(2026, 1, "open", ["draftkings"], get=fake_get,
                               load_schedules=_fake_load_schedules_factory(2026),
                               refresh=True)
@@ -802,12 +804,30 @@ def test_cache_rejects_partial_bookmaker_coverage(tmp_path, monkeypatch):
     path = config.odds_snapshot_path(2026, 1, "open")
     path.parent.mkdir(parents=True)
     cached = _valid_snapshot_frame()
-    cached.to_csv(path, index=False)
-    with pytest.raises(ValueError, match="bookmaker attestation|bookmaker coverage"):
+    second = cached.assign(
+        game_id="2026_01_BUF_NYJ", provider_event_id="provider-b",
+        bookmaker="FanDuel", bookmaker_key="fanduel",
+        home_team="Buffalo Bills", away_team="New York Jets",
+        requested_bookmakers="draftkings,fanduel", expected_game_count=2,
+    )
+    cached["requested_bookmakers"] = "draftkings,fanduel"
+    cached["expected_game_count"] = 2
+    pd.concat([cached, second], ignore_index=True).to_csv(path, index=False)
+
+    def two_game_schedule(seasons):
+        return pl.DataFrame({
+            "season": [2026, 2026], "week": [1, 1], "game_type": ["REG", "REG"],
+            "game_id": ["2026_01_BAL_KC", "2026_01_BUF_NYJ"],
+            "home_team": ["Kansas City Chiefs", "Buffalo Bills"],
+            "away_team": ["Baltimore Ravens", "New York Jets"],
+            "gameday": ["2026-09-13", "2026-09-13"],
+        })
+
+    with pytest.raises(ValueError, match="missing a game/bookmaker quote"):
         fetch_live_odds.fetch(
             2026, 1, "open", ["draftkings", "fanduel"],
             get=lambda *a, **k: pytest.fail("HTTP called"),
-            load_schedules=_fake_load_schedules_factory(2026),
+            load_schedules=two_game_schedule,
         )
 
 
