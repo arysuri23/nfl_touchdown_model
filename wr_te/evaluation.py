@@ -548,7 +548,7 @@ def select_open_odds(
 
 
 def _provenance_label(provenance: str) -> str:
-    if provenance == "timestamp_unsafe_legacy":
+    if "timestamp_unsafe_legacy" in provenance:
         return "research-only, timestamp unsafe"
     if provenance == "timestamp_safe_open":
         return "timestamp-safe open"
@@ -675,6 +675,8 @@ def attach_open_odds_and_score_bets(
         source_values = {provenance_by_group[group] for group in stream_groups if group in provenance_by_group}
         if not source_values:
             provenance = "uncovered"
+        elif "timestamp_unsafe_legacy" in source_values and len(source_values) > 1:
+            provenance = "mixed; timestamp_unsafe_legacy"
         elif len(source_values) == 1:
             provenance = next(iter(source_values))
         else:

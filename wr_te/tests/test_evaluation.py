@@ -145,6 +145,56 @@ def test_atomic_outputs_roll_back_mid_replacement(tmp_path, monkeypatch, failure
     assert not list(output.glob(".*.backup"))
 
 
+def test_atomic_outputs_backup_copy_failure_preserves_old_set(tmp_path, monkeypatch):
+    output = tmp_path / "run"
+    output.mkdir()
+    old = {name: f"old-{name}".encode() for name in evaluate_wr.ARTIFACT_NAMES}
+    for name, payload in old.items():
+        (output / name).write_bytes(payload)
+    original_copyfile = evaluate_wr.shutil.copyfile
+
+    def fail_partial_copy(source, target):
+        if Path(target).name.endswith(".backup-tmp"):
+            Path(target).write_bytes(b"partial backup")
+            raise OSError("injected backup copy failure")
+        return original_copyfile(source, target)
+
+    monkeypatch.setattr(evaluate_wr.shutil, "copyfile", fail_partial_copy)
+    with pytest.raises(OSError, match="injected backup copy failure"):
+        evaluate_wr.write_artifacts_atomic(
+            output, {name: f"new-{name}".encode() for name in evaluate_wr.ARTIFACT_NAMES}
+        )
+    assert {name: (output / name).read_bytes() for name in evaluate_wr.ARTIFACT_NAMES} == old
+    assert not list(output.glob(".*.tmp"))
+    assert not list(output.glob(".*.backup*"))
+
+
+def test_mixed_odds_provenance_keeps_legacy_unsafe_label():
+    predictions = pd.DataFrame([
+        {"season": 2025, "week": 1, "game_id": "g1", "player_id": "p1",
+         "player_display_name": "Player", "team": "AAA", "opponent_team": "BBB",
+         "position": "WR", "scored_touchdown": 1, "evaluation_stream": "retrospective",
+         "model": "logistic_l2", "variant": "raw", "probability": 0.9},
+        {"season": 2025, "week": 2, "game_id": "g2", "player_id": "p2",
+         "player_display_name": "Other", "team": "AAA", "opponent_team": "BBB",
+         "position": "WR", "scored_touchdown": 0, "evaluation_stream": "retrospective",
+         "model": "logistic_l2", "variant": "raw", "probability": 0.8},
+    ])
+    legacy = pd.DataFrame([{
+        "Player": "Player", "HomeTeam": "AAA", "AwayTeam": "BBB", "Odds": 200,
+        "Bookmaker": "legacy", "Season": 2025, "Week": 1,
+    }])
+    _, betting = evaluation.attach_open_odds_and_score_bets(
+        predictions,
+        {(2025, 1): (legacy, "timestamp_unsafe_legacy"),
+         (2025, 2): (evaluation._empty_odds_frame(), "uncovered")},
+        {"AAA": "AAA", "BBB": "BBB"},
+    )
+    record = next(row for row in betting if row["model"] == "logistic_l2")
+    assert "timestamp_unsafe_legacy" in record["betting_provenance"]
+    assert record["betting_label"] == "research-only, timestamp unsafe"
+
+
 def _raw_rows(groups):
     rows = []
     defense = [

@@ -162,6 +162,7 @@ def write_artifacts_atomic(
     destination.mkdir(parents=True, exist_ok=True)
     temporary: dict[str, Path] = {}
     backups: dict[str, Path] = {}
+    backup_temporary: set[Path] = set()
     published: set[str] = set()
     try:
         for name in ARTIFACT_NAMES:
@@ -186,13 +187,19 @@ def write_artifacts_atomic(
         for name in ARTIFACT_NAMES:
             target = destination / name
             if target.exists():
-                fd, backup_name = tempfile.mkstemp(
-                    prefix=f".{name}.", suffix=".backup", dir=destination
+                fd, backup_temp_name = tempfile.mkstemp(
+                    prefix=f".{name}.", suffix=".backup-tmp", dir=destination
                 )
                 os.close(fd)
-                backup_path = Path(backup_name)
+                backup_temp = Path(backup_temp_name)
+                backup_temporary.add(backup_temp)
+                shutil.copyfile(target, backup_temp)
+                backup_path = backup_temp.with_name(
+                    backup_temp.name.removesuffix(".backup-tmp") + ".backup"
+                )
+                os.replace(backup_temp, backup_path)
+                backup_temporary.remove(backup_temp)
                 backups[name] = backup_path
-                shutil.copyfile(target, backup_path)
 
         for name in ARTIFACT_NAMES:
             os.replace(temporary[name], destination / name)
@@ -222,6 +229,11 @@ def write_artifacts_atomic(
             except FileNotFoundError:
                 pass
         for backup_path in backups.values():
+            try:
+                backup_path.unlink()
+            except FileNotFoundError:
+                pass
+        for backup_path in backup_temporary:
             try:
                 backup_path.unlink()
             except FileNotFoundError:
@@ -386,7 +398,11 @@ def run_evaluation(
         "definitions": metric_definitions,
         "betting": betting_records,
     }
-    source_provenance = sorted({str(record.get("betting_provenance")) for record in betting_records if record.get("betting_provenance")})
+    odds_provenance_by_group = {
+        f"{season}/{week}": str(provenance)
+        for (season, week), (_, provenance) in sorted(odds_by_group.items())
+    }
+    source_provenance = sorted(set(odds_provenance_by_group.values()))
     manifest = {
         "start_season": int(start_season),
         "end_season": int(end_season),
@@ -406,6 +422,7 @@ def run_evaluation(
         "filter_counts": filter_counts,
         "fold_counts": {"folds": len(folds), "test_groups": len(requested_groups)},
         "odds_provenance": source_provenance,
+        "odds_provenance_by_group": odds_provenance_by_group,
         "coverage": [
             {key: value for key, value in record.items() if key in {
                 "evaluation_stream", "open_coverage_count", "open_coverage_total", "open_coverage_rate",

@@ -72,7 +72,8 @@ def feature_engineering(df):
     if 'is_home' not in df.columns:
         df['is_home'] = 0 # Fallback
 
-    df.fillna(0, inplace=True)
+    numeric_cols = df.select_dtypes(include='number').columns
+    df[numeric_cols] = df[numeric_cols].fillna(0)
 
     return df
 

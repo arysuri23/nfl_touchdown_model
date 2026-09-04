@@ -76,3 +76,16 @@ def test_feature_engineering_produces_expected_feature_columns():
 
     missing = [col for col in expected_columns if col not in result.columns]
     assert not missing, f"Missing expected feature columns: {missing}"
+
+
+def test_feature_engineering_fills_numeric_missing_values_without_coercing_strings():
+    df = _build_synthetic_frame()
+    df["surface"] = pd.Series(["grass"] + [pd.NA] * (len(df) - 1), dtype="string")
+    df.loc[0, "receptions"] = pd.NA
+
+    result = train_wr.feature_engineering(df)
+
+    assert result["surface"].isna().any()
+    first_player_week = result.query("player_id == 'P1' and week == 1").iloc[0]
+    assert first_player_week["avg_receptions"] == 0
+    assert result["avg_receptions"].notna().all()
