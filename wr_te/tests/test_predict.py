@@ -227,6 +227,76 @@ def test_predict_touchdown_scorers_smoke():
     assert (out["predicted_touchdown_probability"] == 0.3).all()
 
 
+class _DiagnosticCalibrator:
+    def predict_proba(self, X):
+        p = np.asarray(X).ravel() * 0.5 + 0.25
+        return np.column_stack([1.0 - p, p])
+
+
+def test_direct_prediction_call_applies_optional_calibrator_for_diagnostics():
+    out = predict_wr.predict_touchdown_scorers(
+        _tiny_feature_df(), _FakeModel(), _DiagnosticCalibrator(), 2026, 4,
+        _tiny_lines_df(), _tiny_depth_df(), _tiny_roster_df(),
+    )
+
+    assert np.allclose(out["predicted_touchdown_probability"], 0.4)
+
+
+def test_production_main_loads_raw_forest_only_and_records_variant(tmp_path, monkeypatch):
+    data_dir = tmp_path / "data"
+    models_dir = tmp_path / "models"
+    vegas_dir = tmp_path / "vegas" / "2026"
+    predictions_dir = tmp_path / "predictions"
+    for path in (data_dir, models_dir, vegas_dir):
+        path.mkdir(parents=True)
+    pd.DataFrame({"team_name": ["New York Jets"], "team_id": ["NYJ"]}).to_csv(
+        data_dir / "nfl_teams.csv", index=False
+    )
+    pd.DataFrame({"feature": [1]}).to_csv(data_dir / "raw_nfl_data.csv", index=False)
+    pd.DataFrame({"description": ["Player One"]}).to_csv(
+        vegas_dir / "week_1_td_odds_open.csv", index=False
+    )
+
+    monkeypatch.setattr(predict_wr.config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(predict_wr.config, "MODELS_DIR", models_dir)
+    monkeypatch.setattr(predict_wr.config, "VEGAS_DIR", tmp_path / "vegas")
+    monkeypatch.setattr(predict_wr.config, "PREDICTIONS_DIR", predictions_dir)
+    monkeypatch.setattr(predict_wr.config, "SEASON", 2026)
+    monkeypatch.setattr(predict_wr.config, "WEEK", 1)
+
+    loaded = []
+
+    def fake_load(path):
+        loaded.append(path)
+        return object()
+
+    captured = {}
+
+    def fake_predict(feature_df, model, calibrator, season, week, lines, depth, roster):
+        captured["calibrator"] = calibrator
+        return pd.DataFrame([{
+            "season": season, "week": week, "player_id": "P1",
+            "player_display_name": "Player One", "team": "NYJ", "opponent_team": "BUF",
+            "position": "WR", "predicted_touchdown_probability": 0.3,
+        }])
+
+    monkeypatch.setattr(predict_wr, "load_joblib_locally", fake_load)
+    monkeypatch.setattr(predict_wr, "predict_touchdown_scorers", fake_predict)
+    monkeypatch.setattr(predict_wr.data, "get_week_lines", lambda season, week: pd.DataFrame())
+    monkeypatch.setattr(predict_wr.data, "get_depth_chart_for_week", lambda season, week: pd.DataFrame())
+    monkeypatch.setattr(predict_wr, "load_week_roster", lambda season, week: pd.DataFrame())
+    monkeypatch.setattr(predict_wr, "join_odds", lambda predictions, odds, team_map: predictions.assign(
+        price=200, market_implied_prob=1 / 3, model_edge=-1 / 30, bookmaker="book"
+    ))
+
+    predict_wr.main()
+
+    assert loaded == [models_dir / "wr_te_rf_final.pkl"]
+    assert captured["calibrator"] is None
+    output = pd.read_csv(predictions_dir / "2026" / "week_1.csv")
+    assert output.loc[0, "probability_variant"] == "random_forest_current/raw"
+
+
 def test_prediction_history_excludes_target_and_future_rows():
     feature_df = _tiny_feature_df()
     future_rows = feature_df[feature_df["week"] == 3].copy()

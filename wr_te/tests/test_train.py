@@ -2,6 +2,7 @@ import json
 
 import numpy as np
 import pandas as pd
+import pytest
 from sklearn.ensemble import RandomForestClassifier
 
 import train_wr
@@ -87,6 +88,17 @@ def test_calibration_report_on_perfectly_calibrated_input():
 
     assert set(report.keys()) == {"brier", "log_loss", "ece"}
     assert report["ece"] < 0.05
+
+
+def test_calibration_report_uses_weighted_fixed_probability_bins():
+    # Bin gaps are .45 (2 rows), .15 (2 rows), and .05 (1 row), so the
+    # evaluator-compatible weighted ECE is (2*.45 + 2*.15 + 1*.05) / 5.
+    y = np.array([0, 1, 0, 0, 1])
+    p = np.array([0.05, 0.05, 0.15, 0.15, 0.95])
+
+    report = train_wr.calibration_report(y, p)
+
+    assert report["ece"] == pytest.approx(0.25)
 
 
 # --- train_rf_model ---

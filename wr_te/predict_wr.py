@@ -11,6 +11,8 @@ from features import WR_TE_FEATURES, PLAYER_EWM_STATS
 
 ### CONSTANTS ###
 
+RAW_RF_PROBABILITY_VARIANT = 'random_forest_current/raw'
+
 # Feature lists must match those used during training (imported from features.py)
 
 
@@ -245,8 +247,7 @@ def predict_touchdown_scorers(feature_df, model, calibrator, season, week, lines
     return pred_df_wr_te.sort_values(by='predicted_touchdown_probability', ascending=False).reset_index(drop=True)
 
 
-### main
-if __name__ == '__main__':
+def main():
     """
     Main entry point for WR/TE predictions.
     """
@@ -259,7 +260,6 @@ if __name__ == '__main__':
     # --- 1. Load WR/TE Model ---
     print("\nLoading WR/TE model artifacts from local files...")
     wr_te_model = load_joblib_locally(config.MODELS_DIR / 'wr_te_rf_final.pkl')
-    wr_te_calibrator = load_joblib_locally(config.MODELS_DIR / 'wr_te_rf_calibrator.pkl')
     print("Model loading complete")
 
     # --- 2. Load Data Files ---
@@ -285,16 +285,17 @@ if __name__ == '__main__':
     print(f"\nGenerating WR/TE predictions for {season}, Week {week}...")
 
     predictions_df = predict_touchdown_scorers(
-        feature_df, wr_te_model, wr_te_calibrator, season, week, lines_df, depth_df, roster_df
+        feature_df, wr_te_model, None, season, week, lines_df, depth_df, roster_df
     )
 
     # --- 4. Join Odds ---
     predictions_df = join_odds(predictions_df, td_odds_df, team_map)
     predictions_df['odds_snapshot'] = odds_path.name
+    predictions_df['probability_variant'] = RAW_RF_PROBABILITY_VARIANT
 
     output_cols = [
         'season', 'week', 'player_id', 'player_display_name', 'team', 'opponent_team',
-        'position', 'predicted_touchdown_probability', 'price', 'market_implied_prob',
+        'position', 'predicted_touchdown_probability', 'probability_variant', 'price', 'market_implied_prob',
         'model_edge', 'bookmaker', 'odds_snapshot',
     ]
     predictions_df = predictions_df[output_cols + [c for c in predictions_df.columns if c not in output_cols]]
@@ -316,3 +317,7 @@ if __name__ == '__main__':
     print(edge_candidates.sort_values(by='model_edge', ascending=False)[['player_display_name', 'team', 'position', 'predicted_touchdown_probability', 'price', 'model_edge']].head(10).to_string(index=False))
 
     print(f"\nPredictions saved to {output_path}")
+
+
+if __name__ == '__main__':
+    main()

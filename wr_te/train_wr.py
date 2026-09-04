@@ -124,8 +124,8 @@ def fit_calibrator_oob(model, y, mask=None, min_rows=500):
 def calibration_report(y_true, p):
     """Return {'brier', 'log_loss', 'ece'} for predictions `p` against `y_true`.
 
-    ECE uses 10 equal-width probability bins: mean of |avg_pred - emp_rate|
-    over populated bins.
+    ECE uses the evaluator's fixed ten equal-width bins over [0, 1], weighted
+    by each populated bin's share of rows.
     """
     y_true = np.asarray(y_true)
     p = np.asarray(p)
@@ -133,13 +133,19 @@ def calibration_report(y_true, p):
     brier = brier_score_loss(y_true, p)
     logloss = log_loss(y_true, p)
 
-    bins = pd.cut(p, bins=10, labels=False)
-    gaps = []
-    for bin_idx in range(10):
-        bin_mask = bins == bin_idx
-        if bin_mask.sum() > 0:
-            gaps.append(abs(p[bin_mask].mean() - y_true[bin_mask].mean()))
-    ece = float(np.mean(gaps)) if gaps else 0.0
+    if len(p) == 0:
+        ece = 0.0
+    else:
+        # Match evaluation._calibration_bins: [0,.1), ..., [.9,1.0], with
+        # probabilities of exactly 1.0 assigned to the final bin.
+        bin_ids = np.minimum((p * 10).astype(int), 9)
+        ece = 0.0
+        for bin_idx in range(10):
+            bin_mask = bin_ids == bin_idx
+            count = int(bin_mask.sum())
+            if count:
+                gap = abs(p[bin_mask].mean() - y_true[bin_mask].mean())
+                ece += count / len(p) * gap
 
     return {'brier': brier, 'log_loss': logloss, 'ece': ece}
 
@@ -510,9 +516,9 @@ def main():
     calibration_reports = deployed_calibration_reports(
         np.asarray(y_all_wr_te)[candidate], oob_proba[candidate], wr_te_calibrator
     )
-    print("Raw deployed-forest OOB calibration metrics")
+    print("Raw deployed-forest OOB calibration metrics (calibrator-fit-set diagnostic; not held-out)")
     print(calibration_reports['raw'])
-    print("Calibrated deployed-forest OOB calibration metrics")
+    print("Calibrated deployed-forest OOB calibration metrics (calibrator-fit-set diagnostic; not held-out)")
     print(calibration_reports['calibrated'])
 
     # --- Save Models ---

@@ -62,11 +62,14 @@ run from `wr_te/`.
 
 Each scheduled training refresh collects all available completed rows from
 `config.DATA_SEASONS` (the prior training seasons plus the active prediction
-season), writes the feature cache, and fits the deployed forest only on rows
-from the configured prior-season `TRAIN_SEASONS` cut. It then recalibrates that
-deployed forest on its OOB predictions and refreshes the model, calibrator, and
-feature-importance artifacts. The refresh cadence does not change the ledger
-strategies or introduce an implicit edge threshold.
+season), writes the feature cache, and fits the deployed raw RandomForest only
+on rows from the configured prior-season `TRAIN_SEASONS` cut. Weekly production
+loads `wr_te_rf_final.pkl` and emits the `random_forest_current/raw` probability
+variant; the saved calibrator is not part of the production path. OOB Platt
+metrics from training are a calibrator-fit-set diagnostic, not held-out
+validation. The walk-forward evaluator's temporal Platt metrics are likewise
+diagnostic. The refresh cadence does not change the ledger strategies or
+introduce an implicit edge threshold.
 
 ### Overriding season/week
 
@@ -89,9 +92,11 @@ WRTE_SEASON=2025 WRTE_WEEK=15 python predict_wr.py
 - **`redzone_td_rate` removed** from `WR_TE_FEATURES`: it is computed from
   the same-game redzone trips/TDs and leaks information not available before
   the game is played.
-- **OOB calibration**: the deployed model is calibrated with Platt scaling
-  fit on its own out-of-bag predictions (`train_wr.fit_calibrator_oob`),
-  rather than a held-out split.
+- **Raw RF deployment and calibration diagnostics**: weekly production uses
+  the raw deployed forest (`random_forest_current/raw`). Training retains an
+  OOB Platt calibrator for diagnostics (`train_wr.fit_calibrator_oob`), and
+  walk-forward evaluation reports temporal Platt diagnostics; neither is a
+  held-out production calibration claim.
 - **Temporal CV**: hyperparameter tuning (`--tune`) uses `TimeSeriesSplit`
   instead of standard K-fold, and all frames are sorted chronologically
   before any split/EWM computation to avoid leakage.
