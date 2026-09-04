@@ -186,6 +186,22 @@ def test_network_data_loader_remains_callable(tmp_path, monkeypatch):
     assert path == str(tmp_path / "raw_nfl_data.csv")
 
 
+def test_network_data_loader_does_not_rewrite_existing_cache(tmp_path, monkeypatch):
+    cache = tmp_path / "raw_nfl_data.csv"
+    original = b"old,cache,bytes\n"
+    cache.write_bytes(original)
+    source = pd.DataFrame({"season": [2020, 2026], "week": [1, 1], "player_id": ["P1", "P2"]})
+    monkeypatch.setattr(train_wr.config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(train_wr.data, "get_all_historic_data", lambda *_: source)
+
+    out, source_hash, path = train_wr._load_training_data(False, None, {})
+
+    assert out.equals(source)
+    assert path == str(cache)
+    assert cache.read_bytes() == original
+    assert source_hash == train_wr._sha256_bytes(train_wr._csv_bytes(source))
+
+
 def test_manifest_artifact_hashes_match_published_files(tmp_path):
     artifacts = {
         "wr_te_rf_final.pkl": {"model": 1},
@@ -232,6 +248,87 @@ def test_atomic_publication_rolls_back_all_known_outputs_on_replacement_failure(
 
     for name in names:
         assert (tmp_path / name).read_bytes() == b"old-" + name.encode()
+
+
+def test_atomic_publication_rolls_back_cache_and_all_model_outputs(tmp_path, monkeypatch):
+    models_dir = tmp_path / "models"
+    data_dir = tmp_path / "data"
+    models_dir.mkdir()
+    data_dir.mkdir()
+    names = ["wr_te_rf_final.pkl", "wr_te_rf_calibrator.pkl", "wr_te_rf_feature_importance.csv", "wr_te_rf_manifest.json"]
+    for name in names:
+        (models_dir / name).write_bytes(b"old-" + name.encode())
+    cache = data_dir / "raw_nfl_data.csv"
+    cache.write_bytes(b"old-cache")
+    artifacts = {
+        "wr_te_rf_final.pkl": {"model": 2},
+        "wr_te_rf_calibrator.pkl": {"calibrator": 2},
+        "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["new"]}),
+    }
+    real_replace = train_wr.os.replace
+    replacements = {"count": 0}
+
+    def fail_on_fifth(source, target):
+        replacements["count"] += 1
+        if replacements["count"] == 5:
+            raise OSError("injected replacement failure")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(train_wr.os, "replace", fail_on_fifth)
+    with pytest.raises(OSError, match="injected replacement failure"):
+        train_wr._publish_training_artifacts(
+            models_dir,
+            artifacts,
+            {"version": 2},
+            cache_bytes=b"new-cache",
+            cache_path=cache,
+        )
+
+    for name in names:
+        assert (models_dir / name).read_bytes() == b"old-" + name.encode()
+    assert cache.read_bytes() == b"old-cache"
+
+
+def test_network_publication_keeps_full_source_but_validates_prior_seasons_for_training(tmp_path):
+    models_dir = tmp_path / "models"
+    cache = tmp_path / "data" / "raw_nfl_data.csv"
+    source_rows = []
+    for season, positions in ((2020, ["WR", "TE"]), (2026, ["WR"])):
+        for index, position in enumerate(positions):
+            row = {column: 0 for column in train_wr.RAW_REQUIRED_COLUMNS}
+            row.update({
+                "season": season,
+                "week": 1,
+                "player_id": f"{season}-{index}",
+                "position": position,
+                "team": "A",
+                "opponent_team": "B",
+                "scored_touchdown": 0,
+            })
+            source_rows.append(row)
+    source = pd.DataFrame(source_rows)
+    source_bytes = train_wr._csv_bytes(source)
+    artifacts = {
+        "wr_te_rf_final.pkl": {"model": 2},
+        "wr_te_rf_calibrator.pkl": {"calibrator": 2},
+        "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["new"]}),
+    }
+    train_wr._publish_training_artifacts(
+        models_dir,
+        artifacts,
+        {"source": {"sha256": train_wr._sha256_bytes(source_bytes), "count": len(source)}},
+        cache_bytes=source_bytes,
+        cache_path=cache,
+    )
+
+    published = pd.read_csv(cache)
+    training = train_wr._validate_training_cache(published, [2020])
+    manifest = json.loads((models_dir / "wr_te_rf_manifest.json").read_text())
+
+    assert cache.read_bytes() == source_bytes
+    assert manifest["source"]["sha256"] == train_wr._sha256_file(cache)
+    assert manifest["source"]["count"] == len(source)
+    assert set(training["season"]) == {2020}
 
 
 def test_strict_oob_calibration_mask_never_falls_back_to_other_seasons():

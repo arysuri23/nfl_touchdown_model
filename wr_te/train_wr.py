@@ -56,6 +56,11 @@ def _sha256_file(path):
     return _sha256_bytes(path.read_bytes())
 
 
+def _csv_bytes(df):
+    """Serialize a source frame exactly as the published cache CSV."""
+    return df.to_csv(index=False).encode('utf-8')
+
+
 def _canonical_hash(value):
     # Keep identical to evaluate_wr._json_bytes for cross-artifact parity.
     payload = json.dumps(value, sort_keys=True, indent=2, allow_nan=False).encode('utf-8')
@@ -108,17 +113,16 @@ def _validate_training_cache(df, seasons):
 
 
 def _load_training_data(from_cache, cache_path, team_map):
-    """Load source rows; cache mode is read-only and never invokes collection."""
+    """Load source rows without publishing network-collected data."""
     if from_cache:
         cache_path = _resolve_cache_path(cache_path)
         if not os.path.isfile(cache_path):
             raise FileNotFoundError(f"training cache not found: {cache_path}")
         return pd.read_csv(cache_path), _sha256_file(Path(cache_path)), cache_path
     df = data.get_all_historic_data(config.DATA_SEASONS, team_map)
-    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
     cache_path = config.DATA_DIR / 'raw_nfl_data.csv'
-    df.to_csv(cache_path, index=False)
-    return df, _sha256_file(cache_path), os.fspath(cache_path)
+    source_bytes = _csv_bytes(df)
+    return df, _sha256_bytes(source_bytes), os.fspath(cache_path)
 
 
 def _package_versions():
@@ -126,8 +130,8 @@ def _package_versions():
     return {name: importlib.metadata.version(name) for name in names}
 
 
-def _publish_training_artifacts(models_dir, artifacts, manifest):
-    """Transactionally publish model artifacts, rolling back on replacement failure."""
+def _publish_training_artifacts(models_dir, artifacts, manifest, *, cache_bytes=None, cache_path=None):
+    """Transactionally publish model artifacts and, for network runs, a cache."""
     import tempfile
     models_dir = Path(models_dir)
     models_dir.mkdir(parents=True, exist_ok=True)
@@ -135,6 +139,18 @@ def _publish_training_artifacts(models_dir, artifacts, manifest):
              'wr_te_rf_feature_importance.csv', 'wr_te_rf_manifest.json')
     if set(artifacts) != set(names[:-1]):
         raise ValueError('artifacts must contain the known model outputs')
+    if cache_bytes is not None and cache_path is None:
+        raise ValueError('cache_path is required when cache_bytes is provided')
+    cache_target = Path(cache_path) if cache_path is not None else None
+    if cache_bytes is not None:
+        cache_target.parent.mkdir(parents=True, exist_ok=True)
+
+    target_items = [(name, models_dir / name) for name in names[:-1]]
+    if cache_bytes is not None:
+        target_items.append(('raw_nfl_data.csv', cache_target))
+    # Publish the manifest last, matching the existing publication convention.
+    target_items.append((names[-1], models_dir / names[-1]))
+    targets = dict(target_items)
     with tempfile.TemporaryDirectory(dir=models_dir) as staging:
         staging = Path(staging)
         for name, value in artifacts.items():
@@ -143,28 +159,28 @@ def _publish_training_artifacts(models_dir, artifacts, manifest):
                 value.to_csv(target, index=False)
             else:
                 joblib.dump(value, target)
+        if cache_bytes is not None:
+            (staging / 'raw_nfl_data.csv').write_bytes(cache_bytes)
         manifest = dict(manifest)
         manifest['artifact_hashes'] = {
             name: _sha256_file(staging / name) for name in artifacts
         }
         staged_manifest = staging / names[-1]
         staged_manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
-        temporary = {name: staging / name for name in names}
+        temporary = {name: staging / name for name in targets}
         backups = {}
         published = set()
         try:
-            for name in names:
-                target = models_dir / name
+            for name, target in targets.items():
                 if target.exists():
                     backup = staging / f'.{name}.backup'
                     shutil.copyfile(target, backup)
                     backups[name] = backup
-            for name in names:
-                os.replace(temporary[name], models_dir / name)
+            for name, target in targets.items():
+                os.replace(temporary[name], target)
                 published.add(name)
         except BaseException:
-            for name in reversed(names):
-                target = models_dir / name
+            for name, target in reversed(list(targets.items())):
                 backup = backups.get(name)
                 if backup is not None and backup.exists():
                     try:
@@ -578,12 +594,14 @@ def main(argv=None):
     print("\nLoading and preparing data...")
     if args.cache_path is not None and not args.from_cache:
         parser.error('--cache-path requires --from-cache')
-    df, source_hash, source_path = _load_training_data(args.from_cache, args.cache_path, team_map)
-    source_rows_pre_filter = len(df)
-    df = _validate_training_cache(df, train_years)
+    source_df, source_hash, source_path = _load_training_data(args.from_cache, args.cache_path, team_map)
+    source_rows_pre_filter = len(source_df)
+    # Keep the complete collected source (including the active season) for
+    # publication; only the validated prior-season view is eligible to train.
+    df = _validate_training_cache(source_df, train_years)
     source_rows_by_season = {
-        str(int(season)): int((df['season'] == season).sum())
-        for season in train_years
+        str(int(season)): int((source_df['season'] == season).sum())
+        for season in sorted(source_df['season'].dropna().unique())
     }
 
     print(df.tail())
@@ -693,9 +711,11 @@ def main(argv=None):
             'mode': 'cache' if args.from_cache else 'network',
             'path': _logical_path(source_path),
             'sha256': source_hash,
+            'count': int(len(source_df)),
+            'row_count': int(len(source_df)),
         },
         'configured_seasons': list(config.TRAIN_SEASONS),
-        'actual_seasons': sorted(map(int, df['season'].unique())),
+        'actual_seasons': sorted(map(int, source_df['season'].dropna().unique())),
         'row_counts': {
             'source_pre_filter': int(source_rows_pre_filter),
             'source_after_filter': int(len(df)),
@@ -742,7 +762,8 @@ def main(argv=None):
         'wr_te_rf_final.pkl': wr_te_final,
         'wr_te_rf_calibrator.pkl': wr_te_calibrator,
         'wr_te_rf_feature_importance.csv': wr_te_importance,
-    }, manifest)
+    }, manifest, cache_bytes=None if args.from_cache else _csv_bytes(source_df),
+       cache_path=None if args.from_cache else source_path)
     print("Feature importance saved to models/ directory")
 
     print(f"\n{'='*60}\nWR/TE TRAINING COMPLETE - NEW MODEL READY\n{'='*60}")

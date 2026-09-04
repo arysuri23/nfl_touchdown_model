@@ -660,6 +660,14 @@ def get_ff_opportunity_data(years):
 
     return ff_opportunity_df
 
+
+def fill_numeric_missing(df):
+    """Fill missing numeric values while preserving missing text fields."""
+    result = df.copy()
+    numeric_columns = result.select_dtypes(include='number').columns
+    result[numeric_columns] = result[numeric_columns].fillna(0)
+    return result
+
 def get_all_historic_data(years, team_map):
     
     pbp = nfl.load_pbp(years)
@@ -756,7 +764,7 @@ def get_all_historic_data(years, team_map):
     nfl_df = pd.merge(nfl_df, game_id_df, on=['season', 'week', 'team'], how='left')
     nfl_df = pd.merge(nfl_df, game_info_df, on=['season', 'week', 'game_id'], how='left')
 
-    nfl_df.fillna(0, inplace=True)
+    nfl_df = fill_numeric_missing(nfl_df)
 
     nfl_df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
 
