@@ -28,7 +28,8 @@ def _load_fixture(name):
 def test_parse_event_odds_returns_six_rows():
     fixture = _load_fixture("event_odds_sample.json")
     rows = fetch_live_odds.parse_event_odds(
-        fixture, 2026, 1, "open", "2026-09-08T15:00:00Z"
+        fixture, 2026, 1, "open", "2026-09-08T15:00:00Z",
+        canonical_game_id="2026_01_BAL_KC",
     )
     assert len(rows) == 6
 
@@ -36,7 +37,8 @@ def test_parse_event_odds_returns_six_rows():
 def test_parse_event_odds_row_fields():
     fixture = _load_fixture("event_odds_sample.json")
     rows = fetch_live_odds.parse_event_odds(
-        fixture, 2026, 1, "open", "2026-09-08T15:00:00Z"
+        fixture, 2026, 1, "open", "2026-09-08T15:00:00Z",
+        canonical_game_id="2026_01_BAL_KC",
     )
 
     assert all(row["label"] == "Yes" for row in rows)
@@ -133,10 +135,13 @@ def _fake_load_schedules_factory(season):
     def fake_load_schedules(seasons):
         return pl.DataFrame(
             {
-                "season": [season, season, season],
-                "week": [1, 1, 2],
-                "game_type": ["REG", "REG", "REG"],
-                "gameday": ["2026-09-10", "2026-09-13", "2026-09-20"],
+                "season": [season, season],
+                "week": [1, 2],
+                "game_type": ["REG", "REG"],
+                "game_id": ["2026_01_BAL_KC", "2026_02_BUF_NYJ"],
+                "home_team": ["Kansas City Chiefs", "Buffalo Bills"],
+                "away_team": ["Baltimore Ravens", "New York Jets"],
+                "gameday": ["2026-09-13", "2026-09-20"],
             }
         )
 
@@ -150,18 +155,21 @@ def test_week_window_spans_min_to_max_plus_two_days():
         2026, 1, load_schedules=fake_load_schedules
     )
 
-    assert start == datetime(2026, 9, 10, tzinfo=timezone.utc)
+    assert start == datetime(2026, 9, 13, tzinfo=timezone.utc)
     assert end == datetime(2026, 9, 15, tzinfo=timezone.utc)
 
 
 def test_week_window_includes_late_monday_kickoff_but_not_adjacent_week():
     def fake_load_schedules(seasons):
         return pl.DataFrame(
-            {
-                "season": [2026] * 4,
-                "week": [1, 1, 1, 2],
-                "game_type": ["REG"] * 4,
-                "gameday": ["2026-09-10", "2026-09-13", "2026-09-14", "2026-09-17"],
+                {
+                    "season": [2026] * 4,
+                    "week": [1, 1, 1, 2],
+                    "game_type": ["REG"] * 4,
+                    "game_id": ["g1", "g2", "g3", "g4"],
+                    "home_team": ["A", "B", "C", "D"],
+                    "away_team": ["E", "F", "G", "H"],
+                    "gameday": ["2026-09-10", "2026-09-13", "2026-09-14", "2026-09-17"],
             }
         )
 
@@ -230,22 +238,7 @@ def test_fetch_writes_csv_with_expected_columns_and_rows(tmp_path, monkeypatch):
     )
 
     expected_columns = [
-        "game_id",
-        "commence_time",
-        "in_play",
-        "bookmaker",
-        "last_update",
-        "home_team",
-        "away_team",
-        "market",
-        "label",
-        "description",
-        "price",
-        "point",
-        "season",
-        "week",
-        "tag",
-        "fetched_at",
+        *fetch_live_odds.CSV_COLUMNS,
     ]
     assert list(df.columns) == expected_columns
     assert len(df) == 6
@@ -263,6 +256,23 @@ def test_fetch_writes_csv_with_expected_columns_and_rows(tmp_path, monkeypatch):
     assert odds_params["bookmakers"] == "draftkings,fanduel"
 
 
+def test_fetch_paid_calls_only_exact_requested_week_events(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    fake_get = _FakeGet()
+    future = {
+        "id": "future-event", "commence_time": "2026-09-20T17:00:00Z",
+        "home_team": "Buffalo Bills", "away_team": "New York Jets",
+    }
+    fake_get._responses[0]._payload = [*fake_get._responses[0]._payload, future]
+    fetch_live_odds.fetch(
+        2026, 1, "open", ["draftkings"], get=fake_get,
+        load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+    )
+    assert len(fake_get.calls) == 2
+    assert "/events/abc123/odds" in fake_get.calls[1][0]
+
+
 def test_fetch_writes_schedule_game_id_when_provider_event_id_differs(tmp_path, monkeypatch):
     monkeypatch.setenv("ODDS_API_KEY", "test-key")
     monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
@@ -270,6 +280,8 @@ def test_fetch_writes_schedule_game_id_when_provider_event_id_differs(tmp_path, 
     class _DifferentIdGet(_FakeGet):
         def __init__(self):
             super().__init__()
+            self._responses[0]._payload = [dict(self._responses[0]._payload[0])]
+            self._responses[0]._payload[0]["id"] = "provider-event-abc123"
             self._responses[1]._payload = dict(self._responses[1]._payload)
             self._responses[1]._payload["id"] = "provider-event-abc123"
 
@@ -315,25 +327,36 @@ def test_fetch_raises_runtime_error_when_api_key_unset(tmp_path, monkeypatch):
 
 def _valid_snapshot_frame(extra=False):
     row = {column: None for column in fetch_live_odds.CSV_COLUMNS}
-    row.update({"season": 2026, "week": 1, "tag": "open", "description": "Player One"})
+    row.update({
+        "game_id": "2026_01_BAL_KC", "provider_event_id": "abc123",
+        "commence_time": "2026-09-13T17:00:00Z", "in_play": False,
+        "bookmaker": "DraftKings", "bookmaker_key": "draftkings",
+        "last_update": "2026-09-13T12:00:00Z", "home_team": "Kansas City Chiefs",
+        "away_team": "Baltimore Ravens", "market": "player_anytime_td",
+        "label": "Yes", "description": "Player One", "price": -150,
+        "season": 2026, "week": 1, "tag": "open",
+        "fetched_at": "2026-09-13T15:00:00Z", "requested_bookmakers": "draftkings",
+        "expected_game_count": 1, "schema_version": fetch_live_odds.SCHEMA_VERSION,
+    })
     frame = pd.DataFrame([row], columns=fetch_live_odds.CSV_COLUMNS)
     if extra:
         frame["provider_extra"] = "kept"
     return frame
 
 
-def test_fetch_cache_hit_returns_csv_without_key_schedule_or_http(tmp_path, monkeypatch):
+def test_fetch_cache_hit_returns_csv_without_key_or_http(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
     path = config.odds_snapshot_path(2026, 1, "open")
     path.parent.mkdir(parents=True)
     _valid_snapshot_frame(extra=True).to_csv(path, index=False)
 
     def fail(*args, **kwargs):
-        raise AssertionError("cache hit must not resolve dependencies")
+        raise AssertionError("cache hit must not resolve credentials or HTTP")
 
     monkeypatch.setattr(config, "odds_api_key", fail)
     out = fetch_live_odds.fetch(
-        2026, 1, "open", ["draftkings"], get=fail, load_schedules=fail
+        2026, 1, "open", ["draftkings"], get=fail,
+        load_schedules=_fake_load_schedules_factory(2026),
     )
 
     assert len(out) == 1
@@ -359,19 +382,18 @@ def test_fetch_invalid_cache_fails_before_network(tmp_path, monkeypatch, content
         )
 
 
-def test_fetch_header_only_cache_is_valid_and_empty(tmp_path, monkeypatch):
+def test_fetch_header_only_cache_is_rejected(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
     path = config.odds_snapshot_path(2026, 1, "open")
     path.parent.mkdir(parents=True)
     path.write_text(",".join(fetch_live_odds.CSV_COLUMNS) + "\n")
 
-    out = fetch_live_odds.fetch(
-        2026, 1, "open", ["draftkings"],
-        get=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
-        load_schedules=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
-    )
-    assert out.empty
-    assert list(out.columns) == fetch_live_odds.CSV_COLUMNS
+    with pytest.raises(ValueError, match="header-only|empty"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"],
+            get=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
+            load_schedules=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
+        )
 
 
 @pytest.mark.parametrize(
@@ -433,7 +455,7 @@ def test_fetch_refresh_replaces_existing_snapshot(tmp_path, monkeypatch):
         load_schedules=_fake_load_schedules_factory(2026), refresh=True,
     )
 
-    assert len(out) == 6
+    assert len(out) == 3
     assert path.read_text().startswith(",".join(fetch_live_odds.CSV_COLUMNS))
     assert not list(path.parent.glob("*.tmp"))
 
@@ -516,6 +538,150 @@ def test_fetch_cli_forwards_refresh(monkeypatch):
     fetch_live_odds.main(["--season", "2026", "--week", "1", "--tag", "open", "--refresh"])
 
     assert calls == [((2026, 1, "open", ["draftkings"]), {"refresh": True})]
+
+
+def test_fetch_rejects_missing_schedule_fields_before_paid_call(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    calls = []
+
+    def fake_get(*args, **kwargs):
+        calls.append(args[0])
+        return _FakeResponse(_load_fixture("events_sample.json"))
+
+    def missing_game_id(seasons):
+        return pl.DataFrame({
+            "season": [2026], "week": [1], "game_type": ["REG"],
+            "gameday": ["2026-09-13"], "home_team": ["Kansas City Chiefs"],
+            "away_team": ["Baltimore Ravens"],
+        })
+
+    with pytest.raises(ValueError, match="game_id"):
+        fetch_live_odds.fetch(2026, 1, "open", ["draftkings"], get=fake_get,
+                              load_schedules=missing_game_id, refresh=True)
+    assert calls == []
+
+
+def test_fetch_requires_complete_week_mapping_before_paid_calls(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    calls = []
+
+    def fake_get(*args, **kwargs):
+        calls.append(args[0])
+        return _FakeResponse(_load_fixture("events_sample.json"))
+
+    def two_game_schedule(seasons):
+        return pl.DataFrame({
+            "season": [2026, 2026], "week": [1, 1], "game_type": ["REG", "REG"],
+            "game_id": ["2026_01_BAL_KC", "2026_01_BUF_NYJ"],
+            "home_team": ["Kansas City Chiefs", "Buffalo Bills"],
+            "away_team": ["Baltimore Ravens", "New York Jets"],
+            "gameday": ["2026-09-13", "2026-09-13"],
+        })
+
+    with pytest.raises(ValueError, match="every scheduled game"):
+        fetch_live_odds.fetch(2026, 1, "open", ["draftkings"], get=fake_get,
+                              load_schedules=two_game_schedule, refresh=True)
+    assert calls == [fetch_live_odds.EVENTS_URL]
+
+
+def test_fetch_rejects_duplicate_provider_event_for_one_game_before_paid_call(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    calls = []
+    events = _load_fixture("events_sample.json")
+    events.append(dict(events[0]))
+
+    def fake_get(url, params=None):
+        calls.append(url)
+        return _FakeResponse(events)
+
+    with pytest.raises(ValueError, match="multiple provider events"):
+        fetch_live_odds.fetch(2026, 1, "open", ["draftkings"], get=fake_get,
+                              load_schedules=_fake_load_schedules_factory(2026),
+                              refresh=True)
+    assert calls == [fetch_live_odds.EVENTS_URL]
+
+
+def test_parse_event_odds_rejects_malformed_intended_yes_quote():
+    fixture = _load_fixture("event_odds_sample.json")
+    fixture["bookmakers"][0]["markets"][0]["outcomes"][0]["price"] = 99
+    with pytest.raises(ValueError, match="American price"):
+        fetch_live_odds.parse_event_odds(
+            fixture, 2026, 1, "open", "2026-09-08T15:00:00Z",
+            canonical_game_id="2026_01_BAL_KC",
+        )
+
+
+def test_parse_event_odds_rejects_malformed_pregame_timestamp():
+    fixture = _load_fixture("event_odds_sample.json")
+    fixture["bookmakers"][0]["markets"][0]["last_update"] = "not-a-timestamp"
+    with pytest.raises(ValueError, match="timestamp"):
+        fetch_live_odds.parse_event_odds(
+            fixture, 2026, 1, "open", "2026-09-08T15:00:00Z",
+            canonical_game_id="2026_01_BAL_KC",
+        )
+
+
+def test_fetch_rejects_paid_response_identity_mismatch_before_publish(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    original = "existing snapshot bytes"
+    path.write_text(original)
+    fake_get = _FakeGet()
+    fake_get._responses[1]._payload = dict(fake_get._responses[1]._payload)
+    fake_get._responses[1]._payload["away_team"] = "New York Jets"
+    with pytest.raises(ValueError, match="matchup"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fake_get,
+            load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+        )
+    assert path.read_text() == original
+
+
+def test_fetch_rejects_empty_or_duplicate_bookmakers_before_dependencies(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    for bookmakers in ([], ["draftkings", " draftkings "]):
+        with pytest.raises(ValueError, match="bookmaker"):
+            fetch_live_odds.fetch(2026, 1, "open", bookmakers,
+                                  get=lambda *a, **k: pytest.fail("HTTP called"),
+                                  load_schedules=lambda *a, **k: pytest.fail("schedule called"),
+                                  refresh=True)
+
+
+def test_header_only_cache_is_rejected_without_dependencies(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    path.write_text(",".join(fetch_live_odds.CSV_COLUMNS) + "\n")
+    with pytest.raises(ValueError, match="header-only|empty"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"],
+            get=lambda *a, **k: pytest.fail("HTTP called"),
+            load_schedules=lambda *a, **k: pytest.fail("schedule called"),
+        )
+
+
+def test_canary_fetches_one_event_without_publishing_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    original = "canonical snapshot bytes"
+    path.write_text(original)
+    fake_get = _FakeGet()
+    out = fetch_live_odds.fetch(
+        2026, 1, "open", ["draftkings"], get=fake_get,
+        load_schedules=_fake_load_schedules_factory(2026), canary_one_event=True,
+    )
+    assert len(fake_get.calls) == 2
+    assert len(out) > 0
+    assert path.read_text() == original
 
 
 # ---------------------------------------------------------------------------

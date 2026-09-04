@@ -32,6 +32,12 @@ run from `wr_te/`.
    ```
    A valid `vegas/<season>/week_<week>_td_odds_open.csv` is reused without
    spending credits. To intentionally replace it, pass `--refresh`.
+   The collector preflights only the exact requested regular-season week,
+   maps every scheduled nflverse game to one provider event, and reuses a
+   cache only when its game, bookmaker, metadata, and pregame-quote
+   attestations match the request. To validate one deterministic event
+   without changing the canonical CSV, run with `--canary-one-event` (it
+   cannot be combined with `--refresh`).
 2. **Train** (first week of the season, and every 4 weeks thereafter; add
    `--tune` only when changing the feature list -- it re-runs
    `RandomizedSearchCV` and overwrites the saved hyperparameters)
