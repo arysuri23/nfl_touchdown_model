@@ -76,6 +76,15 @@ def _resolve_cache_path(cache_path):
     return candidate
 
 
+def _logical_path(path):
+    """Return a stable path relative to the wr_te project root."""
+    base = config.BASE_DIR.resolve()
+    resolved = Path(path).resolve()
+    if resolved == base or base not in resolved.parents:
+        raise ValueError(f"path must be beneath config.BASE_DIR: {path}")
+    return resolved.relative_to(base).as_posix()
+
+
 def _validate_training_cache(df, seasons):
     """Validate the bounded pre-fit cache contract for the requested seasons."""
     missing = sorted(RAW_REQUIRED_COLUMNS - set(df.columns))
@@ -682,7 +691,7 @@ def main(argv=None):
     manifest = {
         'source': {
             'mode': 'cache' if args.from_cache else 'network',
-            'path': str(source_path),
+            'path': _logical_path(source_path),
             'sha256': source_hash,
         },
         'configured_seasons': list(config.TRAIN_SEASONS),
@@ -712,7 +721,7 @@ def main(argv=None):
         },
         'rf': {
             'params': wr_te_params,
-            'params_path': str(params_path),
+            'params_path': _logical_path(params_path),
             'params_sha256': _canonical_hash(wr_te_params),
             'params_file_sha256': params_hash,
             'seed': 42,
@@ -722,7 +731,7 @@ def main(argv=None):
             'oob_rows': int(np.isfinite(wr_te_final.oob_decision_function_[:, 1]).sum()),
         },
         'production_variant': 'random_forest_current/raw',
-        'calibrator_role': 'diagnostic',
+        'calibrator_role': 'diagnostic_only',
         'package_versions': _package_versions(),
         'source_file_hashes': {
             name: _sha256_file(Path(__file__).with_name(name))

@@ -192,13 +192,20 @@ def test_manifest_artifact_hashes_match_published_files(tmp_path):
         "wr_te_rf_calibrator.pkl": {"calibrator": 1},
         "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["x"]}),
     }
-    manifest = {"production_variant": "random_forest_current/raw"}
+    manifest = {"production_variant": "random_forest_current/raw", "calibrator_role": "diagnostic_only"}
 
     train_wr._publish_training_artifacts(tmp_path, artifacts, manifest)
 
     published = json.loads((tmp_path / "wr_te_rf_manifest.json").read_text())
+    assert published["calibrator_role"] == "diagnostic_only"
     for name, digest in published["artifact_hashes"].items():
         assert digest == train_wr._sha256_file(tmp_path / name)
+
+
+def test_manifest_logical_paths_are_stable_and_relative():
+    assert train_wr._logical_path(train_wr.config.DATA_DIR / "raw_nfl_data.csv") == "data/raw_nfl_data.csv"
+    assert train_wr._logical_path(train_wr.config.MODELS_DIR / "wr_te_rf_best_params.json") == "models/wr_te_rf_best_params.json"
+    assert not train_wr._logical_path(train_wr.config.DATA_DIR / "raw_nfl_data.csv").startswith("/")
 
 
 def test_atomic_publication_rolls_back_all_known_outputs_on_replacement_failure(tmp_path, monkeypatch):
