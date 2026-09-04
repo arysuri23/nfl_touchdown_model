@@ -72,6 +72,9 @@ def transform_features(df):
 
 
 ### ROSTER LOADING ###
+ROSTER_TEAM_ALIASES = {'AZ': 'ARI', 'LAR': 'LA', 'LVR': 'LV'}
+
+
 def load_week_roster(season, week, load_rosters_weekly=nfl.load_rosters_weekly, load_rosters=nfl.load_rosters):
     """Returns the active WR/TE roster for a single season/week.
 
@@ -95,6 +98,10 @@ def load_week_roster(season, week, load_rosters_weekly=nfl.load_rosters_weekly, 
         if hasattr(df, 'to_pandas'):
             df = df.to_pandas()
 
+    # Normalize the roster provider's legacy franchise codes before the
+    # active-player filter and downstream feature/odds joins.
+    df = df.copy()
+    df['team'] = df['team'].replace(ROSTER_TEAM_ALIASES)
     df = df[(df['status'] == 'ACT') & (df['position'].isin(['WR', 'TE']))].copy()
     df = df.rename(columns={'gsis_id': 'player_id', 'full_name': 'player_display_name'})
     df = df[['player_id', 'player_display_name', 'position', 'team']]

@@ -36,6 +36,23 @@ def test_load_week_roster_falls_back_to_season_roster_on_valueerror():
     assert list(out.columns) == ["player_id", "player_display_name", "position", "team"]
 
 
+@pytest.mark.parametrize("source_code, expected_code", [("AZ", "ARI"), ("LAR", "LA"), ("LVR", "LV"), ("NYJ", "NYJ")])
+def test_load_week_roster_normalizes_evidenced_team_aliases_at_boundary(source_code, expected_code):
+    def season_roster(_seasons):
+        return pd.DataFrame([{
+            "gsis_id": "P1", "full_name": "Player One", "position": "WR",
+            "team": source_code, "status": "ACT",
+        }])
+
+    out = predict_wr.load_week_roster(
+        2026, 1,
+        load_rosters_weekly=_raises_valueerror,
+        load_rosters=season_roster,
+    )
+
+    assert out.iloc[0]["team"] == expected_code
+
+
 def _weekly_roster_fake(seasons):
     return pd.DataFrame([
         {"gsis_id": "P1", "full_name": "Player One", "position": "WR", "team": "A", "status": "ACT", "week": 1},
