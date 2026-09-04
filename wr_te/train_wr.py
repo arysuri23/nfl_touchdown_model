@@ -130,8 +130,10 @@ def calibration_report(y_true, p):
     y_true = np.asarray(y_true)
     p = np.asarray(p)
 
+    if len(y_true) != len(p):
+        raise ValueError("y_true and p must have the same length")
     if len(p) == 0:
-        return {'brier': 0.0, 'log_loss': 0.0, 'ece': 0.0}
+        return {'brier': np.nan, 'log_loss': np.nan, 'ece': None}
 
     brier = brier_score_loss(y_true, p)
     logloss = log_loss(y_true, p)

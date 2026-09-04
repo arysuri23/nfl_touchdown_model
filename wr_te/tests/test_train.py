@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -7,6 +8,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 import train_wr
 import config
+import evaluation
 
 
 # --- chronological ---
@@ -102,9 +104,20 @@ def test_calibration_report_uses_weighted_fixed_probability_bins():
 
 
 def test_calibration_report_handles_empty_input_before_sklearn_metrics():
+    empty = pd.DataFrame({
+        "probability": [],
+        "scored_touchdown": [],
+        "season": [],
+        "week": [],
+    })
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        expected = evaluation._metric_values(empty)
     report = train_wr.calibration_report(np.array([]), np.array([]))
 
-    assert report == {"brier": 0.0, "log_loss": 0.0, "ece": 0.0}
+    assert np.isnan(report["brier"]) == np.isnan(expected["brier"])
+    assert np.isnan(report["log_loss"]) == np.isnan(expected["log_loss"])
+    assert report["ece"] is expected["ece"]
 
 
 def test_calibration_report_assigns_exact_probability_boundaries_to_evaluator_bins():
