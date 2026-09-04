@@ -249,10 +249,12 @@ def _validate_cached_snapshot(
         raise ValueError("Odds snapshot has blank provider event IDs")
     if cached["bookmaker_key"].map(_nonblank).eq(False).any():
         raise ValueError("Odds snapshot has blank bookmaker keys")
-    provider_mapping = cached.groupby("provider_event_id")["game_id"].nunique()
+    provider_ids = cached["provider_event_id"].astype(str).str.strip()
+    normalized_cache = cached.assign(_normalized_provider_event_id=provider_ids)
+    provider_mapping = normalized_cache.groupby("_normalized_provider_event_id")["game_id"].nunique()
     if provider_mapping.gt(1).any():
         raise ValueError("Odds snapshot provider events map to multiple canonical games")
-    canonical_provider_counts = cached.groupby("game_id")["provider_event_id"].nunique()
+    canonical_provider_counts = normalized_cache.groupby("game_id")["_normalized_provider_event_id"].nunique()
     if canonical_provider_counts.ne(1).any():
         raise ValueError("Odds snapshot canonical games map to multiple provider events")
     if set(cached["bookmaker_key"].astype(str)) != set(requested_bookmakers):
@@ -280,7 +282,7 @@ def select_week_events(
     """Keep in-window events, optionally requiring a scheduled matchup."""
     selected = []
     for event in events:
-        if not isinstance(event, dict) or not _nonblank(event.get("id")):
+        if not isinstance(event, dict):
             continue
         if scheduled_matchups:
             if not _nonblank(event.get("home_team")) or not _nonblank(event.get("away_team")):
@@ -290,6 +292,8 @@ def select_week_events(
             )
             if matchup not in scheduled_matchups:
                 continue
+        elif not _nonblank(event.get("id")):
+            continue
         commence_dt = _parse_commence_time(event.get("commence_time"))
         if not window_start <= commence_dt < window_end:
             continue
@@ -315,6 +319,8 @@ def _build_match_plan(
     by_provider = {}
     for event in selected:
         provider_id = str(event["id"]).strip()
+        if not provider_id:
+            raise ValueError("provider event ID must be nonblank")
         canonical_id = scheduled_ids[_matchup_key(event["home_team"], event["away_team"], team_map)]
         if provider_id in by_provider:
             raise ValueError("multiple provider events or duplicate provider event IDs are not allowed")
