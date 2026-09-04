@@ -130,28 +130,28 @@ def calibration_report(y_true, p):
     y_true = np.asarray(y_true)
     p = np.asarray(p)
 
+    if len(p) == 0:
+        return {'brier': 0.0, 'log_loss': 0.0, 'ece': 0.0}
+
     brier = brier_score_loss(y_true, p)
     logloss = log_loss(y_true, p)
 
-    if len(p) == 0:
-        ece = 0.0
-    else:
-        # Match evaluation._calibration_bins: [0,.1), ..., [.9,1.0], with
-        # probabilities of exactly 1.0 assigned to the final bin.
-        bin_ids = np.minimum((p * 10).astype(int), 9)
-        ece = 0.0
-        for bin_idx in range(10):
-            bin_mask = bin_ids == bin_idx
-            count = int(bin_mask.sum())
-            if count:
-                gap = abs(p[bin_mask].mean() - y_true[bin_mask].mean())
-                ece += count / len(p) * gap
+    # Match evaluation._calibration_bins: [0,.1), ..., [.9,1.0], with
+    # probabilities of exactly 1.0 assigned to the final bin.
+    bin_ids = np.minimum((p * 10).astype(int), 9)
+    ece = 0.0
+    for bin_idx in range(10):
+        bin_mask = bin_ids == bin_idx
+        count = int(bin_mask.sum())
+        if count:
+            gap = abs(p[bin_mask].mean() - y_true[bin_mask].mean())
+            ece += count / len(p) * gap
 
     return {'brier': brier, 'log_loss': logloss, 'ece': ece}
 
 
 def deployed_calibration_reports(y_true, oob_proba, calibrator):
-    """Report raw and calibrated metrics for the deployed forest's OOB rows."""
+    """Report raw and Platt metrics as diagnostics for the production forest's OOB rows."""
     raw_proba = np.asarray(oob_proba)
     calibrated_proba = calibrator.predict_proba(raw_proba.reshape(-1, 1))[:, 1]
     return {
@@ -451,8 +451,8 @@ def main():
     print(f"✓ Data quality verified: {len(df)} rows, no NaNs, binary target")
 
     # Informational train/validation split (2020-2022 -> 2023). This is NOT
-    # the deployed model — the deployed model is retrained on all rows below
-    # and calibrated on its own OOB predictions.
+    # the deployed model — the deployed raw forest is retrained on all rows
+    # below; Platt scaling is retained only as a diagnostic.
     train_df = df[df['season'] < config.VALIDATION_SEASON].copy()
     val_df = df[df['season'] == config.VALIDATION_SEASON].copy()
 
@@ -497,7 +497,7 @@ def main():
     print(f"  Total training rows: {len(X_all_wr_te)}")
     print(f"  {latest_season} rows: {len(all_data_df[all_data_df['season'] == latest_season])}")
 
-    # Enable OOB score to get out-of-sample estimates for calibration
+    # Enable OOB score for the diagnostic calibrator fit and metrics.
     wr_te_final = RandomForestClassifier(**wr_te_params, oob_score=True, random_state=42, class_weight=None, n_jobs=-1)
     wr_te_final.fit(X_all_wr_te, y_all_wr_te)
     print("✓ WR/TE retraining complete")
@@ -506,8 +506,8 @@ def main():
     # informational validation forest trained above.
     wr_te_importance = feature_importance_table(wr_te_final, WR_TE_FEATURES)
 
-    # --- Calibrate the deployed model on its own OOB predictions ---
-    print(f"\n{'='*60}\nCALIBRATING DEPLOYED MODEL (PLATT ON OOB PREDICTIONS)\n{'='*60}")
+    # --- Fit a diagnostic Platt calibrator on the deployed model's OOB predictions ---
+    print(f"\n{'='*60}\nFITTING DIAGNOSTIC PLATT CALIBRATOR (RAW RF REMAINS PRODUCTION)\n{'='*60}")
 
     mask = all_data_df['season'] == all_data_df['season'].max()
     wr_te_calibrator = fit_calibrator_oob(wr_te_final, y_all_wr_te, mask)
@@ -516,9 +516,9 @@ def main():
     calibration_reports = deployed_calibration_reports(
         np.asarray(y_all_wr_te)[candidate], oob_proba[candidate], wr_te_calibrator
     )
-    print("Raw deployed-forest OOB calibration metrics (calibrator-fit-set diagnostic; not held-out)")
+    print("Raw RF OOB calibration metrics (diagnostic only; not held-out; production: random_forest_current/raw)")
     print(calibration_reports['raw'])
-    print("Calibrated deployed-forest OOB calibration metrics (calibrator-fit-set diagnostic; not held-out)")
+    print("Platt-calibrated OOB metrics (diagnostic only; not held-out; production remains random_forest_current/raw)")
     print(calibration_reports['calibrated'])
 
     # --- Save Models ---
@@ -541,7 +541,7 @@ def main():
     print(f"\n{'='*60}\nWR/TE TRAINING COMPLETE - NEW MODEL READY\n{'='*60}")
     print("\n✅ Models saved:")
     print("  - models/wr_te_rf_final.pkl")
-    print("  - models/wr_te_rf_calibrator.pkl")
+    print("  - models/wr_te_rf_calibrator.pkl (diagnostic only; not used in production)")
     print("  - models/wr_te_rf_best_params.json")
     print("  - models/wr_te_rf_feature_importance.csv")
 
@@ -549,7 +549,7 @@ def main():
     print(f"Position: WR/TE")
     print(f"[informational] Validation Set ({config.VALIDATION_SEASON}) Precision@5: {wr_te_precision:.3f}")
     print(f"Training Data: {train_years[0]}-{train_years[-1]}")
-    print(f"Calibration: Platt scaling on OOB predictions ({latest_season} rows)")
+    print(f"Calibration diagnostic: Platt scaling on OOB predictions ({latest_season} rows); production: random_forest_current/raw")
 
     print(f"\n{'='*60}\nTRAINING TIME SUMMARY\n{'='*60}")
     print(f"WR/TE model:  {wr_te_training_time/60:.1f} minutes ({wr_te_training_time:.0f} seconds)")
@@ -558,10 +558,11 @@ def main():
     print(f"🎯 NEXT STEPS FOR {config.SEASON} WEEK {config.WEEK}")
     print("="*60)
     print(f"  1. ✅ Model retrained on {train_years[0]}-{train_years[-1]}")
-    print("  2. ✅ Calibrator fitted on OOB predictions of the deployed forest")
-    print("  3. 📊 Run predict_wr.py for weekly predictions")
-    print("  4. 📒 Record picks with ledger.py using a named Phase 0 strategy")
-    print("  5. 📈 Track weekly: hit rate, edge, calibration, and ROI")
+    print("  2. ✅ Diagnostic Platt calibrator fitted on OOB predictions")
+    print("  3. ✅ Production output: raw RF (random_forest_current/raw)")
+    print("  4. 📊 Run predict_wr.py for weekly predictions")
+    print("  5. 📒 Record picks with ledger.py using a named Phase 0 strategy")
+    print("  6. 📈 Track weekly: hit rate, edge, calibration, and ROI")
 
 
 if __name__ == '__main__':

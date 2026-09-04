@@ -101,6 +101,22 @@ def test_calibration_report_uses_weighted_fixed_probability_bins():
     assert report["ece"] == pytest.approx(0.25)
 
 
+def test_calibration_report_handles_empty_input_before_sklearn_metrics():
+    report = train_wr.calibration_report(np.array([]), np.array([]))
+
+    assert report == {"brier": 0.0, "log_loss": 0.0, "ece": 0.0}
+
+
+def test_calibration_report_assigns_exact_probability_boundaries_to_evaluator_bins():
+    # The 0.0 and 0.1 rows must be separate bins; 1.0 belongs to the final bin.
+    y = np.array([0, 0, 1])
+    p = np.array([0.0, 0.1, 1.0])
+
+    report = train_wr.calibration_report(y, p)
+
+    assert report["ece"] == pytest.approx(0.1 / 3)
+
+
 # --- train_rf_model ---
 
 def test_train_rf_model_with_saved_params_skips_randomized_search(tmp_path, monkeypatch):
