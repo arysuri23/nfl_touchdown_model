@@ -318,9 +318,10 @@ def _build_match_plan(
     by_game = {}
     by_provider = {}
     for event in selected:
-        provider_id = str(event["id"]).strip()
-        if not provider_id:
+        raw_provider_id = event.get("id")
+        if not _nonblank(raw_provider_id):
             raise ValueError("provider event ID must be nonblank")
+        provider_id = str(raw_provider_id).strip()
         canonical_id = scheduled_ids[_matchup_key(event["home_team"], event["away_team"], team_map)]
         if provider_id in by_provider:
             raise ValueError("multiple provider events or duplicate provider event IDs are not allowed")

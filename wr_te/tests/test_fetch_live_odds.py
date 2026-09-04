@@ -631,6 +631,29 @@ def test_fetch_rejects_blank_provider_id_on_matched_exact_week_event_before_paid
     assert calls == [fetch_live_odds.EVENTS_URL]
 
 
+def test_fetch_rejects_null_provider_id_on_matched_exact_week_event_before_paid_call(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    calls = []
+    events = _load_fixture("events_sample.json")
+    null_id_event = dict(events[0])
+    null_id_event["id"] = None
+    events.append(null_id_event)
+
+    def fake_get(url, params=None):
+        calls.append(url)
+        return _FakeResponse(events)
+
+    with pytest.raises(ValueError, match="provider event ID"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fake_get,
+            load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+        )
+    assert calls == [fetch_live_odds.EVENTS_URL]
+
+
 def test_fetch_rejects_provider_id_conflicting_across_games_before_paid_call(
     tmp_path, monkeypatch
 ):
