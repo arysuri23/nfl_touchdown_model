@@ -45,8 +45,10 @@ def test_validation_season(monkeypatch):
     assert config.VALIDATION_SEASON == 2023
 
 
-def test_odds_api_key_missing_raises(monkeypatch):
+def test_odds_api_key_missing_raises(tmp_path, monkeypatch):
     monkeypatch.delenv("ODDS_API_KEY", raising=False)
+    # Keep this test independent of any developer machine credential file.
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
     with pytest.raises(RuntimeError, match="ODDS_API_KEY"):
         config.odds_api_key()
 

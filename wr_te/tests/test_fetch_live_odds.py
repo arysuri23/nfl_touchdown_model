@@ -299,11 +299,18 @@ def test_fetch_writes_schedule_game_id_when_provider_event_id_differs(tmp_path, 
     assert "provider-event-abc123" not in set(out["game_id"])
 
 
-def test_fetch_raises_runtime_error_when_api_key_unset(monkeypatch):
+def test_fetch_raises_runtime_error_when_api_key_unset(tmp_path, monkeypatch):
     monkeypatch.delenv("ODDS_API_KEY", raising=False)
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path / "vegas")
+
+    def fail(*args, **kwargs):
+        raise AssertionError("missing key must fail before schedule/API access")
 
     with pytest.raises(RuntimeError, match="ODDS_API_KEY"):
-        fetch_live_odds.fetch(2026, 1, "open", ["draftkings"])
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fail, load_schedules=fail
+        )
 
 
 def _valid_snapshot_frame(extra=False):
@@ -367,6 +374,52 @@ def test_fetch_header_only_cache_is_valid_and_empty(tmp_path, monkeypatch):
     assert list(out.columns) == fetch_live_odds.CSV_COLUMNS
 
 
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        {"season": 2025, "week": 1, "tag": "open"},
+        {"season": 2026, "week": 2, "tag": "open"},
+        {"season": 2026, "week": 1, "tag": "close"},
+        {"season": "not-a-season", "week": 1, "tag": "open"},
+        {"season": 2026, "week": None, "tag": "open"},
+    ],
+)
+def test_fetch_rejects_nonmatching_or_invalid_cache_metadata_before_dependencies(
+    tmp_path, monkeypatch, metadata
+):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    _valid_snapshot_frame().assign(**metadata).to_csv(path, index=False)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("invalid cache must not resolve dependencies")
+
+    with pytest.raises(ValueError, match="season|week|tag"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fail, load_schedules=fail
+        )
+
+
+def test_fetch_rejects_mixed_cache_metadata_before_dependencies(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    cached = pd.concat(
+        [_valid_snapshot_frame(), _valid_snapshot_frame().assign(week=2)],
+        ignore_index=True,
+    )
+    cached.to_csv(path, index=False)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("invalid cache must not resolve dependencies")
+
+    with pytest.raises(ValueError, match="week"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fail, load_schedules=fail
+        )
+
+
 def test_fetch_refresh_replaces_existing_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("ODDS_API_KEY", "test-key")
     monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
@@ -399,6 +452,54 @@ def test_fetch_refresh_failure_preserves_existing_bytes_and_cleans_temp(tmp_path
     with pytest.raises(RuntimeError, match="simulated API failure"):
         fetch_live_odds.fetch(
             2026, 1, "open", ["draftkings"], get=failing_get,
+            load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+        )
+    assert path.read_text() == original
+    assert not list(path.parent.glob("*.tmp"))
+
+
+def test_fetch_refresh_to_csv_failure_preserves_existing_bytes_and_cleans_temp(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    original = ",".join(fetch_live_odds.CSV_COLUMNS) + "\nold\n"
+    path.write_text(original)
+
+    def fail_to_csv(*args, **kwargs):
+        raise RuntimeError("simulated serialization failure")
+
+    monkeypatch.setattr(pd.DataFrame, "to_csv", fail_to_csv)
+
+    with pytest.raises(RuntimeError, match="serialization failure"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=_FakeGet(),
+            load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+        )
+    assert path.read_text() == original
+    assert not list(path.parent.glob("*.tmp"))
+
+
+def test_fetch_refresh_replace_failure_preserves_existing_bytes_and_cleans_temp(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    original = ",".join(fetch_live_odds.CSV_COLUMNS) + "\nold\n"
+    path.write_text(original)
+
+    def fail_replace(*args, **kwargs):
+        raise RuntimeError("simulated replace failure")
+
+    monkeypatch.setattr(fetch_live_odds.os, "replace", fail_replace)
+
+    with pytest.raises(RuntimeError, match="replace failure"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=_FakeGet(),
             load_schedules=_fake_load_schedules_factory(2026), refresh=True,
         )
     assert path.read_text() == original

@@ -139,7 +139,9 @@ def _load_team_map() -> dict:
     return dict(zip(teams["team_name"], teams["team_id"]))
 
 
-def _load_cached_snapshot(out_path) -> pd.DataFrame | None:
+def _load_cached_snapshot(
+    out_path, expected_season: int, expected_week: int, expected_tag: str
+) -> pd.DataFrame | None:
     """Read and validate an existing snapshot, or return None when absent."""
     if not out_path.exists():
         return None
@@ -162,6 +164,31 @@ def _load_cached_snapshot(out_path) -> pd.DataFrame | None:
             f"Odds snapshot {out_path} is missing required columns: {', '.join(missing)}. "
             "Remove it or request a refresh."
         )
+
+    # A header-only snapshot is a valid empty result.  For a populated cache,
+    # metadata must identify exactly the request that selected this path; this
+    # prevents a stale or mixed-week file from being silently reused.
+    if not cached.empty:
+        for column, expected in (
+            ("season", expected_season),
+            ("week", expected_week),
+        ):
+            values = pd.to_numeric(cached[column], errors="coerce")
+            if values.isna().any():
+                raise ValueError(
+                    f"Odds snapshot {out_path} has null or non-numeric {column} metadata."
+                )
+            if not values.eq(expected).all():
+                raise ValueError(
+                    f"Odds snapshot {out_path} has {column} metadata that does not "
+                    f"match requested {column}={expected}."
+                )
+
+        if cached["tag"].isna().any() or not cached["tag"].eq(expected_tag).all():
+            raise ValueError(
+                f"Odds snapshot {out_path} has tag metadata that does not match "
+                f"requested tag={expected_tag}."
+            )
     return cached
 
 
@@ -256,7 +283,7 @@ def fetch(
     """
     out_path = config.odds_snapshot_path(season, week, tag)
     if not refresh:
-        cached = _load_cached_snapshot(out_path)
+        cached = _load_cached_snapshot(out_path, season, week, tag)
         if cached is not None:
             return cached
 
