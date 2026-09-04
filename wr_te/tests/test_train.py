@@ -1,5 +1,7 @@
+import io
 import json
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -9,6 +11,73 @@ from sklearn.ensemble import RandomForestClassifier
 import train_wr
 import config
 import evaluation
+
+
+def _orchestration_source(seasons=(2025, 2026)):
+    rows = []
+    for season, positions in ((seasons[0], ["WR", "TE"]), (seasons[1], ["WR"])):
+        for index, position in enumerate(positions):
+            row = {column: 0 for column in train_wr.RAW_REQUIRED_COLUMNS}
+            row.update({
+                "season": season,
+                "week": 1,
+                "player_id": f"{season}-{index}",
+                "player_display_name": f"Player {season}-{index}",
+                "position": position,
+                "team": "A",
+                "opponent_team": "B",
+                "scored_touchdown": index % 2,
+            })
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def _old_bundle(models_dir, cache_path):
+    names = [
+        "wr_te_rf_final.pkl",
+        "wr_te_rf_calibrator.pkl",
+        "wr_te_rf_feature_importance.csv",
+        "wr_te_rf_manifest.json",
+    ]
+    old = {}
+    models_dir.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        path = models_dir / name
+        old[path] = f"old-{name}".encode()
+        path.write_bytes(old[path])
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    old[cache_path] = b"old-cache-bytes"
+    cache_path.write_bytes(old[cache_path])
+    return old
+
+
+def _patch_main_seams(monkeypatch, tmp_path, source, trainer):
+    data_dir = tmp_path / "data"
+    models_dir = tmp_path / "models"
+    data_dir.mkdir()
+    models_dir.mkdir()
+    pd.DataFrame({"team_name": [], "team_id": []}).to_csv(data_dir / "nfl_teams.csv", index=False)
+    monkeypatch.setattr(train_wr.config, "DATA_DIR", data_dir)
+    monkeypatch.setattr(train_wr.config, "MODELS_DIR", models_dir)
+    monkeypatch.setattr(train_wr.config, "TRAIN_SEASONS", [2025])
+    monkeypatch.setattr(train_wr.config, "DATA_SEASONS", [2025, 2026])
+    monkeypatch.setattr(train_wr.config, "SEASON", 2026)
+    monkeypatch.setattr(train_wr.config, "VALIDATION_SEASON", 2025)
+    monkeypatch.setattr(train_wr, "_logical_path", lambda path: Path(path).name)
+    params = {"n_estimators": 2, "max_depth": 2}
+    (models_dir / "wr_te_rf_best_params.json").write_text(json.dumps(params))
+    monkeypatch.setattr(
+        train_wr, "_load_training_data",
+        lambda *_args: (source, train_wr._sha256_bytes(train_wr._csv_bytes(source)), str(data_dir / "raw_nfl_data.csv")),
+    )
+    monkeypatch.setattr(train_wr, "feature_engineering", lambda frame: frame.assign(**{
+        name: 0.0 for name in train_wr.WR_TE_FEATURES if name not in frame.columns
+    }))
+    monkeypatch.setattr(train_wr, "evaluate_rf_model", lambda *args, **kwargs: (
+        pd.DataFrame({"feature": ["x"], "importance": [1.0], "importance_pct": [100.0]}), 0.5
+    ))
+    monkeypatch.setattr(train_wr, "train_rf_model", trainer)
+    return data_dir, models_dir, data_dir / "raw_nfl_data.csv"
 
 
 # --- chronological ---
@@ -329,6 +398,165 @@ def test_network_publication_keeps_full_source_but_validates_prior_seasons_for_t
     assert manifest["source"]["sha256"] == train_wr._sha256_file(cache)
     assert manifest["source"]["count"] == len(source)
     assert set(training["season"]) == {2020}
+
+
+def test_main_validation_failure_after_collection_preserves_prior_bundle(tmp_path, monkeypatch):
+    source = _orchestration_source(seasons=(2024, 2026))
+    publisher_calls = []
+    _data_dir, models_dir, cache_path = _patch_main_seams(
+        monkeypatch, tmp_path, source, lambda *args, **kwargs: pytest.fail("trainer called")
+    )
+    old = _old_bundle(models_dir, cache_path)
+    monkeypatch.setattr(train_wr, "_publish_training_artifacts", lambda *args, **kwargs: publisher_calls.append(args))
+
+    with pytest.raises(ValueError, match="exactly match"):
+        train_wr.main([])
+
+    assert publisher_calls == []
+    for path, expected in old.items():
+        assert path.read_bytes() == expected
+
+
+def test_main_training_failure_after_collection_preserves_prior_bundle(tmp_path, monkeypatch):
+    source = _orchestration_source()
+    publisher_calls = []
+    _data_dir, models_dir, cache_path = _patch_main_seams(
+        monkeypatch, tmp_path, source,
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("injected training failure")),
+    )
+    old = _old_bundle(models_dir, cache_path)
+    monkeypatch.setattr(train_wr, "_publish_training_artifacts", lambda *args, **kwargs: publisher_calls.append(args))
+
+    with pytest.raises(RuntimeError, match="injected training failure"):
+        train_wr.main([])
+
+    assert publisher_calls == []
+    for path, expected in old.items():
+        assert path.read_bytes() == expected
+
+
+def test_main_network_success_captures_full_cache_and_prior_season_fit(tmp_path, monkeypatch):
+    source = _orchestration_source()
+    fit_rows = []
+    engineered_rows = []
+
+    class FakeForest:
+        def __init__(self, **kwargs):
+            self.feature_importances_ = np.ones(len(train_wr.WR_TE_FEATURES))
+            self.n_features_in_ = len(train_wr.WR_TE_FEATURES)
+
+        def fit(self, X, y):
+            fit_rows.append(pd.DataFrame(X).copy())
+            self.oob_decision_function_ = np.tile([[0.8, 0.2]], (len(X), 1))
+            return self
+
+    publisher = {}
+    _data_dir, models_dir, cache_path = _patch_main_seams(
+        monkeypatch, tmp_path, source,
+        lambda X, y, position_name, use_saved_params=False: (
+            FakeForest(), {"n_estimators": 2, "max_depth": 2}, 0.0
+        ),
+    )
+    monkeypatch.setattr(train_wr, "feature_engineering", lambda frame: (
+        engineered_rows.append(frame.copy())
+        or frame.assign(**{
+            name: 0.0 for name in train_wr.WR_TE_FEATURES if name not in frame.columns
+        })
+    ))
+    monkeypatch.setattr(train_wr, "RandomForestClassifier", FakeForest)
+    monkeypatch.setattr(train_wr, "fit_calibrator_oob", lambda *args, **kwargs: object())
+    monkeypatch.setattr(
+        train_wr, "_oob_calibration_rows",
+        lambda model, mask=None, fallback=False: (np.full(len(source[source.season == 2025]), 0.2), np.ones(len(source[source.season == 2025]), dtype=bool)),
+    )
+    monkeypatch.setattr(train_wr, "deployed_calibration_reports", lambda *args, **kwargs: {"raw": {}, "calibrated": {}})
+    monkeypatch.setattr(train_wr, "feature_importance_table", lambda *args, **kwargs: pd.DataFrame({"feature": ["x"], "importance": [1.0], "importance_pct": [100.0]}))
+    monkeypatch.setattr(
+        train_wr, "_publish_training_artifacts",
+        lambda models, artifacts, manifest, **kwargs: publisher.update({"manifest": manifest, **kwargs}),
+    )
+
+    train_wr.main([])
+
+    decoded = pd.read_csv(io.BytesIO(publisher["cache_bytes"]))
+    assert set(decoded["season"]) == {2025, 2026}
+    assert fit_rows
+    assert len(fit_rows[0]) == 2
+    assert engineered_rows and all(set(frame["season"]) == {2025} for frame in engineered_rows)
+    assert publisher["manifest"]["source"]["count"] == len(decoded)
+    assert publisher["manifest"]["source"]["sha256"] == train_wr._sha256_bytes(publisher["cache_bytes"])
+
+
+@pytest.mark.parametrize("fault_position", range(1, 6))
+def test_atomic_publication_backup_fault_restores_five_targets_and_cleans(tmp_path, monkeypatch, fault_position):
+    models_dir = tmp_path / "models"
+    cache_path = tmp_path / "data" / "raw_nfl_data.csv"
+    old = _old_bundle(models_dir, cache_path)
+    unrelated = models_dir / "unrelated.txt"
+    unrelated.write_bytes(b"unrelated")
+    artifacts = {
+        "wr_te_rf_final.pkl": {"model": 2},
+        "wr_te_rf_calibrator.pkl": {"calibrator": 2},
+        "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["new"]}),
+    }
+    real_copy = train_wr.shutil.copyfile
+    calls = {"count": 0}
+
+    def fail_copy(source, target):
+        calls["count"] += 1
+        if calls["count"] == fault_position:
+            raise OSError("injected backup failure")
+        return real_copy(source, target)
+
+    monkeypatch.setattr(train_wr.shutil, "copyfile", fail_copy)
+    with pytest.raises(OSError, match="injected backup failure"):
+        train_wr._publish_training_artifacts(
+            models_dir, artifacts, {"version": 2}, cache_bytes=b"new-cache", cache_path=cache_path
+        )
+
+    for path, expected in old.items():
+        assert path.read_bytes() == expected
+    assert unrelated.read_bytes() == b"unrelated"
+    assert {path.name for path in models_dir.iterdir()} == {
+        "wr_te_rf_final.pkl", "wr_te_rf_calibrator.pkl",
+        "wr_te_rf_feature_importance.csv", "wr_te_rf_manifest.json", "unrelated.txt",
+    }
+
+
+@pytest.mark.parametrize("fault_position", range(1, 6))
+def test_atomic_publication_replace_fault_restores_five_targets_and_cleans(tmp_path, monkeypatch, fault_position):
+    models_dir = tmp_path / "models"
+    cache_path = tmp_path / "data" / "raw_nfl_data.csv"
+    old = _old_bundle(models_dir, cache_path)
+    unrelated = models_dir / "unrelated.txt"
+    unrelated.write_bytes(b"unrelated")
+    artifacts = {
+        "wr_te_rf_final.pkl": {"model": 2},
+        "wr_te_rf_calibrator.pkl": {"calibrator": 2},
+        "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["new"]}),
+    }
+    real_replace = train_wr.os.replace
+    calls = {"count": 0}
+
+    def fail_replace(source, target):
+        calls["count"] += 1
+        if calls["count"] == fault_position:
+            raise OSError("injected replacement failure")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(train_wr.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected replacement failure"):
+        train_wr._publish_training_artifacts(
+            models_dir, artifacts, {"version": 2}, cache_bytes=b"new-cache", cache_path=cache_path
+        )
+
+    for path, expected in old.items():
+        assert path.read_bytes() == expected
+    assert unrelated.read_bytes() == b"unrelated"
+    assert {path.name for path in models_dir.iterdir()} == {
+        "wr_te_rf_final.pkl", "wr_te_rf_calibrator.pkl",
+        "wr_te_rf_feature_importance.csv", "wr_te_rf_manifest.json", "unrelated.txt",
+    }
 
 
 def test_strict_oob_calibration_mask_never_falls_back_to_other_seasons():
