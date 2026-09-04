@@ -3,10 +3,11 @@ import pandas as pd
 import numpy as np
 from data_collection import get_all_historic_data
 from train_wr import feature_engineering
+import config
 
 def check_correlations():
     print("Loading data...")
-    nfl_teams = pd.read_csv('data/nfl_teams.csv')
+    nfl_teams = pd.read_csv(config.DATA_DIR / 'nfl_teams.csv')
     team_map = dict(zip(nfl_teams['team_name'], nfl_teams['team_id']))
     # Load just a few years to be fast
     df = get_all_historic_data([2022, 2023], team_map)

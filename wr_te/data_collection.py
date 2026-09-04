@@ -5,7 +5,8 @@ import nflreadpy as nfl
 import numpy as np
 import pandas as pd
 import polars as pl
-import os
+
+import config
 
 
 def get_nfl_data(years):
@@ -31,7 +32,7 @@ def get_nfl_data(years):
 
     return df.to_pandas()
 def get_nfl_2025_weekly_data():
-    df = pd.read_csv('data/stats_player_week_2025.csv')
+    df = pd.read_csv(config.DATA_DIR / 'stats_player_week_2025.csv')
     df = df[df['week'] <= 18]
     df = df[['player_id', 'player_display_name', 'position', 'team', 'season', 'week',
                'carries', 'rushing_yards', 'rushing_tds', 'receptions', 'targets',
@@ -51,36 +52,58 @@ def get_nfl_2025_weekly_data():
     return df
 
 
-def get_odds_data(years, team_map):
-    """Loads and processes historical betting odds data."""
+def schedule_to_team_lines(schedule):
+    """Derive per-team game lines from an nflverse-style schedule DataFrame.
 
-    df_odds = pd.read_csv('data/historic_lines.csv', low_memory=False)
-    # rename LAR to LA and LVR to LV
-    df_odds['team_favorite_id'] = df_odds['team_favorite_id'].replace({'LAR': 'LA', 'LVR': 'LV'})
-    df_odds['team_home_id'] = df_odds['team_home_id'].replace({'LAR': 'LA', 'LVR': 'LV'})
-    df_odds['team_away_id'] = df_odds['team_away_id'].replace({'LAR': 'LA', 'LVR': 'LV'})
+    Binding convention: `spread_line` is from the team's own perspective,
+    negative = that team is favored. nflverse schedules encode
+    `spread_line > 0` as home favored, so home `spread_line = -sched.spread_line`
+    and away `spread_line = +sched.spread_line`.
+    `implied_total = total_line / 2 - spread_line / 2`.
 
-    df_odds = df_odds[['schedule_season', 'schedule_week', 'team_home', 'team_away',
-                         'team_favorite_id', 'spread_favorite', 'over_under_line', 'schedule_playoff', 'team_home_id', 'team_away_id']]
-    
-    df_odds.rename(columns={'schedule_season': 'season', 'schedule_week': 'week', 'over_under_line': 'total_line'}, inplace=True)
+    Rows with a null `spread_line` or `total_line` are dropped (produce no
+    output rows for that game). Team codes `LAR`/`LVR` are renamed to `LA`/`LV`.
 
-    df_odds = df_odds[df_odds['season'].isin(years) & (df_odds['schedule_playoff'] == False)]
+    Returns columns: season, week, team, opponent, spread_line, total_line,
+    implied_total.
+    """
+    df = schedule
+    if 'game_type' in df.columns:
+        df = df[df['game_type'] == 'REG']
+    df = df.dropna(subset=['spread_line', 'total_line']).copy()
 
-    for col in ['total_line', 'spread_favorite', 'season', 'week']:
-        df_odds[col] = pd.to_numeric(df_odds[col], errors='coerce')
+    df_home = df[['season', 'week', 'home_team', 'away_team', 'spread_line', 'total_line']].rename(
+        columns={'home_team': 'team', 'away_team': 'opponent'}
+    )
+    df_home['spread_line'] = -df_home['spread_line']
 
-    df_odds.dropna(subset=['week', 'total_line', 'spread_favorite'], inplace=True)
-    df_odds['week'] = df_odds['week'].astype(int)
-    df_odds['home_spread'] = np.where(df_odds['team_favorite_id'] == df_odds['team_home_id'], df_odds['spread_favorite'], -df_odds['spread_favorite'])
-    df_home = df_odds[['season', 'week', 'team_home_id', 'home_spread', 'total_line']].rename(columns={'team_home_id': 'team', 'home_spread': 'spread_line'})
-    df_away = df_odds[['season', 'week', 'team_away_id', 'home_spread', 'total_line']].rename(columns={'team_away_id': 'team'})
-    df_away['spread_line'] = -df_away['home_spread']
-    df_away.drop(columns=['home_spread'], inplace=True)
-    df_processed_odds = pd.concat([df_home, df_away]).dropna(subset=['team'])
-    df_processed_odds['implied_total'] = (df_processed_odds['total_line'] / 2) - (df_processed_odds['spread_line'] / 2)
-    
+    df_away = df[['season', 'week', 'away_team', 'home_team', 'spread_line', 'total_line']].rename(
+        columns={'away_team': 'team', 'home_team': 'opponent'}
+    )
+
+    df_team_lines = pd.concat([df_home, df_away], ignore_index=True)
+    df_team_lines['team'] = df_team_lines['team'].replace({'LAR': 'LA', 'LVR': 'LV'})
+    df_team_lines['opponent'] = df_team_lines['opponent'].replace({'LAR': 'LA', 'LVR': 'LV'})
+    df_team_lines['implied_total'] = (df_team_lines['total_line'] / 2) - (df_team_lines['spread_line'] / 2)
+
+    return df_team_lines[['season', 'week', 'team', 'opponent', 'spread_line', 'total_line', 'implied_total']]
+
+
+def get_odds_data(years, team_map=None, load_schedules=nfl.load_schedules):
+    """Loads and processes game lines derived from nflverse schedules."""
+    schedule = load_schedules(years).to_pandas()
+    schedule = schedule[schedule['game_type'] == 'REG']
+
+    df_processed_odds = schedule_to_team_lines(schedule)
+    df_processed_odds = df_processed_odds[df_processed_odds['week'] <= 18]
+
     return df_processed_odds
+
+
+def get_week_lines(season, week, load_schedules=nfl.load_schedules):
+    """Returns game lines for a single season/week."""
+    odds_df = get_odds_data([season], load_schedules=load_schedules)
+    return odds_df[odds_df['week'] == week]
 
 def get_redzone_data(pbp):
     """Calculates each player's share of their team's red zone carries and targets."""
@@ -431,82 +454,94 @@ def get_team_play_data(years):
     
     return team_data.to_pandas()
 
-# Add this new function to data_collection.py
-def get_depth_chart_data(years):
-    """Fetches and cleans weekly depth chart data."""
-    depth_df = nfl.load_depth_charts(years)
-    
-    # Filter for relevant offensive positions using the correct column
-    positions_to_keep = ['WR', 'TE']
-    depth_df = depth_df.filter(pl.col('depth_position').is_in(positions_to_keep))
-    
-    # Rename columns based on the user's correction
-    # 'depth_team' is the rank, 'depth_position' is the position
-    depth_df = depth_df.rename({
-        'gsis_id': 'player_id', 
-        'depth_team': 'depth_chart_rank', 
-    })
-    
-    return depth_df.select(['player_id', 'season', 'week', 'depth_chart_rank']).to_pandas()
+def select_week_snapshots(snapshot_dates, week_first_gameday):
+    """For each week, pick the latest snapshot date <= that week's first gameday.
 
-def transform_future_odds(df, team_map):
-    """Transform week_2_lines data to include: team, opponent, spread_line, total_line, implied_total"""
-    games = []
-    
-    for game_id in df['game_id'].unique():
-        game_data = df[df['game_id'] == game_id]
-        
-        # Get home and away teams
-        home_team = game_data['home_team'].iloc[0]
-        away_team = game_data['away_team'].iloc[0]
-        
-        # Get the total line (over/under) - should be the same for both teams
-        total_line = game_data['over/under'].iloc[0]
-        
-        # Get spread data for both teams
-        home_spread_data = game_data[game_data['label'] == home_team]
-        away_spread_data = game_data[game_data['label'] == away_team]
-        
-        if len(home_spread_data) > 0 and len(away_spread_data) > 0:
-            home_spread = home_spread_data['point'].iloc[0]
-            away_spread = away_spread_data['point'].iloc[0]
-            
-            # Map team names to team IDs
-            home_team_id = team_map.get(home_team, home_team)
-            away_team_id = team_map.get(away_team, away_team)
-            
-            # Calculate implied totals
-            # For home team: implied_total = (total_line / 2) - (spread_line / 2)
-            # For away team: implied_total = (total_line / 2) - (spread_line / 2)
-            home_implied_total = (total_line / 2) - (home_spread / 2)
-            away_implied_total = (total_line / 2) - (away_spread / 2)
-            
-            # Add home team row
-            games.append({
-                'team': home_team_id,
-                'opponent': away_team_id,
-                'spread_line': home_spread,
-                'total_line': total_line,
-                'implied_total': home_implied_total
-            })
-            
-            # Add away team row
-            games.append({
-                'team': away_team_id,
-                'opponent': home_team_id,
-                'spread_line': away_spread,
-                'total_line': total_line,
-                'implied_total': away_implied_total
-            })
-    
-    # Create final dataframe
-    result_df = pd.DataFrame(games)
-    result_df['team'] = result_df['team'].replace({'LAR': 'LA', 'LVR': 'LV'})
-    # Sort by team for consistency
+    Returns a dict {week: date or None}.
+    """
+    sorted_snapshots = sorted(snapshot_dates)
+    result = {}
+    for week, gameday in week_first_gameday.items():
+        candidates = [snap for snap in sorted_snapshots if snap <= gameday]
+        result[week] = max(candidates) if candidates else None
+    return result
 
-    
-    return result_df
 
+def _depth_chart_week_gamedays(season, load_schedules):
+    """Returns {week: date} of the first REG gameday of each week for a season."""
+    schedule = load_schedules([season])
+    if hasattr(schedule, 'to_pandas'):
+        schedule = schedule.to_pandas()
+    schedule = schedule[schedule['game_type'] == 'REG'].copy()
+    schedule['gameday_date'] = pd.to_datetime(schedule['gameday']).dt.date
+    return schedule.groupby('week')['gameday_date'].min().to_dict()
+
+
+def _new_schema_depth_chart(depth_df, season, load_schedules):
+    """New nflreadpy depth-chart schema: gsis_id, pos_abb, pos_rank, dt (ISO datetime str)."""
+    df = depth_df[depth_df['pos_abb'].isin(['WR', 'TE'])].copy()
+    if df.empty:
+        return pd.DataFrame(columns=['player_id', 'season', 'week', 'depth_chart_rank'])
+
+    df['snapshot_date'] = pd.to_datetime(df['dt']).dt.date
+
+    week_first_gameday = _depth_chart_week_gamedays(season, load_schedules)
+    week_snapshot = select_week_snapshots(df['snapshot_date'].unique().tolist(), week_first_gameday)
+
+    frames = []
+    for week, snap_date in week_snapshot.items():
+        if snap_date is None:
+            continue
+        week_df = df[df['snapshot_date'] == snap_date][['gsis_id', 'pos_rank']].rename(
+            columns={'gsis_id': 'player_id', 'pos_rank': 'depth_chart_rank'}
+        ).copy()
+        week_df['season'] = season
+        week_df['week'] = week
+        frames.append(week_df)
+
+    if not frames:
+        return pd.DataFrame(columns=['player_id', 'season', 'week', 'depth_chart_rank'])
+
+    return pd.concat(frames, ignore_index=True)[['player_id', 'season', 'week', 'depth_chart_rank']]
+
+
+def _old_schema_depth_chart(depth_df):
+    """Old nflreadpy depth-chart schema: gsis_id, depth_position, depth_team, week, season."""
+    df = depth_df[depth_df['depth_position'].isin(['WR', 'TE'])].copy()
+    df = df.rename(columns={'gsis_id': 'player_id', 'depth_team': 'depth_chart_rank'})
+    return df[['player_id', 'season', 'week', 'depth_chart_rank']]
+
+
+def get_depth_chart_data(seasons, load_depth_charts=nfl.load_depth_charts, load_schedules=nfl.load_schedules):
+    """Fetches and cleans weekly depth chart data for any season, handling both the
+    old (season/week already present) and new (dt-snapshot based) nflreadpy schemas.
+    """
+    frames = []
+    for season in seasons:
+        raw = load_depth_charts([season])
+        if hasattr(raw, 'to_pandas'):
+            raw = raw.to_pandas()
+
+        if 'dt' in raw.columns:
+            frames.append(_new_schema_depth_chart(raw, season, load_schedules))
+        else:
+            frames.append(_old_schema_depth_chart(raw))
+
+    if not frames:
+        return pd.DataFrame(columns=['player_id', 'season', 'week', 'depth_chart_rank'])
+
+    result = pd.concat(frames, ignore_index=True)
+    result['depth_chart_rank'] = pd.to_numeric(result['depth_chart_rank'], errors='coerce')
+    result = result.dropna(subset=['depth_chart_rank'])
+    result = result.groupby(['player_id', 'season', 'week'], as_index=False)['depth_chart_rank'].min()
+    result['depth_chart_rank'] = result['depth_chart_rank'].astype(int)
+    return result
+
+
+def get_depth_chart_for_week(season, week, load_depth_charts=nfl.load_depth_charts, load_schedules=nfl.load_schedules):
+    """Returns depth chart data for a single season/week."""
+    df = get_depth_chart_data([season], load_depth_charts=load_depth_charts, load_schedules=load_schedules)
+    return df[df['week'] == week]
 
 def get_snap_counts(years):
     """Fetches and prepares snap count data for joining."""
@@ -577,56 +612,6 @@ def get_ngs_data_receiving(years):
     return ngs_receiving_df.to_pandas()
 
 
-def get_2025_depth_chart_data():
-    """Fetches and cleans 2025 depth chart data."""
-    # Create map of dates to weeks. Week 1 is 2025-09-03, Week 2 is 2025-09-10, etc.
-    week_map = {
-        '2025-09-03': 1,
-        '2025-09-10': 2,
-        '2025-09-17': 3,
-        '2025-09-23': 4,
-        '2025-10-01': 5,
-        '2025-10-08': 6,
-        '2025-10-15': 7,
-        '2025-10-22': 8,
-        '2025-10-29': 9,
-        '2025-11-05': 10,
-        '2025-11-12': 11,
-        '2025-11-19': 12,
-        '2025-11-26': 13,
-        '2025-12-03': 14,
-        '2025-12-10': 15,
-        '2025-12-17': 16,
-        '2025-12-24': 17,
-        '2025-12-31': 18
-    }
-    depth_df = nfl.load_depth_charts([2025])
-    
-    # Filter for relevant offensive positions using the correct column
-    positions_to_keep = ['WR', 'TE']
-    depth_df = depth_df.filter(pl.col('pos_abb').is_in(positions_to_keep))
-    
-    # Rename columns based on the user's correction
-    # 'depth_team' is the rank, 'depth_position' is the position
-    depth_df = depth_df.rename({
-        'gsis_id': 'player_id', 
-        'pos_rank': 'depth_chart_rank', 
-    })
-
-    # Add season column, parse date, format it, and map to week
-    depth_df = depth_df.with_columns([
-        pl.lit(2025).alias('season'),
-        pl.col('dt').str.slice(0, 10).alias('date')
-    ])
-
-    depth_df = depth_df.with_columns([
-        pl.col('date').replace(week_map, default=None).alias('week')
-    ])
-
-    depth_df = depth_df.filter(pl.col('week') <= 18)
-    
-    return depth_df.select(['player_id', 'season', 'week', 'depth_chart_rank']).to_pandas()
-
 def get_game_data(years):
     game_df = nfl.load_schedules(years)
     
@@ -674,6 +659,14 @@ def get_ff_opportunity_data(years):
 
 
     return ff_opportunity_df
+
+
+def fill_numeric_missing(df):
+    """Fill missing numeric values while preserving missing text fields."""
+    result = df.copy()
+    numeric_columns = result.select_dtypes(include='number').columns
+    result[numeric_columns] = result[numeric_columns].fillna(0)
+    return result
 
 def get_all_historic_data(years, team_map):
     
@@ -725,10 +718,7 @@ def get_all_historic_data(years, team_map):
     opponent_receiving_explosive_play_allowed_df = get_opponent_receiving_explosive_play_allowed(pbp)
     opponent_receiving_explosive_play_allowed_df = opponent_receiving_explosive_play_allowed_df[opponent_receiving_explosive_play_allowed_df['week'] <= 18]
 
-    depth_chart_df = get_depth_chart_data([y for y in years if y != 2025])
-    depth_chart_df_2025 = get_2025_depth_chart_data()
-
-    depth_chart_df = pd.concat([depth_chart_df, depth_chart_df_2025], ignore_index=True)
+    depth_chart_df = get_depth_chart_data(years)
     depth_chart_df = depth_chart_df[depth_chart_df['week'] <= 18]
 
     snap_counts_df = get_snap_counts(years)
@@ -774,7 +764,7 @@ def get_all_historic_data(years, team_map):
     nfl_df = pd.merge(nfl_df, game_id_df, on=['season', 'week', 'team'], how='left')
     nfl_df = pd.merge(nfl_df, game_info_df, on=['season', 'week', 'game_id'], how='left')
 
-    nfl_df.fillna(0, inplace=True)
+    nfl_df = fill_numeric_missing(nfl_df)
 
     nfl_df.sort_values(by=['season', 'week', 'player_id'], inplace=True, ignore_index=True)
 
@@ -795,9 +785,9 @@ def get_historical_vegas_data(years):
     for year in years:
         # Iterate through weeks 1-18
         for week in range(1, 19):
-            file_path = f'vegas/{year}/week_{week}_td_odds.csv'
+            file_path = config.VEGAS_DIR / str(year) / f'week_{week}_td_odds.csv'
             
-            if not os.path.exists(file_path):
+            if not file_path.exists():
                 continue
                 
             try:

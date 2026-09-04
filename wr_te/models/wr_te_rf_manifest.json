@@ -1,0 +1,118 @@
+{
+  "actual_seasons": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "artifact_hashes": {
+    "wr_te_rf_calibrator.pkl": "d837a2d2592af4c2554bcd112bdc8f43e61da3ac0a58c5811d6a5178eb34022b",
+    "wr_te_rf_feature_importance.csv": "0bd632d735b5128da2695cab18a70f83a93791a5d1aabb9fbfd6acdacf9496e0",
+    "wr_te_rf_final.pkl": "5a32c06f035f0898ea5600e0fe38953123d3f50670e8ba1651c5addffbcacef6"
+  },
+  "calibration": {
+    "fallback": false,
+    "rows": 3753,
+    "season": 2025
+  },
+  "calibrator_role": "diagnostic_only",
+  "configured_seasons": [
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "features": {
+    "count": 23,
+    "ordered": [
+      "avg_offense_snap_share",
+      "avg_wopr",
+      "avg_target_share",
+      "avg_receiving_epa",
+      "avg_racr",
+      "avg_endzone_targets",
+      "avg_endzone_target_share",
+      "passing_tds_allowed_to_WR",
+      "passing_tds_allowed_to_TE",
+      "implied_total",
+      "spread_line",
+      "depth_chart_rank",
+      "avg_scored_touchdown",
+      "avg_receptions",
+      "avg_receiving_yards",
+      "avg_receiving_air_yards",
+      "avg_receiving_yards_allowed",
+      "avg_receiving_epa_allowed",
+      "avg_receiving_air_yards_allowed",
+      "avg_explosive_receiving_plays",
+      "avg_explosive_receiving_plays_allowed",
+      "avg_rec_touchdown_exp",
+      "avg_rec_touchdown_exp_team"
+    ],
+    "sha256": "8c8760e269eb2032d59b65d1ac51f5ad2da9899ec6b05441609c9e47d9b549c8"
+  },
+  "package_versions": {
+    "joblib": "1.6.0",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "scikit-learn": "1.9.0"
+  },
+  "production_variant": "random_forest_current/raw",
+  "rf": {
+    "class": "RandomForestClassifier",
+    "n_features_in": 23,
+    "oob_rows": 21618,
+    "params": {
+      "max_depth": 5,
+      "max_features": "log2",
+      "min_samples_leaf": 1,
+      "min_samples_split": 10,
+      "n_estimators": 300
+    },
+    "params_file_sha256": "2a75588a263d3d430b12c5654a86a8c366b670fb5e350a59cf79961e58a092af",
+    "params_path": "models/wr_te_rf_best_params.json",
+    "params_sha256": "0851b21760f599509372fc7be1c2d72ce88f695f62da3714ef719ece4c381ae0",
+    "seed": 42,
+    "training_rows": 21618
+  },
+  "row_counts": {
+    "calibrator": 3753,
+    "oob_valid": 21618,
+    "source_after_filter": 21618,
+    "source_by_season": {
+      "2020": 3424,
+      "2021": 3663,
+      "2022": 3536,
+      "2023": 3621,
+      "2024": 3621,
+      "2025": 3753
+    },
+    "source_pre_filter": 21618,
+    "training": 21618,
+    "training_by_season": {
+      "2020": 3424,
+      "2021": 3663,
+      "2022": 3536,
+      "2023": 3621,
+      "2024": 3621,
+      "2025": 3753
+    },
+    "wr_te": 21618
+  },
+  "source": {
+    "count": 21618,
+    "mode": "cache",
+    "path": "data/raw_nfl_data.csv",
+    "row_count": 21618,
+    "sha256": "31edb3a2a5fc9d2c5af2056f6f8ca9d085bdb6432129f39ffabb84afbb2743cc"
+  },
+  "source_file_hashes": {
+    "config.py": "d81d0bed527ed22a970dcd8b319f6ce5652635da0f8c0c5287ead6ae5d89c373",
+    "features.py": "603cb8d8d45de70bacf9c9afac75602d7fb166ebee9a132da808da5bba13f1c1",
+    "train_wr.py": "b3b19ad259a4df695974a9f44a7a40cde7461e770513bf8d38f00aa02dac5b36"
+  }
+}

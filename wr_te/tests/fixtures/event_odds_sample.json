@@ -1,0 +1,44 @@
+{
+  "id": "abc123",
+  "sport_key": "americanfootball_nfl",
+  "sport_title": "NFL",
+  "commence_time": "2026-09-13T17:00:00Z",
+  "home_team": "Kansas City Chiefs",
+  "away_team": "Baltimore Ravens",
+  "bookmakers": [
+    {
+      "key": "draftkings",
+      "title": "DraftKings",
+      "last_update": "2026-09-13T12:00:00Z",
+      "markets": [
+        {
+          "key": "player_anytime_td",
+          "last_update": "2026-09-13T12:00:00Z",
+          "outcomes": [
+            {"name": "Yes", "description": "Player One", "price": -150},
+            {"name": "Yes", "description": "Player Two", "price": 120},
+            {"name": "Yes", "description": "Player Three", "price": 200},
+            {"name": "No", "description": "Player Four", "price": 500}
+          ]
+        }
+      ]
+    },
+    {
+      "key": "fanduel",
+      "title": "FanDuel",
+      "last_update": "2026-09-13T12:05:00Z",
+      "markets": [
+        {
+          "key": "player_anytime_td",
+          "last_update": "2026-09-13T12:05:00Z",
+          "outcomes": [
+            {"name": "Yes", "description": "Player One", "price": -140},
+            {"name": "Yes", "description": "Player Two", "price": 110},
+            {"name": "Yes", "description": "Player Three", "price": 210},
+            {"name": "No", "description": "Player Four", "price": 480}
+          ]
+        }
+      ]
+    }
+  ]
+}
