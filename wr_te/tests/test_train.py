@@ -130,6 +130,46 @@ def test_calibration_report_assigns_exact_probability_boundaries_to_evaluator_bi
     assert report["ece"] == pytest.approx(0.1 / 3)
 
 
+def test_from_cache_requires_existing_cache(tmp_path):
+    with pytest.raises(FileNotFoundError, match="training cache not found"):
+        train_wr._load_training_data(True, tmp_path / "missing.csv", {})
+
+
+def test_from_cache_does_not_collect_or_rewrite_cache(tmp_path, monkeypatch):
+    cache = tmp_path / "raw_nfl_data.csv"
+    cache.write_bytes(b"season,week,player_id\n2020,1,P1\n")
+    original = cache.read_bytes()
+
+    monkeypatch.setattr(train_wr.data, "get_all_historic_data", lambda *_: pytest.fail("collector called"))
+    train_wr._load_training_data(True, cache, {})
+
+    assert cache.read_bytes() == original
+
+
+def test_network_data_loader_remains_callable(tmp_path, monkeypatch):
+    source = pd.DataFrame({"season": [2020], "week": [1], "player_id": ["P1"]})
+    calls = []
+    monkeypatch.setattr(train_wr.config, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(train_wr.data, "get_all_historic_data", lambda years, team_map: calls.append((years, team_map)) or source)
+
+    out, _, path = train_wr._load_training_data(False, None, {"A": "A"})
+
+    assert calls == [(train_wr.config.DATA_SEASONS, {"A": "A"})]
+    assert out.equals(source)
+    assert path == str(tmp_path / "raw_nfl_data.csv")
+
+
+def test_manifest_artifact_hashes_match_published_files(tmp_path):
+    artifacts = {"model.pkl": {"model": 1}, "importance.csv": pd.DataFrame({"feature": ["x"]})}
+    manifest = {"production_variant": "random_forest_current/raw"}
+
+    train_wr._publish_training_artifacts(tmp_path, artifacts, manifest)
+
+    published = json.loads((tmp_path / "wr_te_rf_manifest.json").read_text())
+    for name, digest in published["artifact_hashes"].items():
+        assert digest == train_wr._sha256_file(tmp_path / name)
+
+
 # --- train_rf_model ---
 
 def test_train_rf_model_with_saved_params_skips_randomized_search(tmp_path, monkeypatch):

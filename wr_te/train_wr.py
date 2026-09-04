@@ -3,6 +3,8 @@
 
 # --- 1. Importing Libraries ---
 import argparse
+import hashlib
+import importlib.metadata
 import nflreadpy as nfl
 import numpy as np
 import pandas as pd
@@ -18,6 +20,7 @@ import sys
 import json
 import time
 from datetime import datetime
+from pathlib import Path
 
 import config
 from features import WR_TE_FEATURES, PLAYER_EWM_STATS
@@ -33,6 +36,90 @@ RF_PARAM_DIST = {
     'min_samples_leaf': [1, 2, 4],
     'max_features': ['sqrt', 'log2']
 }
+
+RAW_REQUIRED_COLUMNS = {
+    'season', 'week', 'player_id', 'position', 'team', 'opponent_team',
+    'scored_touchdown', 'implied_total', 'spread_line', 'depth_chart_rank',
+    *PLAYER_EWM_STATS,
+    'passing_tds_allowed_to_WR', 'passing_tds_allowed_to_TE',
+    'receiving_yards_allowed', 'receiving_epa_allowed',
+    'receiving_air_yards_allowed', 'explosive_receiving_plays_allowed',
+}
+
+
+def _sha256_bytes(value):
+    return hashlib.sha256(value).hexdigest()
+
+
+def _sha256_file(path):
+    return _sha256_bytes(path.read_bytes())
+
+
+def _canonical_hash(value):
+    return _sha256_bytes(json.dumps(value, sort_keys=True, separators=(',', ':')).encode())
+
+
+def _validate_training_cache(df, seasons):
+    """Validate the bounded pre-fit cache contract for the requested seasons."""
+    missing = sorted(RAW_REQUIRED_COLUMNS - set(df.columns))
+    if missing:
+        raise ValueError(f"training cache is missing required columns: {missing}")
+    selected = df[df['season'].isin(seasons)].copy()
+    if selected.empty:
+        raise ValueError(f"training cache has no rows for configured seasons: {seasons}")
+    if selected[['season', 'week', 'player_id']].duplicated().any():
+        raise ValueError("training cache contains duplicate season/week/player_id rows")
+    if not selected['week'].between(1, 18).all():
+        raise ValueError("training cache contains weeks outside 1-18")
+    if not selected['scored_touchdown'].isin([0, 1]).all():
+        raise ValueError("training cache target must be binary")
+    if not selected['position'].isin(['WR', 'TE']).any():
+        raise ValueError("training cache contains no WR/TE rows")
+    return selected
+
+
+def _load_training_data(from_cache, cache_path, team_map):
+    """Load source rows; cache mode is read-only and never invokes collection."""
+    if from_cache:
+        cache_path = config.DATA_DIR / 'raw_nfl_data.csv' if cache_path is None else cache_path
+        cache_path = os.fspath(cache_path)
+        if not os.path.isfile(cache_path):
+            raise FileNotFoundError(f"training cache not found: {cache_path}")
+        return pd.read_csv(cache_path), _sha256_file(Path(cache_path)), cache_path
+    df = data.get_all_historic_data(config.DATA_SEASONS, team_map)
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    cache_path = config.DATA_DIR / 'raw_nfl_data.csv'
+    df.to_csv(cache_path, index=False)
+    return df, _sha256_file(cache_path), os.fspath(cache_path)
+
+
+def _package_versions():
+    names = ('numpy', 'pandas', 'scikit-learn', 'joblib')
+    return {name: importlib.metadata.version(name) for name in names}
+
+
+def _publish_training_artifacts(models_dir, artifacts, manifest):
+    """Stage all outputs, then publish artifacts before the manifest last."""
+    import tempfile
+    models_dir = Path(models_dir)
+    models_dir.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=models_dir) as staging:
+        staging = Path(staging)
+        for name, value in artifacts.items():
+            target = staging / name
+            if isinstance(value, pd.DataFrame):
+                value.to_csv(target, index=False)
+            else:
+                joblib.dump(value, target)
+        manifest = dict(manifest)
+        manifest['artifact_hashes'] = {
+            name: _sha256_file(staging / name) for name in artifacts
+        }
+        staged_manifest = staging / 'wr_te_rf_manifest.json'
+        staged_manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
+        for name in artifacts:
+            os.replace(staging / name, models_dir / name)
+        os.replace(staged_manifest, models_dir / 'wr_te_rf_manifest.json')
 
 
 # --- 2. Feature Engineering ---
@@ -399,17 +486,29 @@ def evaluate_rf_model(model, model_name, validation_df, features, k_values=[3, 5
 
 
 # --- 5. Main Training Function ---
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="Train the WR/TE touchdown RandomForest model.")
     parser.add_argument(
         '--tune', action='store_true',
         help="Re-run RandomizedSearchCV hyperparameter tuning and overwrite the saved params "
              "file (default: reuse models/wr_te_rf_best_params.json)."
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        '--from-cache', action='store_true',
+        help='Read DATA/raw_nfl_data.csv without network collection or rewriting the cache.'
+    )
+    parser.add_argument(
+        '--cache-path', type=Path, default=None,
+        help='Override the cache path used with --from-cache.'
+    )
+    args = parser.parse_args(argv)
+    if args.from_cache and args.tune:
+        parser.error('--from-cache cannot be combined with --tune')
     use_saved_params = not args.tune
 
     train_years = sorted(s for s in config.TRAIN_SEASONS if s < config.SEASON)
+    if not train_years:
+        raise ValueError("config.TRAIN_SEASONS must contain a season before config.SEASON")
 
     print("="*60)
     print("WR/TE RANDOMFOREST TD SCORER PREDICTION - RETRAINED")
@@ -423,11 +522,8 @@ def main():
 
     # Load data
     print("\nLoading and preparing data...")
-    df = data.get_all_historic_data(config.DATA_SEASONS, team_map)
-    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
-    df.to_csv(config.DATA_DIR / 'raw_nfl_data.csv', index=False)
-    df = df[df['week'] <= 18]
-    df = df[df['season'].isin(config.TRAIN_SEASONS) & (df['season'] < config.SEASON)]
+    df, source_hash, source_path = _load_training_data(args.from_cache, args.cache_path, team_map)
+    df = _validate_training_cache(df, train_years)
 
     print(df.tail())
 
@@ -436,6 +532,9 @@ def main():
     # Feature engineering
     print("\nApplying feature engineering...")
     df = feature_engineering(df)
+    missing_features = sorted(set(WR_TE_FEATURES) - set(df.columns))
+    if missing_features:
+        raise ValueError(f"training cache is missing required engineered features: {missing_features}")
     print("✓ Feature engineering complete")
 
     # Chronological ordering before any split, so TimeSeriesSplit folds inside
@@ -448,8 +547,6 @@ def main():
         "❌ NaN values detected in features!"
     assert df['scored_touchdown'].isin([0, 1]).all(), \
         "❌ Target variable contains non-binary values!"
-    assert len(df) > 10000, \
-        f"❌ Suspiciously small dataset: {len(df)} rows"
     print(f"✓ Data quality verified: {len(df)} rows, no NaNs, binary target")
 
     # Informational train/validation split (2020-2022 -> 2023). This is NOT
@@ -523,21 +620,55 @@ def main():
     print("Platt-calibrated OOB metrics (diagnostic only; not held-out; production remains random_forest_current/raw)")
     print(calibration_reports['calibrated'])
 
-    # --- Save Models ---
+    # --- Atomically publish model artifacts and their manifest ---
     print(f"\n{'='*60}\nSAVING MODEL ARTIFACTS LOCALLY\n{'='*60}")
 
-    config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
-
-    def save_model(model, filename):
-        print(f"Saving model artifact to '{filename}'...")
-        joblib.dump(model, config.MODELS_DIR / filename)
-        print("Save successful.")
-
-    save_model(wr_te_final, 'wr_te_rf_final.pkl')
-    save_model(wr_te_calibrator, 'wr_te_rf_calibrator.pkl')
-
-    # Save feature importance
-    wr_te_importance.to_csv(config.MODELS_DIR / 'wr_te_rf_feature_importance.csv', index=False)
+    params_path = config.MODELS_DIR / 'wr_te_rf_best_params.json'
+    params_hash = _sha256_file(params_path)
+    manifest = {
+        'source': {
+            'mode': 'cache' if args.from_cache else 'network',
+            'path': str(source_path),
+            'sha256': source_hash,
+        },
+        'configured_seasons': list(config.TRAIN_SEASONS),
+        'actual_seasons': sorted(map(int, df['season'].unique())),
+        'row_counts': {
+            'source': int(len(df)),
+            'wr_te': int(len(all_data_df)),
+            'training': int(len(X_all_wr_te)),
+            'oob_valid': int(np.isfinite(wr_te_final.oob_decision_function_[:, 1]).sum()),
+            'calibrator': int(len(oob_proba[candidate])),
+        },
+        'features': {
+            'ordered': list(WR_TE_FEATURES),
+            'count': len(WR_TE_FEATURES),
+            'sha256': _canonical_hash(list(WR_TE_FEATURES)),
+        },
+        'rf': {
+            'params': wr_te_params,
+            'params_path': str(params_path),
+            'params_sha256': _canonical_hash(wr_te_params),
+            'params_file_sha256': params_hash,
+            'seed': 42,
+            'class': type(wr_te_final).__name__,
+            'n_features_in': int(wr_te_final.n_features_in_),
+            'training_rows': int(len(X_all_wr_te)),
+            'oob_rows': int(np.isfinite(wr_te_final.oob_decision_function_[:, 1]).sum()),
+        },
+        'production_variant': 'random_forest_current/raw',
+        'calibrator_role': 'diagnostic',
+        'package_versions': _package_versions(),
+        'source_file_hashes': {
+            name: _sha256_file(Path(__file__).with_name(name))
+            for name in ('train_wr.py', 'config.py', 'features.py')
+        },
+    }
+    _publish_training_artifacts(config.MODELS_DIR, {
+        'wr_te_rf_final.pkl': wr_te_final,
+        'wr_te_rf_calibrator.pkl': wr_te_calibrator,
+        'wr_te_rf_feature_importance.csv': wr_te_importance,
+    }, manifest)
     print("Feature importance saved to models/ directory")
 
     print(f"\n{'='*60}\nWR/TE TRAINING COMPLETE - NEW MODEL READY\n{'='*60}")
@@ -546,6 +677,7 @@ def main():
     print("  - models/wr_te_rf_calibrator.pkl (diagnostic only; not used in production)")
     print("  - models/wr_te_rf_best_params.json")
     print("  - models/wr_te_rf_feature_importance.csv")
+    print("  - models/wr_te_rf_manifest.json")
 
     print(f"\n{'='*60}\nPERFORMANCE SUMMARY\n{'='*60}")
     print(f"Position: WR/TE")

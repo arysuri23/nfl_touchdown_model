@@ -39,6 +39,16 @@ run from `wr_te/`.
    ```bash
    python predict_wr.py
    ```
+
+For an offline retrain from an existing cache, use `--from-cache`. This mode
+reads `data/raw_nfl_data.csv`, applies the same season/week and feature cuts,
+never calls the collector, and never rewrites the cache; hyperparameter tuning
+is intentionally disabled. Successful model, calibrator, feature-importance,
+and manifest artifacts are published together.
+
+```bash
+python train_wr.py --from-cache
+```
 4. **Record picks to the ledger** -- `top5_prob` is the primary funded
    strategy. `top5_edge_le400` is an optional zero-stake benchmark (tracked
    for its own record, not actually bet). The ledger does not apply a separate
