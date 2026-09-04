@@ -2,7 +2,7 @@
 
 Date: 2026-09-02 onward
 Active worktree: `.claude/worktrees/2026-season-wr-te`  
-Branch/current commit: `worktree-2026-season-wr-te` / `69ae813`
+Branch/current commit: `worktree-2026-season-wr-te` / `f320303`
 
 ## Session outcome
 
@@ -17,6 +17,8 @@ The latest evaluator suite had 127 passing tests before the roster alias fix and
 Raw-RF production and calibration review landed in `7c29482`. Direct calibration evidence is diagnostic only: raw deployed-forest OOB Brier `0.1277852259`, log loss `0.4103006952`, ECE `0.0201373439`; Platt OOB Brier `0.1283551115`, log loss `0.4128795751`, ECE `0.0236240502`. Empty calibration reports match evaluator undefined values (`NaN`, `NaN`, `None`) and fixed ten-bin weighted ECE semantics (`211dd60`, `6fca23f`).
 
 Cache-only retraining landed in `5cf2a34`, with transactional/validation/provenance fixes in `6912e8b` and stable logical paths/role in `5b1a6a2`. Operational artifacts were committed in `799de6e`: 21,618 rows through 2025, 3,753 latest-season calibration rows, production `random_forest_current/raw`, and calibrator role `diagnostic_only`. Cache SHA-256: `31edb3a2a5fc9d2c5af2056f6f8ca9d085bdb6432129f39ffabb84afbb2743cc`; raw forest: `5a32c06f035f0898ea5600e0fe38953123d3f50670e8ba1651c5addffbcacef6`; calibrator: `d837a2d2592af4c2554bcd112bdc8f43e61da3ac0a58c5811d6a5178eb34022b`; feature importance: `0bd632d735b5128da2695cab18a70f83a93791a5d1aabb9fbfd6acdacf9496e0`. Old model recovery path: `/private/tmp/wrte-model-backup.9tSDK0`.
+
+Phase A collector audit and publication hardening were approved by Sol. `5286454` adds numeric-only final-frame filling in `data_collection.get_all_historic_data` (numeric gaps become zero while string missingness remains missing) and defers network cache writes until validation/training complete. `533adf6` refreshes cache source provenance. `f320303` adds main-orchestration failure coverage and all-position five-target transaction fault coverage. The network path now retains the complete collected source, including active 2026 rows, while the validated prior-season view alone reaches model fitting; cache mode remains read-only. The focused/full suite is 148 passing tests. The current branch is `worktree-2026-season-wr-te` at `f320303`.
 
 ## Current evaluator behavior
 
@@ -36,8 +38,10 @@ The experiment ran in `/private/tmp/xtd-share-experiment`; its discarded feature
 
 At `2026-09-04T03:43:52Z`, live `nflreadpy` Week 1 assembly produced 302 active WR/TE candidates across 32 teams, including 10 ARI candidates after the roster alias fix, 358 depth-chart rows, and 32 team-line rows. The assembled prediction frame had finite values for the exact 23 production features, and raw-RF probabilities were `allclose` to direct model output. This is structural preflight evidence only; no prediction or ledger records are authorized until opening ATD odds exist.
 
+Phase B remains gated on a fresh post-Week 1 real-`nflreadpy` spike before any network refresh is automated. That spike must record loader availability and returned coverage/schema, confirm active candidates are available through the requested week, verify regular-season (`REG`, weeks 1–18) filters and join cardinality, and measure snap-count name-match coverage. Until then, network refresh remains a manual dry-run.
+
 ## Operating rules and next steps
 
 Any question about future data availability must first use a real `nflreadpy` spike and record the package version, loader/API call, returned schema, coverage, and missingness before planning integration. Freeze an in-progress week only after all games are final; refresh the raw cache separately. Review the five smoke artifacts and decide whether timestamped decision-time odds are available before making any edge claim.
 
-The main worktree remains unchanged on `main` at `4d0fd5d`. The feature worktree is current through `69ae813` plus intentionally untracked smoke/evaluation output. The only remaining operational blocker is `ODDS_API_KEY`/the 2026 Week 1 ATD open-odds snapshot; once available, run the full prediction and ledger flow. Existing exposed historical credentials remain a separate security concern and should be revoked/rotated before reuse; no history rewrite was performed.
+The main worktree remains unchanged on `main` at `4d0fd5d`. The feature worktree is current through `f320303` plus intentionally untracked smoke/evaluation output. The only remaining pregame blocker is `ODDS_API_KEY`/the 2026 Week 1 ATD open-odds snapshot; once available, run the full prediction and ledger flow. Existing exposed historical credentials remain a separate security concern and should be revoked/rotated before reuse; no history rewrite was performed.
