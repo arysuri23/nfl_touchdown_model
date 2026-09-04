@@ -606,6 +606,36 @@ def test_fetch_rejects_duplicate_provider_event_for_one_game_before_paid_call(
     assert calls == [fetch_live_odds.EVENTS_URL]
 
 
+def test_fetch_rejects_provider_id_conflicting_across_games_before_paid_call(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    events = _load_fixture("events_sample.json")
+    events.append({
+        "id": events[0]["id"], "commence_time": events[0]["commence_time"],
+        "home_team": "Buffalo Bills", "away_team": "New York Jets",
+    })
+
+    def fake_get(url, params=None):
+        return _FakeResponse(events)
+
+    def two_game_schedule(seasons):
+        return pl.DataFrame({
+            "season": [2026, 2026], "week": [1, 1], "game_type": ["REG", "REG"],
+            "game_id": ["2026_01_BAL_KC", "2026_01_BUF_NYJ"],
+            "home_team": ["Kansas City Chiefs", "Buffalo Bills"],
+            "away_team": ["Baltimore Ravens", "New York Jets"],
+            "gameday": ["2026-09-13", "2026-09-13"],
+        })
+
+    with pytest.raises(ValueError, match="provider event"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fake_get,
+            load_schedules=two_game_schedule, refresh=True,
+        )
+
+
 def test_parse_event_odds_rejects_malformed_intended_yes_quote():
     fixture = _load_fixture("event_odds_sample.json")
     fixture["bookmakers"][0]["markets"][0]["outcomes"][0]["price"] = 99
@@ -652,6 +682,148 @@ def test_fetch_rejects_empty_or_duplicate_bookmakers_before_dependencies(tmp_pat
                                   get=lambda *a, **k: pytest.fail("HTTP called"),
                                   load_schedules=lambda *a, **k: pytest.fail("schedule called"),
                                   refresh=True)
+
+
+def test_cli_rejects_empty_bookmaker_token_before_dependencies(monkeypatch):
+    monkeypatch.setattr(config, "odds_api_key", lambda: pytest.fail("credentials accessed"))
+    with pytest.raises(ValueError, match="bookmaker"):
+        fetch_live_odds.main([
+            "--season", "2026", "--week", "1", "--tag", "open",
+            "--bookmakers", "draftkings,,fanduel",
+        ])
+
+
+def test_parse_rejects_blank_bookmaker_key_on_intended_yes_even_when_other_quote_is_valid():
+    fixture = _load_fixture("event_odds_sample.json")
+    fixture["bookmakers"].append({
+        "key": "", "title": "Unknown", "markets": [{
+            "key": "player_anytime_td", "last_update": "2026-09-13T12:00:00Z",
+            "outcomes": [{"name": "Yes", "description": "Player Five", "price": -130}],
+        }],
+    })
+    with pytest.raises(ValueError, match="bookmaker_key"):
+        fetch_live_odds.parse_event_odds(
+            fixture, 2026, 1, "open", "2026-09-08T15:00:00Z",
+            canonical_game_id="2026_01_BAL_KC", requested_bookmakers={"draftkings"},
+            expected_game_count=1,
+        )
+
+
+def test_cache_rejects_one_canonical_game_with_multiple_provider_ids(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    cached = pd.concat([
+        _valid_snapshot_frame(),
+        _valid_snapshot_frame().assign(
+            provider_event_id="provider-b", bookmaker="FanDuel", bookmaker_key="fanduel",
+            requested_bookmakers="draftkings,fanduel",
+        ),
+    ], ignore_index=True)
+    cached["requested_bookmakers"] = "draftkings,fanduel"
+    cached.to_csv(path, index=False)
+    with pytest.raises(ValueError, match="provider event"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings", "fanduel"],
+            get=lambda *a, **k: pytest.fail("HTTP called"),
+            load_schedules=_fake_load_schedules_factory(2026),
+        )
+
+
+def test_cache_rejects_same_provider_id_across_canonical_games(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    cached = _valid_snapshot_frame()
+    second = cached.assign(
+        game_id="2026_01_BUF_NYJ", home_team="Buffalo Bills",
+        away_team="New York Jets",
+    )
+    combined = pd.concat([cached, second], ignore_index=True)
+    combined["expected_game_count"] = 2
+    combined.to_csv(path, index=False)
+
+    def two_game_schedule(seasons):
+        return pl.DataFrame({
+            "season": [2026, 2026], "week": [1, 1], "game_type": ["REG", "REG"],
+            "game_id": ["2026_01_BAL_KC", "2026_01_BUF_NYJ"],
+            "home_team": ["Kansas City Chiefs", "Buffalo Bills"],
+            "away_team": ["Baltimore Ravens", "New York Jets"],
+            "gameday": ["2026-09-13", "2026-09-13"],
+        })
+
+    with pytest.raises(ValueError, match="provider events"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"],
+            get=lambda *a, **k: pytest.fail("HTTP called"), load_schedules=two_game_schedule,
+        )
+
+
+def test_cache_rejects_bookmaker_set_mismatch(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    _valid_snapshot_frame().to_csv(path, index=False)
+    with pytest.raises(ValueError, match="bookmaker attestation|bookmaker coverage"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["fanduel"],
+            get=lambda *a, **k: pytest.fail("HTTP called"),
+            load_schedules=_fake_load_schedules_factory(2026),
+        )
+
+
+def test_cache_rejects_partial_game_and_bookmaker_coverage(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    cached = _valid_snapshot_frame()
+    cached["requested_bookmakers"] = "draftkings,fanduel"
+    cached["expected_game_count"] = 2
+    cached.to_csv(path, index=False)
+
+    def two_game_schedule(seasons):
+        return pl.DataFrame({
+            "season": [2026, 2026], "week": [1, 1], "game_type": ["REG", "REG"],
+            "game_id": ["2026_01_BAL_KC", "2026_01_BUF_NYJ"],
+            "home_team": ["Kansas City Chiefs", "Buffalo Bills"],
+            "away_team": ["Baltimore Ravens", "New York Jets"],
+            "gameday": ["2026-09-13", "2026-09-13"],
+        })
+
+    with pytest.raises(ValueError, match="coverage|missing"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings", "fanduel"],
+            get=lambda *a, **k: pytest.fail("HTTP called"), load_schedules=two_game_schedule,
+        )
+
+
+def test_cache_rejects_partial_bookmaker_coverage(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    cached = _valid_snapshot_frame()
+    cached.to_csv(path, index=False)
+    with pytest.raises(ValueError, match="bookmaker attestation|bookmaker coverage"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings", "fanduel"],
+            get=lambda *a, **k: pytest.fail("HTTP called"),
+            load_schedules=_fake_load_schedules_factory(2026),
+        )
+
+
+def test_cache_rejects_in_play_rows(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    cached = _valid_snapshot_frame()
+    cached["in_play"] = True
+    cached.to_csv(path, index=False)
+    with pytest.raises(ValueError, match="in_play"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"],
+            get=lambda *a, **k: pytest.fail("HTTP called"),
+            load_schedules=_fake_load_schedules_factory(2026),
+        )
 
 
 def test_header_only_cache_is_rejected_without_dependencies(tmp_path, monkeypatch):

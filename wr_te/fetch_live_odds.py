@@ -252,6 +252,9 @@ def _validate_cached_snapshot(
     provider_mapping = cached.groupby("provider_event_id")["game_id"].nunique()
     if provider_mapping.gt(1).any():
         raise ValueError("Odds snapshot provider events map to multiple canonical games")
+    canonical_provider_counts = cached.groupby("game_id")["provider_event_id"].nunique()
+    if canonical_provider_counts.ne(1).any():
+        raise ValueError("Odds snapshot canonical games map to multiple provider events")
     if set(cached["bookmaker_key"].astype(str)) != set(requested_bookmakers):
         raise ValueError("Odds snapshot bookmaker coverage does not match the request")
 
@@ -366,6 +369,8 @@ def _validate_normalized_row(row, index=None):
             raise ValueError(prefix + f"{field} is required")
     if row.get("market") != MARKET or row.get("label") != "Yes":
         raise ValueError(prefix + "unexpected market outcome")
+    if pd.isna(row.get("in_play")) or bool(row.get("in_play")):
+        raise ValueError(prefix + "in_play must be explicitly false")
     commence = _parse_commence_time(row.get("commence_time"))
     last_update = _parse_commence_time(row.get("last_update"))
     fetched_at = _parse_commence_time(row.get("fetched_at"))
@@ -421,8 +426,6 @@ def parse_event_odds(
                     continue
                 if outcome.get("name") != "Yes":
                     continue
-                if requested_bookmakers is not None and str(bookmaker_key).strip().lower() not in requested_bookmakers:
-                    continue
                 row = {
                     "game_id": game_id,
                     "provider_event_id": provider_event_id,
@@ -447,6 +450,8 @@ def parse_event_odds(
                     "schema_version": SCHEMA_VERSION,
                 }
                 _validate_normalized_row(row)
+                if requested_bookmakers is not None and str(bookmaker_key).strip().lower() not in requested_bookmakers:
+                    continue
                 rows.append(row)
     return rows
 
@@ -609,7 +614,7 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
 
-    bookmakers = [b.strip() for b in args.bookmakers.split(",") if b.strip()]
+    bookmakers = [b.strip() for b in args.bookmakers.split(",")]
     kwargs = {"refresh": args.refresh}
     if args.canary_one_event:
         kwargs["canary_one_event"] = True
