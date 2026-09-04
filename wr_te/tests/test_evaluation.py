@@ -20,7 +20,17 @@ def test_evaluation_output_dir_is_contained_and_atomic_payload_keys(tmp_path):
         evaluate_wr.write_artifacts_atomic(root / "run", {"manifest.json": b"{}"})
 
 
-def test_deterministic_cli_outputs_and_preserves_unrelated_file(tmp_path):
+def test_deterministic_cli_outputs_and_preserves_unrelated_file(tmp_path, monkeypatch):
+    import nflreadpy
+    import requests
+
+    def fail_external(*args, **kwargs):
+        raise AssertionError("offline evaluator attempted an external call")
+
+    monkeypatch.setattr(requests, "get", fail_external)
+    for name in dir(nflreadpy):
+        if name.startswith("load_") and callable(getattr(nflreadpy, name)):
+            monkeypatch.setattr(nflreadpy, name, fail_external)
     raw_path = tmp_path / "raw.csv"
     params_path = tmp_path / "params.json"
     teams_path = tmp_path / "teams.csv"
@@ -31,6 +41,15 @@ def test_deterministic_cli_outputs_and_preserves_unrelated_file(tmp_path):
         "min_samples_leaf": 1, "max_features": "sqrt",
     }))
     pd.DataFrame({"team_name": ["AAA", "BBB"], "team_id": ["AAA", "BBB"]}).to_csv(teams_path, index=False)
+    odds_dir = vegas_dir / "2022"
+    odds_dir.mkdir(parents=True)
+    pd.DataFrame([{
+        "description": "Player 0", "home_team": "AAA", "away_team": "BBB", "price": 200,
+        "bookmaker": "book", "tag": "open", "in_play": False,
+        "last_update": "2022-09-11T10:00:00Z", "fetched_at": "2022-09-11T10:05:00Z",
+        "commence_time": "2022-09-11T13:00:00Z",
+    }]).to_csv(odds_dir / "week_1_td_odds_open.csv", index=False)
+    (vegas_dir / "week_1_td_odds.csv").write_text("this root-level file must not be read\n")
     first = evaluate_wr.run_evaluation(
         start_season=2022, end_season=2022, calibration_weeks=2, seed=42,
         input_path=raw_path, rf_params_path=params_path, vegas_dir=vegas_dir,
@@ -47,6 +66,11 @@ def test_deterministic_cli_outputs_and_preserves_unrelated_file(tmp_path):
     assert manifest["football_context_provenance"] == "retrospective_finalish_game_context"
     assert manifest["definitions"]["roi_used_for_selection"] is False
     assert manifest["deferred"] == evaluate_wr._DEFERRED
+    assert "vegas/2022/week_1_td_odds_open.csv" in manifest["input_hashes"]
+    assert not any(name.startswith("vegas/week_") for name in manifest["input_hashes"])
+    prediction_artifact = pd.read_csv(first["predictions.csv"])
+    assert prediction_artifact["odds_covered"].any()
+    assert "timestamp_safe_open" in set(prediction_artifact["open_provenance"])
     unrelated = tmp_path / "run1" / "unrelated.txt"
     unrelated.write_text("preserve")
     evaluate_wr.run_evaluation(
@@ -89,6 +113,36 @@ def test_atomic_outputs_publish_nothing_when_metrics_preparation_fails(tmp_path,
         )
     assert {name: (output / name).read_bytes() for name in evaluate_wr.ARTIFACT_NAMES} == old
     assert not list(output.glob(".*.tmp"))
+
+
+@pytest.mark.parametrize("failure_at", [2, 3, 4, 5])
+def test_atomic_outputs_roll_back_mid_replacement(tmp_path, monkeypatch, failure_at):
+    output = tmp_path / "run"
+    output.mkdir()
+    old = {name: f"old-{name}".encode() for name in evaluate_wr.ARTIFACT_NAMES}
+    for name, payload in old.items():
+        (output / name).write_bytes(payload)
+    (output / "unrelated.txt").write_text("keep")
+    original_replace = evaluate_wr.os.replace
+    replacements = 0
+
+    def fail_on_new_replacement(source, target):
+        nonlocal replacements
+        if Path(source).name.endswith(".tmp"):
+            replacements += 1
+            if replacements == failure_at:
+                raise OSError("injected replacement failure")
+        return original_replace(source, target)
+
+    monkeypatch.setattr(evaluate_wr.os, "replace", fail_on_new_replacement)
+    with pytest.raises(OSError, match="injected replacement failure"):
+        evaluate_wr.write_artifacts_atomic(
+            output, {name: f"new-{name}".encode() for name in evaluate_wr.ARTIFACT_NAMES}
+        )
+    assert {name: (output / name).read_bytes() for name in evaluate_wr.ARTIFACT_NAMES} == old
+    assert (output / "unrelated.txt").read_text() == "keep"
+    assert not list(output.glob(".*.tmp"))
+    assert not list(output.glob(".*.backup"))
 
 
 def _raw_rows(groups):

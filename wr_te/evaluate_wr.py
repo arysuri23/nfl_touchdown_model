@@ -13,6 +13,7 @@ import importlib.metadata
 import io
 import json
 import os
+import shutil
 import tempfile
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -160,6 +161,8 @@ def write_artifacts_atomic(
     destination = Path(output_dir)
     destination.mkdir(parents=True, exist_ok=True)
     temporary: dict[str, Path] = {}
+    backups: dict[str, Path] = {}
+    published: set[str] = set()
     try:
         for name in ARTIFACT_NAMES:
             fd, temp_name = tempfile.mkstemp(prefix=f".{name}.", suffix=".tmp", dir=destination)
@@ -176,13 +179,51 @@ def write_artifacts_atomic(
                 except OSError:
                     pass
                 raise
+
+        # Keep a private copy of every predecessor before replacing anything.
+        # Copies avoid disturbing the visible old artifact set until the first
+        # new destination is atomically installed.
+        for name in ARTIFACT_NAMES:
+            target = destination / name
+            if target.exists():
+                fd, backup_name = tempfile.mkstemp(
+                    prefix=f".{name}.", suffix=".backup", dir=destination
+                )
+                os.close(fd)
+                backup_path = Path(backup_name)
+                backups[name] = backup_path
+                shutil.copyfile(target, backup_path)
+
         for name in ARTIFACT_NAMES:
             os.replace(temporary[name], destination / name)
             temporary.pop(name, None)
+            published.add(name)
+    except BaseException:
+        # Restore every predecessor, including destinations that were not yet
+        # reached by the replacement loop.  A destination without a backup did
+        # not exist before this transaction and must not survive a rollback.
+        for name in reversed(ARTIFACT_NAMES):
+            target = destination / name
+            backup_path = backups.get(name)
+            if backup_path is not None and backup_path.exists():
+                try:
+                    os.replace(backup_path, target)
+                except OSError:
+                    # If the injected/system failure also affects restore,
+                    # copy the predecessor back before final cleanup.
+                    shutil.copyfile(backup_path, target)
+            elif name in published and target.exists():
+                target.unlink()
+        raise
     finally:
         for temp_path in temporary.values():
             try:
                 temp_path.unlink()
+            except FileNotFoundError:
+                pass
+        for backup_path in backups.values():
+            try:
+                backup_path.unlink()
             except FileNotFoundError:
                 pass
     return {name: destination / name for name in ARTIFACT_NAMES}
