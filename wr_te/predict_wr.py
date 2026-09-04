@@ -5,6 +5,7 @@ import nflreadpy as nfl
 import data_collection as data
 import odds_match
 import config
+import fetch_live_odds
 
 from features import WR_TE_FEATURES, PLAYER_EWM_STATS
 
@@ -264,6 +265,17 @@ def main():
 
     season, week = config.SEASON, config.WEEK
 
+    # The fetcher resolves the season/week snapshot before any prediction
+    # artifacts are loaded.  A valid cache is a local-only operation; an empty
+    # snapshot is not useful input and must not result in an output file.
+    td_odds_df = fetch_live_odds.fetch(season, week, 'open', ['draftkings'])
+    odds_path = config.odds_snapshot_path(season, week, 'open')
+    if td_odds_df.empty:
+        raise ValueError(
+            f"Odds snapshot {odds_path} contains no player odds rows; "
+            "request a fresh snapshot before generating predictions."
+        )
+
     # --- 1. Load WR/TE Model ---
     print("\nLoading WR/TE model artifacts from local files...")
     wr_te_model = load_joblib_locally(config.MODELS_DIR / 'wr_te_rf_final.pkl')
@@ -273,13 +285,6 @@ def main():
     print("\nLoading data files from local files...")
     nfl_teams_df = pd.read_csv(config.DATA_DIR / 'nfl_teams.csv')
     team_map = dict(zip(nfl_teams_df['team_name'], nfl_teams_df['team_id']))
-
-    odds_path = config.odds_snapshot_path(season, week, 'open')
-    if not odds_path.exists():
-        raise FileNotFoundError(
-            f"Odds snapshot not found: {odds_path}. Run fetch_live_odds.py to generate it."
-        )
-    td_odds_df = pd.read_csv(odds_path)
 
     feature_df = pd.read_csv(config.DATA_DIR / 'raw_nfl_data.csv')
 

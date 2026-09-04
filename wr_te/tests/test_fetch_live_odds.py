@@ -306,6 +306,117 @@ def test_fetch_raises_runtime_error_when_api_key_unset(monkeypatch):
         fetch_live_odds.fetch(2026, 1, "open", ["draftkings"])
 
 
+def _valid_snapshot_frame(extra=False):
+    row = {column: None for column in fetch_live_odds.CSV_COLUMNS}
+    row.update({"season": 2026, "week": 1, "tag": "open", "description": "Player One"})
+    frame = pd.DataFrame([row], columns=fetch_live_odds.CSV_COLUMNS)
+    if extra:
+        frame["provider_extra"] = "kept"
+    return frame
+
+
+def test_fetch_cache_hit_returns_csv_without_key_schedule_or_http(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    _valid_snapshot_frame(extra=True).to_csv(path, index=False)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("cache hit must not resolve dependencies")
+
+    monkeypatch.setattr(config, "odds_api_key", fail)
+    out = fetch_live_odds.fetch(
+        2026, 1, "open", ["draftkings"], get=fail, load_schedules=fail
+    )
+
+    assert len(out) == 1
+    assert "provider_extra" in out.columns
+
+
+@pytest.mark.parametrize(
+    "contents, expected",
+    [("", "zero bytes"), ("description\nPlayer One\n", "missing required columns")],
+)
+def test_fetch_invalid_cache_fails_before_network(tmp_path, monkeypatch, contents, expected):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    path.write_text(contents)
+
+    def fail(*args, **kwargs):
+        raise AssertionError("invalid cache must not use network")
+
+    with pytest.raises(ValueError, match=expected):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=fail, load_schedules=fail
+        )
+
+
+def test_fetch_header_only_cache_is_valid_and_empty(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    path.write_text(",".join(fetch_live_odds.CSV_COLUMNS) + "\n")
+
+    out = fetch_live_odds.fetch(
+        2026, 1, "open", ["draftkings"],
+        get=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
+        load_schedules=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError()),
+    )
+    assert out.empty
+    assert list(out.columns) == fetch_live_odds.CSV_COLUMNS
+
+
+def test_fetch_refresh_replaces_existing_snapshot(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    path.write_text("old-bytes")
+    fake_get = _FakeGet()
+
+    out = fetch_live_odds.fetch(
+        2026, 1, "open", ["draftkings"], get=fake_get,
+        load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+    )
+
+    assert len(out) == 6
+    assert path.read_text().startswith(",".join(fetch_live_odds.CSV_COLUMNS))
+    assert not list(path.parent.glob("*.tmp"))
+
+
+def test_fetch_refresh_failure_preserves_existing_bytes_and_cleans_temp(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "test-key")
+    monkeypatch.setattr(config, "VEGAS_DIR", tmp_path)
+    path = config.odds_snapshot_path(2026, 1, "open")
+    path.parent.mkdir(parents=True)
+    original = ",".join(fetch_live_odds.CSV_COLUMNS) + "\nold\n"
+    path.write_text(original)
+
+    def failing_get(*args, **kwargs):
+        raise RuntimeError("simulated API failure")
+
+    with pytest.raises(RuntimeError, match="simulated API failure"):
+        fetch_live_odds.fetch(
+            2026, 1, "open", ["draftkings"], get=failing_get,
+            load_schedules=_fake_load_schedules_factory(2026), refresh=True,
+        )
+    assert path.read_text() == original
+    assert not list(path.parent.glob("*.tmp"))
+
+
+def test_fetch_cli_forwards_refresh(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        fetch_live_odds, "fetch",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    fetch_live_odds.main(["--season", "2026", "--week", "1", "--tag", "open", "--refresh"])
+
+    assert calls == [((2026, 1, "open", ["draftkings"]), {"refresh": True})]
+
+
 # ---------------------------------------------------------------------------
 # No hardcoded API key literals in the legacy fetchers.
 # ---------------------------------------------------------------------------

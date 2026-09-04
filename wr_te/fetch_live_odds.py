@@ -16,6 +16,8 @@ spending API credits on games outside the requested week.
 """
 import argparse
 from datetime import datetime, timezone, timedelta
+import os
+import tempfile
 
 import nflreadpy as nfl
 import pandas as pd
@@ -137,6 +139,32 @@ def _load_team_map() -> dict:
     return dict(zip(teams["team_name"], teams["team_id"]))
 
 
+def _load_cached_snapshot(out_path) -> pd.DataFrame | None:
+    """Read and validate an existing snapshot, or return None when absent."""
+    if not out_path.exists():
+        return None
+    if out_path.stat().st_size == 0:
+        raise ValueError(
+            f"Odds snapshot is zero bytes: {out_path}. Remove it or request a refresh."
+        )
+
+    try:
+        cached = pd.read_csv(out_path)
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError) as exc:
+        raise ValueError(
+            f"Could not parse odds snapshot {out_path}: {exc}. "
+            "Remove it or request a refresh."
+        ) from exc
+
+    missing = [column for column in CSV_COLUMNS if column not in cached.columns]
+    if missing:
+        raise ValueError(
+            f"Odds snapshot {out_path} is missing required columns: {', '.join(missing)}. "
+            "Remove it or request a refresh."
+        )
+    return cached
+
+
 def select_week_events(
     events: list,
     window_start: datetime,
@@ -217,8 +245,21 @@ def fetch(
     bookmakers: list,
     get=requests.get,
     load_schedules=nfl.load_schedules,
+    refresh: bool = False,
 ) -> pd.DataFrame:
-    """Fetch a live ATD odds snapshot and write it to the season/week/tag CSV."""
+    """Load a cached snapshot or fetch and publish a new one.
+
+    Existing valid snapshots are returned without resolving credentials or
+    touching schedule/API dependencies.  Set ``refresh=True`` to explicitly
+    replace one.  Publication is atomic, so a failed refresh leaves any prior
+    snapshot untouched.
+    """
+    out_path = config.odds_snapshot_path(season, week, tag)
+    if not refresh:
+        cached = _load_cached_snapshot(out_path)
+        if cached is not None:
+            return cached
+
     api_key = config.odds_api_key()
 
     week_schedule = _load_week_schedule(season, week, load_schedules)
@@ -273,9 +314,27 @@ def fetch(
 
     df = pd.DataFrame(rows, columns=CSV_COLUMNS)
 
-    out_path = config.odds_snapshot_path(season, week, tag)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(out_path, index=False)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=out_path.parent,
+            prefix=f".{out_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as temp_file:
+            temp_path = temp_file.name
+        df.to_csv(temp_path, index=False)
+        os.replace(temp_path, out_path)
+        temp_path = None
+    finally:
+        if temp_path is not None:
+            try:
+                os.unlink(temp_path)
+            except FileNotFoundError:
+                pass
 
     used = last_resp.headers.get("x-requests-used")
     remaining = last_resp.headers.get("x-requests-remaining")
@@ -292,10 +351,15 @@ def main(argv=None):
     parser.add_argument("--week", type=int, default=config.WEEK)
     parser.add_argument("--tag", required=True, choices=["open", "close"])
     parser.add_argument("--bookmakers", default="draftkings")
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Fetch and replace the cached snapshot (spends API credits)",
+    )
     args = parser.parse_args(argv)
 
     bookmakers = [b.strip() for b in args.bookmakers.split(",") if b.strip()]
-    fetch(args.season, args.week, args.tag, bookmakers)
+    fetch(args.season, args.week, args.tag, bookmakers, refresh=args.refresh)
 
 
 if __name__ == "__main__":

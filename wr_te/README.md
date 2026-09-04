@@ -11,10 +11,11 @@ cd wr_te
 python -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
-# Required only for fetch_live_odds.py (The Odds API). Not needed to train,
-# predict, evaluate the local cache, or run the ledger against an odds snapshot
-# that already exists.
-export ODDS_API_KEY=...
+# Required only when a requested weekly snapshot does not exist or you pass
+# --refresh to fetch_live_odds.py. Copy .env.example to .env and put the key
+# there, or export ODDS_API_KEY in the shell. Shell values take precedence.
+cp .env.example .env
+# edit .env, then set: ODDS_API_KEY=...
 ```
 
 Run tests with `.venv/bin/pytest tests/ -v`.
@@ -25,10 +26,12 @@ All commands below assume `WRTE_SEASON`/`WRTE_WEEK` are set (default to the
 current `config.SEASON`/`config.WEEK`; see *Overriding season/week*) and are
 run from `wr_te/`.
 
-1. **Tue/Wed: fetch opening odds** (≈17 credits)
+1. **Tue/Wed: fetch opening odds** (≈17 credits on a cache miss)
    ```bash
    python fetch_live_odds.py --tag open
    ```
+   A valid `vegas/<season>/week_<week>_td_odds_open.csv` is reused without
+   spending credits. To intentionally replace it, pass `--refresh`.
 2. **Train** (first week of the season, and every 4 weeks thereafter; add
    `--tune` only when changing the feature list -- it re-runs
    `RandomizedSearchCV` and overwrites the saved hyperparameters)
@@ -57,11 +60,15 @@ python train_wr.py --from-cache
    python ledger.py record --strategy top5_prob
    python ledger.py record --strategy top5_edge_le400 --stake 0
    ```
-5. **Sun, ~1h before the early kickoff: closing odds**
+5. **Sun, ~1h before the early kickoff: closing odds** (refresh explicitly if
+   the closing snapshot already exists)
    ```bash
    python fetch_live_odds.py --tag close
    python ledger.py close
    ```
+   The prediction command loads the opening snapshot through the same cache
+   logic; it creates a missing snapshot once, but never refreshes an existing
+   one.
 6. **Tue: settle and report**
    ```bash
    python ledger.py settle

@@ -56,6 +56,31 @@ def test_odds_api_key_present_returns_value(monkeypatch):
     assert config.odds_api_key() == "secret-value"
 
 
+def test_odds_api_key_loads_project_env_lazily(tmp_path, monkeypatch):
+    monkeypatch.delenv("ODDS_API_KEY", raising=False)
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    (tmp_path / ".env").write_text("ODDS_API_KEY=dotenv-value\n")
+
+    assert config.odds_api_key() == "dotenv-value"
+
+
+def test_odds_api_key_process_environment_takes_precedence(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "process-value")
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    (tmp_path / ".env").write_text("ODDS_API_KEY=dotenv-value\n")
+
+    assert config.odds_api_key() == "process-value"
+
+
+def test_odds_api_key_explicit_empty_does_not_fall_back_to_dotenv(tmp_path, monkeypatch):
+    monkeypatch.setenv("ODDS_API_KEY", "")
+    monkeypatch.setattr(config, "BASE_DIR", tmp_path)
+    (tmp_path / ".env").write_text("ODDS_API_KEY=dotenv-value\n")
+
+    with pytest.raises(RuntimeError, match="empty"):
+        config.odds_api_key()
+
+
 def test_odds_snapshot_path():
     assert config.odds_snapshot_path(2026, 1, "open") == (
         config.VEGAS_DIR / "2026" / "week_1_td_odds_open.csv"

@@ -298,6 +298,13 @@ def test_production_main_loads_raw_forest_only_and_records_variant(tmp_path, mon
         }])
 
     monkeypatch.setattr(predict_wr, "load_joblib_locally", fake_load)
+    fetch_calls = []
+    monkeypatch.setattr(
+        predict_wr.fetch_live_odds,
+        "fetch",
+        lambda *args, **kwargs: fetch_calls.append((args, kwargs))
+        or pd.DataFrame({"description": ["Player One"]}),
+    )
     monkeypatch.setattr(predict_wr, "predict_touchdown_scorers", fake_predict)
     monkeypatch.setattr(predict_wr.data, "get_week_lines", lambda season, week: pd.DataFrame())
     monkeypatch.setattr(predict_wr.data, "get_depth_chart_for_week", lambda season, week: pd.DataFrame())
@@ -308,10 +315,25 @@ def test_production_main_loads_raw_forest_only_and_records_variant(tmp_path, mon
 
     predict_wr.main()
 
+    assert fetch_calls == [((2026, 1, "open", ["draftkings"]), {})]
     assert loaded == [models_dir / "wr_te_rf_final.pkl"]
     assert captured["calibrator"] is None
     output = pd.read_csv(predictions_dir / "2026" / "week_1.csv")
     assert output.loc[0, "probability_variant"] == "random_forest_current/raw"
+
+
+def test_production_main_rejects_empty_odds_without_writing_output(tmp_path, monkeypatch):
+    monkeypatch.setattr(predict_wr.config, "SEASON", 2026)
+    monkeypatch.setattr(predict_wr.config, "WEEK", 1)
+    predictions_dir = tmp_path / "predictions"
+    monkeypatch.setattr(predict_wr.config, "PREDICTIONS_DIR", predictions_dir)
+    monkeypatch.setattr(
+        predict_wr.fetch_live_odds, "fetch", lambda *args, **kwargs: pd.DataFrame()
+    )
+
+    with pytest.raises(ValueError, match="contains no player odds rows"):
+        predict_wr.main()
+    assert not predictions_dir.exists()
 
 
 def test_prediction_history_excludes_target_and_future_rows():

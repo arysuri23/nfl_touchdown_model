@@ -32,10 +32,30 @@ VALIDATION_SEASON = 2023
 
 
 def odds_api_key() -> str:
-    """Return the ODDS_API_KEY environment variable, or raise if unset/empty."""
+    """Return the API key from the process environment or this project's .env.
+
+    dotenv loading is deliberately lazy so importing config never reads files or
+    changes the process environment.  A key explicitly supplied in the process
+    environment always wins; an explicitly empty value is an error rather than
+    an invitation to fall back to a stale .env value.
+    """
+    key = os.environ.get("ODDS_API_KEY")
+    if key is not None:
+        if not key:
+            raise RuntimeError("ODDS_API_KEY is set but empty")
+        return key
+
+    # Keep the dependency and its file read out of module import.  Re-read on
+    # each lookup so a user may add or change .env during a long-lived process;
+    # override=False preserves values already present in os.environ.
+    from dotenv import load_dotenv
+
+    load_dotenv(dotenv_path=BASE_DIR / ".env", override=False)
     key = os.environ.get("ODDS_API_KEY")
     if not key:
-        raise RuntimeError("Set the ODDS_API_KEY environment variable")
+        raise RuntimeError(
+            f"Set ODDS_API_KEY in the environment or {BASE_DIR / '.env'}"
+        )
     return key
 
 
