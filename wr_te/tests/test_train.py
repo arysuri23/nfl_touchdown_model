@@ -130,9 +130,10 @@ def test_calibration_report_assigns_exact_probability_boundaries_to_evaluator_bi
     assert report["ece"] == pytest.approx(0.1 / 3)
 
 
-def test_from_cache_requires_existing_cache(tmp_path):
+def test_from_cache_requires_existing_cache(tmp_path, monkeypatch):
+    monkeypatch.setattr(train_wr.config, "DATA_DIR", tmp_path)
     with pytest.raises(FileNotFoundError, match="training cache not found"):
-        train_wr._load_training_data(True, tmp_path / "missing.csv", {})
+        train_wr._load_training_data(True, "missing.csv", {})
 
 
 def test_from_cache_does_not_collect_or_rewrite_cache(tmp_path, monkeypatch):
@@ -140,10 +141,36 @@ def test_from_cache_does_not_collect_or_rewrite_cache(tmp_path, monkeypatch):
     cache.write_bytes(b"season,week,player_id\n2020,1,P1\n")
     original = cache.read_bytes()
 
+    monkeypatch.setattr(train_wr.config, "DATA_DIR", tmp_path)
     monkeypatch.setattr(train_wr.data, "get_all_historic_data", lambda *_: pytest.fail("collector called"))
-    train_wr._load_training_data(True, cache, {})
+    train_wr._load_training_data(True, "raw_nfl_data.csv", {})
 
     assert cache.read_bytes() == original
+
+
+def test_cache_path_must_be_relative_and_beneath_data_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(train_wr.config, "DATA_DIR", tmp_path)
+    with pytest.raises(ValueError, match="beneath config.DATA_DIR"):
+        train_wr._resolve_cache_path(tmp_path / "raw.csv")
+    with pytest.raises(ValueError, match="beneath config.DATA_DIR"):
+        train_wr._resolve_cache_path("../raw.csv")
+    outside = tmp_path.parent / "outside-cache.csv"
+    outside.write_bytes(b"x")
+    (tmp_path / "link.csv").symlink_to(outside)
+    with pytest.raises(ValueError, match="beneath config.DATA_DIR"):
+        train_wr._resolve_cache_path("link.csv")
+
+
+def test_cache_validation_requires_exact_seasons_both_positions_and_non_null_keys():
+    row = {column: 0 for column in train_wr.RAW_REQUIRED_COLUMNS}
+    row.update({"season": 2020, "week": 1, "player_id": "P1", "position": "WR", "team": "A", "opponent_team": "B"})
+    frame = pd.DataFrame([row])
+    with pytest.raises(ValueError, match="exactly match"):
+        train_wr._validate_training_cache(frame, [2020, 2021])
+    row["position"] = "TE"
+    frame = pd.DataFrame([row])
+    with pytest.raises(ValueError, match="both WR and TE"):
+        train_wr._validate_training_cache(frame, [2020])
 
 
 def test_network_data_loader_remains_callable(tmp_path, monkeypatch):
@@ -160,7 +187,11 @@ def test_network_data_loader_remains_callable(tmp_path, monkeypatch):
 
 
 def test_manifest_artifact_hashes_match_published_files(tmp_path):
-    artifacts = {"model.pkl": {"model": 1}, "importance.csv": pd.DataFrame({"feature": ["x"]})}
+    artifacts = {
+        "wr_te_rf_final.pkl": {"model": 1},
+        "wr_te_rf_calibrator.pkl": {"calibrator": 1},
+        "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["x"]}),
+    }
     manifest = {"production_variant": "random_forest_current/raw"}
 
     train_wr._publish_training_artifacts(tmp_path, artifacts, manifest)
@@ -168,6 +199,48 @@ def test_manifest_artifact_hashes_match_published_files(tmp_path):
     published = json.loads((tmp_path / "wr_te_rf_manifest.json").read_text())
     for name, digest in published["artifact_hashes"].items():
         assert digest == train_wr._sha256_file(tmp_path / name)
+
+
+def test_atomic_publication_rolls_back_all_known_outputs_on_replacement_failure(tmp_path, monkeypatch):
+    names = ["wr_te_rf_final.pkl", "wr_te_rf_calibrator.pkl", "wr_te_rf_feature_importance.csv", "wr_te_rf_manifest.json"]
+    for name in names:
+        (tmp_path / name).write_bytes(b"old-" + name.encode())
+    artifacts = {
+        "wr_te_rf_final.pkl": {"model": 2},
+        "wr_te_rf_calibrator.pkl": {"calibrator": 2},
+        "wr_te_rf_feature_importance.csv": pd.DataFrame({"feature": ["new"]}),
+    }
+    real_replace = train_wr.os.replace
+    replacements = {"count": 0}
+
+    def fail_on_third(source, target):
+        replacements["count"] += 1
+        if replacements["count"] == 3:
+            raise OSError("injected replacement failure")
+        return real_replace(source, target)
+
+    monkeypatch.setattr(train_wr.os, "replace", fail_on_third)
+    with pytest.raises(OSError, match="injected replacement failure"):
+        train_wr._publish_training_artifacts(tmp_path, artifacts, {"version": 2})
+
+    for name in names:
+        assert (tmp_path / name).read_bytes() == b"old-" + name.encode()
+
+
+def test_strict_oob_calibration_mask_never_falls_back_to_other_seasons():
+    model = type("Model", (), {"oob_decision_function_": np.array([[0.9, 0.1], [0.2, 0.8], [0.4, 0.6]])})()
+    mask = np.array([False, True, False])
+
+    _, candidate = train_wr._oob_calibration_rows(model, mask, min_rows=500, fallback=False)
+
+    assert candidate.tolist() == [False, True, False]
+
+
+def test_rf_params_hash_matches_evaluator_canonical_json():
+    import evaluate_wr
+    params = {"max_depth": 3, "n_estimators": 10}
+
+    assert train_wr._canonical_hash(params) == train_wr._sha256_bytes(evaluate_wr._json_bytes(params))
 
 
 # --- train_rf_model ---

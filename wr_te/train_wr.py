@@ -16,6 +16,7 @@ from sklearn.metrics import brier_score_loss, log_loss
 import data_collection as data
 import joblib
 import os
+import shutil
 import sys
 import json
 import time
@@ -56,7 +57,23 @@ def _sha256_file(path):
 
 
 def _canonical_hash(value):
-    return _sha256_bytes(json.dumps(value, sort_keys=True, separators=(',', ':')).encode())
+    # Keep identical to evaluate_wr._json_bytes for cross-artifact parity.
+    payload = json.dumps(value, sort_keys=True, indent=2, allow_nan=False).encode('utf-8')
+    return _sha256_bytes(payload)
+
+
+def _resolve_cache_path(cache_path):
+    root = config.DATA_DIR.resolve()
+    if cache_path is None:
+        candidate = root / 'raw_nfl_data.csv'
+    else:
+        supplied = Path(cache_path).expanduser()
+        if supplied.is_absolute():
+            raise ValueError('--cache-path must be beneath config.DATA_DIR')
+        candidate = (root / supplied).resolve(strict=False)
+    if candidate == root or root not in candidate.parents:
+        raise ValueError('--cache-path must be beneath config.DATA_DIR')
+    return candidate
 
 
 def _validate_training_cache(df, seasons):
@@ -65,24 +82,26 @@ def _validate_training_cache(df, seasons):
     if missing:
         raise ValueError(f"training cache is missing required columns: {missing}")
     selected = df[df['season'].isin(seasons)].copy()
-    if selected.empty:
-        raise ValueError(f"training cache has no rows for configured seasons: {seasons}")
+    actual_seasons = set(selected['season'].dropna().astype(int))
+    if actual_seasons != set(seasons):
+        raise ValueError(f"training cache seasons {sorted(actual_seasons)} do not exactly match requested {list(seasons)}")
+    if selected[['season', 'week', 'player_id']].isna().any().any():
+        raise ValueError("training cache season/week/player_id must be non-null")
     if selected[['season', 'week', 'player_id']].duplicated().any():
         raise ValueError("training cache contains duplicate season/week/player_id rows")
     if not selected['week'].between(1, 18).all():
         raise ValueError("training cache contains weeks outside 1-18")
     if not selected['scored_touchdown'].isin([0, 1]).all():
         raise ValueError("training cache target must be binary")
-    if not selected['position'].isin(['WR', 'TE']).any():
-        raise ValueError("training cache contains no WR/TE rows")
+    if set(selected.loc[selected['position'].isin(['WR', 'TE']), 'position']) != {'WR', 'TE'}:
+        raise ValueError("training cache must contain both WR and TE rows")
     return selected
 
 
 def _load_training_data(from_cache, cache_path, team_map):
     """Load source rows; cache mode is read-only and never invokes collection."""
     if from_cache:
-        cache_path = config.DATA_DIR / 'raw_nfl_data.csv' if cache_path is None else cache_path
-        cache_path = os.fspath(cache_path)
+        cache_path = _resolve_cache_path(cache_path)
         if not os.path.isfile(cache_path):
             raise FileNotFoundError(f"training cache not found: {cache_path}")
         return pd.read_csv(cache_path), _sha256_file(Path(cache_path)), cache_path
@@ -99,10 +118,14 @@ def _package_versions():
 
 
 def _publish_training_artifacts(models_dir, artifacts, manifest):
-    """Stage all outputs, then publish artifacts before the manifest last."""
+    """Transactionally publish model artifacts, rolling back on replacement failure."""
     import tempfile
     models_dir = Path(models_dir)
     models_dir.mkdir(parents=True, exist_ok=True)
+    names = ('wr_te_rf_final.pkl', 'wr_te_rf_calibrator.pkl',
+             'wr_te_rf_feature_importance.csv', 'wr_te_rf_manifest.json')
+    if set(artifacts) != set(names[:-1]):
+        raise ValueError('artifacts must contain the known model outputs')
     with tempfile.TemporaryDirectory(dir=models_dir) as staging:
         staging = Path(staging)
         for name, value in artifacts.items():
@@ -115,11 +138,33 @@ def _publish_training_artifacts(models_dir, artifacts, manifest):
         manifest['artifact_hashes'] = {
             name: _sha256_file(staging / name) for name in artifacts
         }
-        staged_manifest = staging / 'wr_te_rf_manifest.json'
+        staged_manifest = staging / names[-1]
         staged_manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
-        for name in artifacts:
-            os.replace(staging / name, models_dir / name)
-        os.replace(staged_manifest, models_dir / 'wr_te_rf_manifest.json')
+        temporary = {name: staging / name for name in names}
+        backups = {}
+        published = set()
+        try:
+            for name in names:
+                target = models_dir / name
+                if target.exists():
+                    backup = staging / f'.{name}.backup'
+                    shutil.copyfile(target, backup)
+                    backups[name] = backup
+            for name in names:
+                os.replace(temporary[name], models_dir / name)
+                published.add(name)
+        except BaseException:
+            for name in reversed(names):
+                target = models_dir / name
+                backup = backups.get(name)
+                if backup is not None and backup.exists():
+                    try:
+                        os.replace(backup, target)
+                    except OSError:
+                        shutil.copyfile(backup, target)
+                elif name in published and target.exists():
+                    target.unlink()
+            raise
 
 
 # --- 2. Feature Engineering ---
@@ -175,7 +220,7 @@ def chronological(df):
     return df.sort_values(by=['season', 'week', 'player_id'], ignore_index=True)
 
 
-def _oob_calibration_rows(model, mask=None, min_rows=500):
+def _oob_calibration_rows(model, mask=None, min_rows=500, fallback=True):
     """Return (oob_proba, candidate_mask) for calibrating on OOB predictions.
 
     `candidate_mask` selects rows with a non-NaN OOB prediction, further
@@ -188,19 +233,19 @@ def _oob_calibration_rows(model, mask=None, min_rows=500):
         candidate = valid & np.asarray(mask)
     else:
         candidate = valid
-    if candidate.sum() < min_rows:
+    if fallback and candidate.sum() < min_rows:
         candidate = valid
     return oob_proba, candidate
 
 
-def fit_calibrator_oob(model, y, mask=None, min_rows=500):
+def fit_calibrator_oob(model, y, mask=None, min_rows=500, fallback=True):
     """Fit a Platt-scaling LogisticRegression on a model's OOB predictions.
 
     `model` must be a fitted RandomForestClassifier with oob_score=True.
     Restricts to `mask` rows (if given) with valid (non-NaN) OOB predictions;
     if fewer than `min_rows` remain, falls back to using all non-NaN rows.
     """
-    oob_proba, candidate = _oob_calibration_rows(model, mask, min_rows)
+    oob_proba, candidate = _oob_calibration_rows(model, mask, min_rows, fallback)
     X = oob_proba[candidate].reshape(-1, 1)
     y_arr = np.asarray(y)[candidate]
     calibrator = LogisticRegression()
@@ -522,8 +567,15 @@ def main(argv=None):
 
     # Load data
     print("\nLoading and preparing data...")
+    if args.cache_path is not None and not args.from_cache:
+        parser.error('--cache-path requires --from-cache')
     df, source_hash, source_path = _load_training_data(args.from_cache, args.cache_path, team_map)
+    source_rows_pre_filter = len(df)
     df = _validate_training_cache(df, train_years)
+    source_rows_by_season = {
+        str(int(season)): int((df['season'] == season).sum())
+        for season in train_years
+    }
 
     print(df.tail())
 
@@ -543,8 +595,9 @@ def main(argv=None):
 
     # Data quality checks
     print("\nRunning data quality checks...")
-    assert not df[WR_TE_FEATURES].isnull().any().any(), \
-        "❌ NaN values detected in features!"
+    feature_values = df[WR_TE_FEATURES].to_numpy(dtype=float)
+    if not np.isfinite(feature_values).all():
+        raise ValueError("training features must be finite")
     assert df['scored_touchdown'].isin([0, 1]).all(), \
         "❌ Target variable contains non-binary values!"
     print(f"✓ Data quality verified: {len(df)} rows, no NaNs, binary target")
@@ -609,9 +662,10 @@ def main(argv=None):
     print(f"\n{'='*60}\nFITTING DIAGNOSTIC PLATT CALIBRATOR (RAW RF REMAINS PRODUCTION)\n{'='*60}")
 
     mask = all_data_df['season'] == all_data_df['season'].max()
-    wr_te_calibrator = fit_calibrator_oob(wr_te_final, y_all_wr_te, mask)
+    calibration_season = int(all_data_df.loc[mask, 'season'].iloc[0])
+    wr_te_calibrator = fit_calibrator_oob(wr_te_final, y_all_wr_te, mask, fallback=False)
 
-    oob_proba, candidate = _oob_calibration_rows(wr_te_final, mask)
+    oob_proba, candidate = _oob_calibration_rows(wr_te_final, mask, fallback=False)
     calibration_reports = deployed_calibration_reports(
         np.asarray(y_all_wr_te)[candidate], oob_proba[candidate], wr_te_calibrator
     )
@@ -634,11 +688,22 @@ def main(argv=None):
         'configured_seasons': list(config.TRAIN_SEASONS),
         'actual_seasons': sorted(map(int, df['season'].unique())),
         'row_counts': {
-            'source': int(len(df)),
+            'source_pre_filter': int(source_rows_pre_filter),
+            'source_after_filter': int(len(df)),
             'wr_te': int(len(all_data_df)),
             'training': int(len(X_all_wr_te)),
             'oob_valid': int(np.isfinite(wr_te_final.oob_decision_function_[:, 1]).sum()),
             'calibrator': int(len(oob_proba[candidate])),
+            'source_by_season': source_rows_by_season,
+            'training_by_season': {
+                str(int(season)): int((all_data_df['season'] == season).sum())
+                for season in train_years
+            },
+        },
+        'calibration': {
+            'season': calibration_season,
+            'rows': int(len(oob_proba[candidate])),
+            'fallback': False,
         },
         'features': {
             'ordered': list(WR_TE_FEATURES),
