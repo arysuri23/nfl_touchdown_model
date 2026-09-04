@@ -2,7 +2,7 @@
 
 Date: 2026-09-02 onward
 Active worktree: `.claude/worktrees/2026-season-wr-te`  
-Branch/current code head: `worktree-2026-season-wr-te` / `72bf58a`
+Branch/current code head: `worktree-2026-season-wr-te` / `ae5f87c` (canonical fresh 2026 work; `2026/v1` is intentionally ignored)
 
 ## Session outcome
 
@@ -53,8 +53,16 @@ At `2026-09-04T03:43:52Z`, live `nflreadpy` Week 1 assembly produced 302 active 
 
 Phase B remains gated on a fresh post-Week 1 real-`nflreadpy` spike before any network refresh is automated. That spike must record loader availability and returned coverage/schema, confirm active candidates are available through the requested week, verify regular-season (`REG`, weeks 1–18) filters and join cardinality, and measure snap-count name-match coverage. Until then, network refresh remains a manual dry-run.
 
+## Odds API guardrails closeout
+
+Sol gave final approval for the Odds API guardrails. The canonical fresh-2026 branch code is at `ae5f87c`, with guardrail commits `9c8167d`, `de0b4af`, `61ed072`, `b88a6f7`, and `ae5f87c`; `2435fdd` removes the generated task report from tracking. Fresh verification reports 189 passing tests. A real `nflreadpy` Week 1 spike found 16 regular-season games spanning September 9–14.
+
+The authorized one-event canary succeeded for 2026 Week 1 DraftKings `player_anytime_td`: `x-requests-used: 1`, `x-requests-remaining: 499`. It returned validated rows and did not write the canonical snapshot. No fresh training is needed: the production model already fits 2020–2025, and no 2026 outcomes exist.
+
+The next operational step is a full opening-odds fetch near September 8, only with explicit approval, followed by prediction.
+
 ## Operating rules and next steps
 
 Any question about future data availability must first use a real `nflreadpy` spike and record the package version, loader/API call, returned schema, coverage, and missingness before planning integration. Freeze an in-progress week only after all games are final; refresh the raw cache separately. Review the five smoke artifacts and decide whether timestamped decision-time odds are available before making any edge claim.
 
-The main worktree remains unchanged on `main` at `4d0fd5d`. The feature worktree code is current through `72bf58a` plus intentionally untracked smoke/evaluation output. The only remaining pregame blocker is `ODDS_API_KEY`/the 2026 Week 1 ATD open-odds snapshot; once available, run the full prediction and ledger flow. Existing exposed historical credentials remain a separate security concern and should be revoked/rotated before reuse; no history rewrite was performed.
+The main worktree remains unchanged on `main` at `4d0fd5d`. The feature worktree code is current through `ae5f87c` plus intentionally untracked smoke/evaluation output. The only remaining pregame blocker is the 2026 Week 1 ATD open-odds snapshot; once available and explicitly approved, run the full prediction flow. Existing exposed historical credentials remain a separate security concern and should be revoked/rotated before reuse; no history rewrite was performed.
